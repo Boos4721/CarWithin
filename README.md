@@ -4,7 +4,7 @@
 
 ## 下载与安装
 
-- 在 [Releases](https://github.com/xmz28/CarWithin/releases) 下载 `CarWithin.ipa`（包内版本 `0.2`，构建号 `2`）。
+- 当前开放项目介绍。安装包和对应源码的下载地址将在发布后列于 [Releases](https://github.com/xmz28/CarWithin/releases)。
 - 系统要求为 iOS 16.4 或更高。实际可用性取决于机型、系统版本与签名环境。
 - 安装包需要通过支持 IPA 的侧载工具签名后安装。按设备提示完成开发者信任或开发者模式设置。
 
