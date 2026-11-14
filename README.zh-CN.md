@@ -2,6 +2,8 @@
 
 [English](README.md) · **简体中文**
 
+[![Platform: iOS 16.4+](https://img.shields.io/badge/iOS-16.4%2B-blue)](#下载与安装) [![Status: experimental](https://img.shields.io/badge/status-experimental-orange)](#使用) [![Release](https://img.shields.io/github/v/release/xmz28/CarWithin?label=release)](https://github.com/xmz28/CarWithin/releases/latest)
+
 这是一个实验性的 iPhone 同机 CarPlay 接收器。它在 iPhone 上接收并显示本机生成的 CarPlay 界面，支持触控和本机播放音频，也可以把画面共享到同一局域网的浏览器。
 
 ## 下载与安装
