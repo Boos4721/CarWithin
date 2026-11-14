@@ -2,6 +2,8 @@
 
 **English** · [简体中文](README.zh-CN.md)
 
+[![Platform: iOS 16.4+](https://img.shields.io/badge/iOS-16.4%2B-blue)](#download-and-install) [![Status: experimental](https://img.shields.io/badge/status-experimental-orange)](#usage) [![Release](https://img.shields.io/github/v/release/xmz28/CarWithin?label=release)](https://github.com/xmz28/CarWithin/releases/latest)
+
 CarWithin is an experimental CarPlay receiver for the iPhone. The same iPhone generates and displays the CarPlay interface. The app supports touch input and audio playback on the phone, with optional browser sharing over your local network.
 
 ## Download and install
