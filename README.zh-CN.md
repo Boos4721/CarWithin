@@ -2,6 +2,8 @@
 
 [English](README.md) · **简体中文**
 
+[![Platform: iOS 16.4+](https://img.shields.io/badge/iOS-16.4%2B-blue)](#下载与安装) [![Status: released](https://img.shields.io/badge/status-released-brightgreen)](#快速开始) [![Release](https://img.shields.io/github/v/release/xmz28/CarWithin?label=release)](https://github.com/xmz28/CarWithin/releases/latest)
+
 CarWithin 在同一台 iPhone 上启动、显示和触控本机 CarPlay。你可以直接在 iPhone 上用导航、音乐等 CarPlay 应用，也可以把画面送到同一局域网的车机浏览器、平板、电脑或另一台手机。浏览器接收支持触控回传。
 
 ## 下载与安装

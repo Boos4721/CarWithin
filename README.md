@@ -2,6 +2,8 @@
 
 **English** · [简体中文](README.zh-CN.md)
 
+[![Platform: iOS 16.4+](https://img.shields.io/badge/iOS-16.4%2B-blue)](#download-and-install) [![Status: released](https://img.shields.io/badge/status-released-brightgreen)](#quick-start) [![Release](https://img.shields.io/github/v/release/xmz28/CarWithin?label=release)](https://github.com/xmz28/CarWithin/releases/latest)
+
 CarWithin runs CarPlay on the same iPhone that generates its interface. Use CarPlay directly on your iPhone for navigation and music, or send the display to a head unit, tablet, computer, or another phone on the local network. A receiving browser can send touch input back to CarPlay.
 
 ## Download and install
