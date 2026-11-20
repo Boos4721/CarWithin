@@ -8,14 +8,14 @@ CarWithin runs CarPlay on the same iPhone that generates its interface. Use CarP
 
 ## Download and install
 
-- [Download from GitHub Releases](https://github.com/xmz28/CarWithin/releases/latest). The current version is **1.0.1 (build 13)**.
-- Download `CarWithin-1.0.1-unsigned.ipa` and sign and install it with an IPA sideloading tool using your own signing setup. Follow any iOS prompts for developer trust or Developer Mode.
+- [Download from GitHub Releases](https://github.com/xmz28/CarWithin/releases/latest). The current version is **1.0.2 (build 14)**.
+- Download `CarWithin-1.0.2-unsigned.ipa` and sign and install it with an IPA sideloading tool using your own signing setup. Follow any iOS prompts for developer trust or Developer Mode.
 - The minimum installation target is iOS/iPadOS 16.0 on arm64; iOS 15 is not supported. Same-device CarPlay, audio, and background behavior still need testing on iOS 16.x hardware. CarWithin uses private iOS interfaces. Compatibility depends on the device, OS version, and signing setup, and OS updates can affect it.
 
 ## Quick start
 
 1. **Use CarPlay on the iPhone.** Open CarWithin, save your Wi-Fi details in the app if prompted, and start CarPlay. Once the display appears, you can use touch controls or switch to fullscreen.
-2. **Use another device as the display.** Under Settings → Current output, choose Browser. Open Output settings and enable the local receiver page. Connect both devices to the same Wi-Fi, or connect the receiving device to the iPhone's personal hotspot. Start CarPlay and open the HTTP address displayed by the app in the receiving browser.
+2. **Use another device as the display.** Under Settings → Current output, choose Browser. Open Output settings and enable the local receiver page. Connect the iPhone and receiver to the same Wi-Fi. The network can be offline or provided by another device's hotspot. The iPhone running CarWithin must itself join Wi-Fi. Start CarPlay and open the HTTP address displayed by the app in the receiving browser.
 3. **Use Safari on the same iPhone.** After starting CarPlay, use the option to open the receiver in the local browser under the app's output settings. If the page prompts you to start playback, tap it.
 4. **Stop sharing when finished.** Stop CarPlay from the iPhone. The browser receiver has no sign-in. A device that can reach its address can view and control the CarPlay session, so use a trusted network.
 
@@ -59,7 +59,7 @@ These modes do not create an internet tunnel or guarantee access through a head 
 
 ## Wi-Fi presets and common settings
 
-The top settings group is ordered as User guide, Wi-Fi and network, Wi-Fi presets, Current output, Output settings, and HTTPS settings.
+The top settings group includes User guide, Wi-Fi and network, Wi-Fi presets, Current output and Output settings. HTTPS settings appears when Browser output is selected.
 
 Enter Wi-Fi credentials and go back to save them automatically. Enable the open-network option for a network without a password. Each SSID has one preset; editing its password updates that preset. Tap a saved preset when changing networks. Swipe to delete, then confirm; this also removes its saved password. The Wi-Fi form no longer rebuilds repeatedly while typing, reducing input stalls.
 
@@ -67,8 +67,16 @@ Some connection settings are locked while CarPlay is running; stop the session b
 
 ## Other output methods
 
-- **Wireless CarLife.** For compatible head units, connect the head unit and iPhone to the same Wi-Fi or the iPhone hotspot. Select CarLife in CarWithin, open CarLife on the head unit, then start CarPlay. CarWithin can discover the head unit or use an IP address you enter. CarLife carries video and touch input, with H.264 up to 1080p at 30 FPS. Audio can play through the head unit's Bluetooth connection.
+- **Wireless CarLife.** For compatible head units, connect the head unit and iPhone to the same Wi-Fi. Select CarLife in CarWithin, open CarLife on the head unit, then start CarPlay. CarWithin can discover the head unit or use an IP address you enter. CarLife carries video and touch input, with H.264 up to 1080p at 30 FPS. Audio can play through the head unit's Bluetooth connection.
 - **AirPlay (experimental).** Select AirPlay and start CarPlay. When the display is ready, use the AirPlay picker on the main screen to select a video receiver on the same network. AirPlay video is buffered. Touch input stays on the iPhone, and audio follows the iPhone or head unit Bluetooth route.
+
+Fixed display sizes support common landscape and portrait aspect ratios.
+
+### Ninebot 5-inch display
+
+Connect the iPhone to the instrument Wi-Fi, select its saved Wi-Fi preset, and choose Ninebot 5-inch under Current output. Enable screen projection on the instrument, then start CarPlay. The default instrument IP is `192.168.1.1`, configurable under Output settings. Audio plays through the iPhone or Bluetooth; control CarPlay on the phone.
+
+One instrument was tested with repeated backgrounding and screen locks. Perceived latency was approximately 500–600 ms. Other instrument versions need testing.
 
 ### Tailing 4.3-inch display (experimental)
 
