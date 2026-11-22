@@ -120,7 +120,17 @@ CarWithin is based on tds-car-kit. The combined distribution is licensed under A
 
 ## Author and support
 
-- [Follow the author on Douyin](https://v.douyin.com/x64M2NbYj0A/)
-- [Buy me a coffee via Alipay](https://qr.alipay.com/fkx16608y1puemmltuocze0)
+### ☕ Buy me a coffee
+
+CarWithin started as a small side project. Thank you to everyone who shared their experience and helped me spot device compatibility and display issues. If CarWithin has been useful to you, you're welcome to buy me a coffee to support ongoing development, testing, and maintenance.
+
+| Alipay QR code | WeChat appreciation code |
+| :---: | :---: |
+| <img src="docs/support/alipay.png" alt="Alipay QR code" width="156"> | <img src="docs/support/wechat.png" alt="WeChat appreciation code" width="156"> |
+| [Open the Alipay link](https://qr.alipay.com/fkx16608y1puemmltuocze0) | [View the full-size WeChat code](docs/support/wechat.png) |
+
+Contributions are entirely optional. Downloads, features, and updates are available to everyone. Starring the project, sharing it, and reporting issues are also ways to help.
+
+[Follow the author on Douyin](https://v.douyin.com/x64M2NbYj0A/)
 
 Copyright © 2026 xmz28

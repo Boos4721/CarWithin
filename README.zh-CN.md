@@ -118,7 +118,17 @@ CarWithin 基于 tds-car-kit，完整组合程序按 AGPL-3.0-only 分发。原�
 
 ## 作者与支持
 
-- [关注作者（抖音）](https://v.douyin.com/x64M2NbYj0A/)
-- [请我喝杯咖啡（支付宝）](https://qr.alipay.com/fkx16608y1puemmltuocze0)
+### ☕ 请我喝杯咖啡
+
+CarWithin 最初是我出于兴趣做的小工具。感谢大家分享自己的使用体验，帮我发现了不少设备兼容和投屏问题。如果它对你有帮助，欢迎请我喝杯咖啡，支持后续的开发、测试和维护。
+
+| 支付宝收款码 | 微信赞赏码 |
+| :---: | :---: |
+| <img src="docs/support/alipay.png" alt="支付宝收款码" width="156"> | <img src="docs/support/wechat.png" alt="微信赞赏码" width="156"> |
+| [打开支付宝链接](https://qr.alipay.com/fkx16608y1puemmltuocze0) | [查看微信赞赏码大图](docs/support/wechat.png) |
+
+赞赏完全自愿，下载、使用和更新照常。点个 Star、分享项目或反馈问题，也都是支持。
+
+[关注作者（抖音）](https://v.douyin.com/x64M2NbYj0A/)
 
 Copyright © 2026 xmz28
