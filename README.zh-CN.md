@@ -1,6 +1,6 @@
 # CarWithin
 
-[English](README.md) · **简体中文**
+[English](README.en.md) · **简体中文**
 
 [![Platform: iOS 16.0+](https://img.shields.io/badge/iOS-16.0%2B-blue)](#下载与安装) [![Status: released](https://img.shields.io/badge/status-released-brightgreen)](#快速开始) [![Release](https://img.shields.io/github/v/release/xmz28/CarWithin?label=release)](https://github.com/xmz28/CarWithin/releases/latest)
 
@@ -8,8 +8,8 @@ CarWithin 在同一台 iPhone 上启动、显示和触控本机 CarPlay。你可
 
 ## 下载与安装
 
-- [从 GitHub Releases 下载](https://github.com/xmz28/CarWithin/releases/latest)。当前版本为 **1.0.2（构建 14）**。
-- 下载 `CarWithin-1.0.2-unsigned.ipa`，用支持 IPA 的侧载工具按自己的签名方式签名并安装。按设备提示完成开发者信任或开启开发者模式。
+- [从 GitHub Releases 下载](https://github.com/xmz28/CarWithin/releases/latest)。当前版本为 **1.0.3（构建 15）**。
+- 下载 `CarWithin-1.0.3-unsigned.ipa`，用支持 IPA 的侧载工具按自己的签名方式签名并安装。按设备提示完成开发者信任或开启开发者模式。
 - 最低安装目标为 iOS/iPadOS 16.0，arm64；iOS 15 不支持安装。安装目标降低不等于所有旧系统均已实测，iOS 16.x 的本机 CarPlay、声音和后台行为仍需对应设备验证。实际可用性取决于设备、系统版本和签名方式。CarWithin 使用 iOS 私有接口，系统升级后可能需要重新验证。
 
 ## 快速开始
@@ -70,13 +70,19 @@ CarPlay 运行中部分连接设置会锁定，停止后再修改。CarPlay 外�
 - **无线 CarLife。** 适用于兼容无线 CarLife 的车机。让车机与 iPhone 连到同一 Wi-Fi，在 CarWithin 选择 CarLife，再打开车机上的 CarLife，最后启动本机 CarPlay。车机 IP 可手动填写，留空时自动发现。画面与触控走 CarLife，声音可以走车机蓝牙。输出最高为 H.264、1080p、30 FPS。
 - **AirPlay（实验）。** 在输出方式选择 AirPlay，启动 CarPlay 并等待画面就绪。在主界面连接卡片点 AirPlay 图标，选取同一网络中的视频接收器。AirPlay 画面有缓冲，触控仍在 iPhone 上完成，声音沿用 iPhone 或车机蓝牙。
 
+### 极核 AE4 MAX2+ 6.2 寸仪表
+
+iPhone 加入仪表 Wi-Fi，选择同名预设，在「当前输出」选择「极核 6.2 寸」。打开仪表投屏后启动本机 CarPlay。仪表 IP 默认 192.168.0.1，可在「输出设置」修改。画面为 1024×480 H.264、最高 25 帧，声音由 iPhone 或蓝牙输出，在手机上操作 CarPlay。
+
+一台仪表已确认正常出画及锁屏后继续更新，其他型号、反复锁屏和长时间使用仍需实测。
+
 ### 九号 5 寸仪表
 
 iPhone 加入仪表 Wi-Fi，选择同名 Wi-Fi 预设，在「当前输出」选择「九号 5 寸」。打开仪表投屏后启动本机 CarPlay。仪表 IP 默认为 `192.168.1.1`，可在「输出设置」修改。声音由 iPhone 或蓝牙输出，触控在手机上操作。
 
 一台仪表已验证正常出画，多次切后台、锁屏后仍继续更新。用户感知延迟约 500–600 毫秒，其他型号仍需实测。
 
-### 台铃 4.3 寸（实验）
+### 台铃 4.3 寸
 
 目前针对 **TL-DASH-V2** 仪表，其他型号和固件仍需验证：
 
@@ -107,7 +113,7 @@ iPhone 加入仪表 Wi-Fi，选择同名 Wi-Fi 预设，在「当前输出」选
 
 iPhone 通过虚拟配件与本机接收端建立 CarPlay 会话。CarWithin 接收 iOS 生成的画面和声音，并把触控传回系统。开启网页输出后，视频通过 WebSocket 送到接收设备，兼容模式用 MSE，支持时可用 WebCodecs 逐帧解码。
 
-CarWithin 基于 tds-car-kit，采用 GPL-3.0-or-later。CarLife 实现移植自 [OpenXPlay-Stream](https://github.com/OpenXPlay/OpenXPlay-Stream)，采用 AGPL-3.0-only。协议实现参考了 [PlayPort](https://github.com/youcci/playport)、[DiPlay](https://github.com/shihabal3amri/DiPlay) 与 [xcertplay](https://github.com/shilapi/xcertplay)，并使用 MIT 许可的 [BigInt](https://github.com/attaswift/BigInt)。CarWithin 与 Apple 无官方关联。
+CarWithin 基于 tds-car-kit，完整组合程序按 AGPL-3.0-only 分发。原有 GPL-3.0-or-later 代码及第三方组件保留各自许可，详见 LICENSE 和 THIRD_PARTY_NOTICES.txt。CarLife 实现移植自 [OpenXPlay-Stream](https://github.com/OpenXPlay/OpenXPlay-Stream)，采用 AGPL-3.0-only。协议实现参考了 [PlayPort](https://github.com/youcci/playport)、[DiPlay](https://github.com/shihabal3amri/DiPlay) 与 [xcertplay](https://github.com/shilapi/xcertplay)，并使用 MIT 许可的 [BigInt](https://github.com/attaswift/BigInt)。CarWithin 与 Apple 无官方关联。
 
 
 ## 作者与支持

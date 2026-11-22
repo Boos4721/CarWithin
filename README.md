@@ -1,120 +1,124 @@
 # CarWithin
 
-**English** · [简体中文](README.zh-CN.md)
+[English](README.en.md) · **简体中文**
 
-[![Platform: iOS 16.0+](https://img.shields.io/badge/iOS-16.0%2B-blue)](#download-and-install) [![Status: released](https://img.shields.io/badge/status-released-brightgreen)](#quick-start) [![Release](https://img.shields.io/github/v/release/xmz28/CarWithin?label=release)](https://github.com/xmz28/CarWithin/releases/latest)
+[![Platform: iOS 16.0+](https://img.shields.io/badge/iOS-16.0%2B-blue)](#下载与安装) [![Status: released](https://img.shields.io/badge/status-released-brightgreen)](#快速开始) [![Release](https://img.shields.io/github/v/release/xmz28/CarWithin?label=release)](https://github.com/xmz28/CarWithin/releases/latest)
 
-CarWithin runs CarPlay on the same iPhone that generates its interface. Use CarPlay directly on your iPhone for navigation and music, or send the display to a head unit, tablet, computer, or another phone on the local network. A receiving browser can send touch input back to CarPlay.
+CarWithin 在同一台 iPhone 上启动、显示和触控本机 CarPlay。你可以直接在 iPhone 上用导航、音乐等 CarPlay 应用，也可以把画面送到同一局域网的车机浏览器、平板、电脑或另一台手机。浏览器接收支持触控回传。
 
-## Download and install
+## 下载与安装
 
-- [Download from GitHub Releases](https://github.com/xmz28/CarWithin/releases/latest). The current version is **1.0.2 (build 14)**.
-- Download `CarWithin-1.0.2-unsigned.ipa` and sign and install it with an IPA sideloading tool using your own signing setup. Follow any iOS prompts for developer trust or Developer Mode.
-- The minimum installation target is iOS/iPadOS 16.0 on arm64; iOS 15 is not supported. Same-device CarPlay, audio, and background behavior still need testing on iOS 16.x hardware. CarWithin uses private iOS interfaces. Compatibility depends on the device, OS version, and signing setup, and OS updates can affect it.
+- [从 GitHub Releases 下载](https://github.com/xmz28/CarWithin/releases/latest)。当前版本为 **1.0.3（构建 15）**。
+- 下载 `CarWithin-1.0.3-unsigned.ipa`，用支持 IPA 的侧载工具按自己的签名方式签名并安装。按设备提示完成开发者信任或开启开发者模式。
+- 最低安装目标为 iOS/iPadOS 16.0，arm64；iOS 15 不支持安装。安装目标降低不等于所有旧系统均已实测，iOS 16.x 的本机 CarPlay、声音和后台行为仍需对应设备验证。实际可用性取决于设备、系统版本和签名方式。CarWithin 使用 iOS 私有接口，系统升级后可能需要重新验证。
 
-## Quick start
+## 快速开始
 
-1. **Use CarPlay on the iPhone.** Open CarWithin, save your Wi-Fi details in the app if prompted, and start CarPlay. Once the display appears, you can use touch controls or switch to fullscreen.
-2. **Use another device as the display.** Under Settings → Current output, choose Browser. Open Output settings and enable the local receiver page. Connect the iPhone and receiver to the same Wi-Fi. The network can be offline or provided by another device's hotspot. The iPhone running CarWithin must itself join Wi-Fi. Start CarPlay and open the HTTP address displayed by the app in the receiving browser.
-3. **Use Safari on the same iPhone.** After starting CarPlay, use the option to open the receiver in the local browser under the app's output settings. If the page prompts you to start playback, tap it.
-4. **Stop sharing when finished.** Stop CarPlay from the iPhone. The browser receiver has no sign-in. A device that can reach its address can view and control the CarPlay session, so use a trusted network.
+1. **在 iPhone 上用 CarPlay。** 打开 CarWithin，按提示在「Wi-Fi 与网络」保存当前 Wi-Fi 信息，然后点「启动 CarPlay」。画面出现后即可在 iPhone 上触控，或切换全屏。
+2. **用另一台设备接收。** 在「设置 → 当前输出」选择「浏览器」，进入「输出设置」打开「局域网接收页」。让接收设备和 iPhone 连到同一 Wi-Fi。网络可以没有互联网，也可以使用其他设备的热点；运行 CarWithin 的 iPhone 必须加入 Wi-Fi。启动 CarPlay 后，在接收设备的浏览器打开 App 显示的 HTTP 地址。
+3. **用本机 Safari 接收。** CarPlay 启动后，进入「设置 → 输出设置」，点「在本机浏览器打开」。如果网页显示「开始播放」，点一下即可。
+4. **停止共享。** 用完在 iPhone 上停止 CarPlay。局域网接收页目前没有登录校验，可访问地址的设备可以观看与触控。请在信任的网络中使用。
 
-## Browser playback and audio
+## 浏览器的 HTTP、HTTPS 与声音
 
-| Mode | When to use it | Default port |
+| 方式 | 适用场景 | 默认端口 |
 | --- | --- | --- |
-| HTTP | First connection, network troubleshooting, or MSE compatibility playback | 9888 |
-| HTTPS | Lower-latency playback in browsers with WebCodecs support | 9889 |
+| HTTP | 首次连接、排查网络，或浏览器需要 MSE 兼容播放时 | 9888 |
+| HTTPS | 浏览器支持 WebCodecs，且希望减少画面延迟时 | 9889 |
 
-Set the HTTP port under Settings → Output settings. Set the HTTPS port and certificate under Settings → HTTPS settings. A blank HTTPS port typically uses the HTTP port plus one. Use the full address shown in the app.
+HTTP 端口在「设置 → 输出设置」修改；HTTPS 端口和证书在「设置 → HTTPS 设置」修改。HTTPS 端口留空时通常使用 HTTP 端口加 1。始终以 App 当前显示的完整地址为准。
 
-### Set up HTTPS
+### 配置 HTTPS
 
-1. Open the HTTP receiver page on the **receiving device**, then choose HTTPS setup. Check its certificate fingerprint against the iPhone app log.
-2. On **iPhone or iPad**, download and install the profile, then enable full trust for its certificate under **General → About → Certificate Trust Settings**. On **Android**, download the Android certificate and follow the setup page to install it as a CA certificate. Menu names vary by device and OS.
-3. Open the HTTPS address shown in the app. Browsers without WebCodecs use compatibility playback.
+1. 先在**接收设备**上打开 HTTP 接收页，再点「配置 HTTPS」。核对页面提示与 iPhone 日志中的证书指纹。
+2. **iPhone 或 iPad** 下载并安装描述文件，然后在系统「通用 → 关于本机 → 证书信任设置」中开启对该证书的完全信任。**Android** 下载 Android 证书，按页面指引在系统设置中安装为 CA 证书。菜单名称随系统和品牌而异。
+3. 打开 App 显示的 HTTPS 地址。如果浏览器没有 WebCodecs，网页会使用兼容播放。
 
-### Use a domain name
+### 使用域名地址
 
-Choose an address mode under HTTPS settings:
+在「HTTPS 设置」选择地址方案：
 
-- **Local IP:** use the iPhone's LAN address and trust its local certificate as described above.
-- **sslip.io:** generate a hostname from the current IP without registering an account. The receiver still needs to trust the local certificate, and DNS resolution generally needs internet access. Use the new address displayed by the app after the IP changes.
-- **DuckDNS:** enter a dedicated `name.duckdns.org` hostname and Token, then update it to the current IP. Obtain a domain certificate with an external ACME tool and import a P12/PFX containing its private key and full certificate chain. CarWithin does not issue or renew certificates automatically. Update DNS when the IP changes and replace the certificate before it expires. The Token, certificate, and file password stay in the device Keychain.
+- **本地 IP**：直接用手机的局域网地址，按上面步骤安装并信任本地证书。
+- **sslip.io**：根据当前 IP 生成域名，无需注册账号。它仍使用本地证书，需要接收设备信任；DNS 解析通常需要互联网。IP 改变后，以 App 显示的新地址为准。
+- **DuckDNS**：填写专用的 `name.duckdns.org` 与 Token，点「更新到当前 IP」更新解析。使用外部 ACME 工具申请域名证书，并将含私钥和完整证书链的 P12/PFX 导入 App。App 不自动申请或续期证书；IP 改变后需重新更新解析，证书到期前需重新导入。Token、证书和文件密码保存在本机 Keychain。
 
-These modes do not create an internet tunnel or guarantee access through a head unit's private-network restrictions. The complete DuckDNS/public-certificate/head-unit path has not been verified; Tesla compatibility is not claimed.
+域名不建立公网隧道，也不保证绕过特斯拉等车机对局域网访问的限制。DuckDNS 的真实域名、公开证书和车机完整连接尚未验证，不把它写成已适配特斯拉。
 
-### Choose where audio plays
+### 选择声音输出
 
-- **iPhone output** is the default. Sound follows the speaker or Bluetooth device currently selected by iOS, including a paired head unit.
-- **Wi-Fi audio** sends sound to the browser. Select it in the app's audio settings, then restart CarPlay. The page starts video and attempts to play audio automatically. If the browser blocks autoplay, use the on-page button to enable audio. Calls and Siri stay on the iPhone.
-- On a computer, press Esc to exit browser fullscreen. The statistics control shows the decoder, dropped frames, and audio buffering.
+- **由 iPhone 输出**是默认方式。声音走 iPhone 当前选中的扬声器或蓝牙设备，iPhone 连上车机蓝牙时可由车机播放。
+- **随画面传输（Wi-Fi）**会让浏览器播放伴音。在「设置 → 声音」选择后重新启动 CarPlay。网页先播放画面，再尝试自动出声。如果浏览器拦截音频自动播放，点「开启声音」即可。通话和 Siri 的声音留在 iPhone。
+- 电脑网页点「全屏」后可按 Esc 退出。点「统计」可以查看解码模式、丢帧和音频缓冲等信息。
 
-## Display settings and the vehicle button
+## 画面设置与车辆按钮
 
-- **Follow the receiving display.** The browser reports its viewport. When several receiver pages connect, the first one determines the stream settings and the others receive the same video stream. If the first page closes, a remaining page can take over.
-- **Use a fixed size.** If a head unit stretches the picture, shows a black screen, or stutters, try a fixed lower resolution, 30 FPS, or H.264 in the display settings. Applying a new display configuration may require restarting CarPlay.
-- **Customize the vehicle button.** Use the vehicle settings to enable the button, pick a photo as its icon, or restore the default. Changes take effect when CarPlay starts again. In app fullscreen, use the vehicle button on the CarPlay home screen to exit. If the vehicle button is disabled, use the upper-left exit button.
-- **Picture in Picture and background playback.** Choose when PiP should start in the Background and PiP section on the settings home page. The default is When leaving the app; you can also choose immediately after video appears or turn off automatic activation. For lock-screen use, enable **Allow CarPlay While Locked** under **Settings → General → CarPlay → CarWithin** on the iPhone. PiP shows live video. Use the app or browser for touch input.
+- **跟随车机。** 浏览器会报告接收窗口尺寸。多个接收页同时连接时，第一个接收页决定画面规格，其他接收页观看同一视频流。主接收页关闭后，可由剩余接收页接管。
+- **固定尺寸。** 如果车机拉伸画面，或遇到黑屏、卡顿，可在「设置 → 画面」试用固定分辨率、30 FPS 和 H.264。配置改变可能需要重启 CarPlay。
+- **车辆按钮。** 在「设置 → 车辆」可启用车辆按钮、选取自己的图标，或恢复默认。图标更改在下次启动 CarPlay 时生效。App 全屏时，可从 CarPlay 主屏幕点车辆按钮退出。如果未显示车辆按钮，可以点左上角退出。
+- **画中画与后台。** 在设置首页的「后台与画中画」分组选择开启时机，默认为「离开 App 时」，也可选择「出画面后立即」或关闭自动开启。使用锁屏继续运行前，在 iPhone 的「设置 → 通用 → CarPlay → CarWithin」开启「锁定时允许 CarPlay」。画中画只显示实时画面，触控在 App 或浏览器中完成。
 
-## Wi-Fi presets and common settings
+## Wi-Fi 预设与常用设置
 
-The top settings group includes User guide, Wi-Fi and network, Wi-Fi presets, Current output and Output settings. HTTPS settings appears when Browser output is selected.
+设置顶部提供「使用说明」「Wi-Fi 与网络」「Wi-Fi 预设」「当前输出」和「输出设置」。选择浏览器输出时也可进入「HTTPS 设置」。
 
-Enter Wi-Fi credentials and go back to save them automatically. Enable the open-network option for a network without a password. Each SSID has one preset; editing its password updates that preset. Tap a saved preset when changing networks. Swipe to delete, then confirm; this also removes its saved password. The Wi-Fi form no longer rebuilds repeatedly while typing, reducing input stalls.
+在「Wi-Fi 与网络」添加名称、密码等信息，完成后返回即可自动保存；在「Wi-Fi 预设」可编辑当前预设，开放网络可打开无密码选项。同名 Wi-Fi 只保存一项，再次修改密码会更新原预设。切换网络时，在「Wi-Fi 预设」点选即可。左滑删除预设后还需确认，同时删除该网络保存的密码。Wi-Fi 名称和密码输入时不再反复重建设置页面，减少输入卡顿。固定画面尺寸支持选择常见横屏和竖屏比例。
 
-Some connection settings are locked while CarPlay is running; stop the session before editing them. Appearance, driving side, and audio are available on the settings home page. Logs are under Diagnostics and experiments; versions and updates are under About.
+CarPlay 运行中部分连接设置会锁定，停止后再修改。CarPlay 外观、驾驶位和声音在设置首页；日志位于「诊断与实验」，版本与更新入口位于「关于」。
 
-## Other output methods
+## 其他输出方式
 
-- **Wireless CarLife.** For compatible head units, connect the head unit and iPhone to the same Wi-Fi. Select CarLife in CarWithin, open CarLife on the head unit, then start CarPlay. CarWithin can discover the head unit or use an IP address you enter. CarLife carries video and touch input, with H.264 up to 1080p at 30 FPS. Audio can play through the head unit's Bluetooth connection.
-- **AirPlay (experimental).** Select AirPlay and start CarPlay. When the display is ready, use the AirPlay picker on the main screen to select a video receiver on the same network. AirPlay video is buffered. Touch input stays on the iPhone, and audio follows the iPhone or head unit Bluetooth route.
+- **无线 CarLife。** 适用于兼容无线 CarLife 的车机。让车机与 iPhone 连到同一 Wi-Fi，在 CarWithin 选择 CarLife，再打开车机上的 CarLife，最后启动本机 CarPlay。车机 IP 可手动填写，留空时自动发现。画面与触控走 CarLife，声音可以走车机蓝牙。输出最高为 H.264、1080p、30 FPS。
+- **AirPlay（实验）。** 在输出方式选择 AirPlay，启动 CarPlay 并等待画面就绪。在主界面连接卡片点 AirPlay 图标，选取同一网络中的视频接收器。AirPlay 画面有缓冲，触控仍在 iPhone 上完成，声音沿用 iPhone 或车机蓝牙。
 
-Fixed display sizes support common landscape and portrait aspect ratios.
+### 极核 AE4 MAX2+ 6.2 寸仪表
 
-### Ninebot 5-inch display
+iPhone 加入仪表 Wi-Fi，选择同名预设，在「当前输出」选择「极核 6.2 寸」。打开仪表投屏后启动本机 CarPlay。仪表 IP 默认 192.168.0.1，可在「输出设置」修改。画面为 1024×480 H.264、最高 25 帧，声音由 iPhone 或蓝牙输出，在手机上操作 CarPlay。
 
-Connect the iPhone to the instrument Wi-Fi, select its saved Wi-Fi preset, and choose Ninebot 5-inch under Current output. Enable screen projection on the instrument, then start CarPlay. The default instrument IP is `192.168.1.1`, configurable under Output settings. Audio plays through the iPhone or Bluetooth; control CarPlay on the phone.
+一台仪表已确认正常出画及锁屏后继续更新，其他型号、反复锁屏和长时间使用仍需实测。
 
-One instrument was tested with repeated backgrounding and screen locks. Perceived latency was approximately 500–600 ms. Other instrument versions need testing.
+### 九号 5 寸仪表
 
-### Tailing 4.3-inch display (experimental)
+iPhone 加入仪表 Wi-Fi，选择同名 Wi-Fi 预设，在「当前输出」选择「九号 5 寸」。打开仪表投屏后启动本机 CarPlay。仪表 IP 默认为 `192.168.1.1`，可在「输出设置」修改。声音由 iPhone 或蓝牙输出，触控在手机上操作。
 
-This mode targets the **TL-DASH-V2** instrument display. Other models and firmware still need testing.
+一台仪表已验证正常出画，多次切后台、锁屏后仍继续更新。用户感知延迟约 500–600 毫秒，其他型号仍需实测。
 
-1. Connect the iPhone to the instrument's Wi-Fi and enter that network's credentials in Wi-Fi and network.
-2. Select Tailing 4.3-inch under Current output. The instrument IP defaults to `192.168.1.1`; change it under Output settings if needed.
-3. Enable mirroring on the instrument, exit other mirroring apps, and start local CarPlay in CarWithin. The connection card on the main screen shows its status.
+### 台铃 4.3 寸
 
-The instrument receives 480×272 video at up to 20 FPS. Audio uses the iPhone's current speaker or Bluetooth route. The instrument does not send touch input back; operate CarPlay on the iPhone. Matching display parameters are applied automatically; switching to another output restores its previous settings.
+目前针对 **TL-DASH-V2** 仪表，其他型号和固件仍需验证：
 
-Video and recovery after locking the iPhone have been confirmed on one instrument. If locking invalidates the decoder, CarWithin rebuilds it from a keyframe and resumes; a brief pause may occur. Extended playback, repeated locking, network-loss recovery, and other instruments have not all been verified.
+1. iPhone 加入仪表的 Wi-Fi，并在「Wi-Fi 与网络」填写对应名称和密码。
+2. 在「当前输出」选择「台铃 4.3 寸」。仪表 IP 默认为 `192.168.1.1`，需要时在「输出设置」修改。
+3. 开启仪表投屏，退出其他投屏 App，再在 CarWithin 启动本机 CarPlay。主界面连接卡片会显示状态。
 
-## Check for updates and install a newer version
+仪表画面固定为 480×272、最高 20 FPS。声音由 iPhone 当前的扬声器或蓝牙设备播放；仪表不回传触控，操作在 iPhone 上完成。此模式会自动使用匹配的画面参数，切回其他输出后恢复原设置。
 
-- About → Check for updates shows the latest release, including when your installed version is already current. Expand the full release notes or use Version history for older releases.
-- Automatic checks run while the app is idle in the foreground, with a 24-hour interval after success and a 15-minute retry after failure. A new-version prompt offers Download, Later, and Ignore this version. Checks are deferred and package downloads restricted during a CarPlay session.
-- After downloading and verifying the IPA, CarWithin opens the system share sheet. Open it in a compatible signing tool or save it to a folder you choose. Signing and installation are completed in that tool; CarWithin does not install the IPA itself.
-- When upgrading from 1.0.0, its older updater opens the GitHub release page. Download, sign, and install this version there; in-app downloading and sharing become available after upgrading.
+已在本台仪表确认出画和锁屏后恢复更新。锁屏时解码器可能短暂失效，App 会从关键帧重建并继续投屏，切换时可能短暂停顿。持续长播、反复锁屏、异常断网及其他仪表尚未逐项验证。
 
-## Troubleshooting
+## 检查更新与安装新版
 
-- **CarPlay stays on Connecting.** After about five seconds, the app shows a small hint. Try turning the iPhone Wi-Fi off and on and check the saved credentials. The hint does not interrupt startup.
-- **The page will not open.** Check that CarPlay is running and the local receiver page is enabled. Confirm that the devices can reach each other and try the HTTP address first. If HTTPS shows a certificate error, follow the setup steps on the receiving device.
-- **The page connects but shows no picture.** Try a different browser, H.264, a lower resolution, or a lower frame rate. X Browser played HTTP and HTTPS on a Redmi K30 5G in testing. Chrome 109 on the same device showed an H.265 decoding error. If switching pages exhausts the hardware decoder, restart the browser and try again.
-- **The picture plays without sound.** Select Wi-Fi audio in the app, restart CarPlay, and use the browser's enable-audio button if it appears. Check the volume on the receiving device.
-- **Check your version or report a problem.** Open **Settings → About** for the installed version, update check, and release history. For a bug report, include the device models, OS and browser versions, HTTP or HTTPS, codec and resolution, and any relevant lines from the app's diagnostic log. [Report an issue](https://github.com/xmz28/CarWithin/issues)
+- 在「关于 → 检查更新」查看最新版说明；当前已是最新版时也可以查看详情和下载。完整发布说明可展开查看，「版本记录」可查看历史发布。
+- App 会在前台空闲时自动检查，成功后间隔 24 小时；失败后 15 分钟再试。发现新版本可选择下载、下次再说或此版本不再提醒。CarPlay 运行期间会延后自动检查，并限制安装包下载。
+- 下载完成并校验后弹出系统分享菜单，可交给兼容的签名工具打开，也可以保存到自己选择的文件夹。签名和安装仍需在相应工具中完成，App 不会自行安装 IPA。
+- 从 1.0.0 升级时，旧版检查更新会先打开 GitHub 发布页，需要自行下载并签名安装；安装新版后才有上述 App 内下载与分享流程。
 
-## How it works and license
+## 常见问题
 
-A virtual accessory lets the iPhone connect to its local CarPlay receiver. CarWithin presents video and audio generated by iOS and sends touch events back. The browser receives the video over WebSocket, using MSE for compatibility or WebCodecs for low-latency decoding where supported.
+- **一直停在正在连接 CarPlay。** 等待超过约 5 秒后，App 会显示小字提示。可尝试关闭再打开 iPhone 的 Wi-Fi，并确认网络信息正确；该提示不会打断当前启动。
+- **网页打不开。** 确认 CarPlay 已启动、局域网接收页已打开、两台设备能互访，并用 App 显示的 HTTP 地址先试。能开 HTTP、HTTPS 提示证书问题时，按上面的步骤在接收设备上配置证书。
+- **连接成功但不出画面。** 试用 H.264、较低的分辨率或帧率，也可换浏览器。Redmi K30 5G 的 X 浏览器已实测能播放 HTTP 和 HTTPS。同机的 Chrome 109 曾遇到 H.265 解码失败。若切换网页后出现硬解码器资源不足，重启浏览器再试。
+- **网页有画面但没声音。** 检查是否已选「随画面传输（Wi-Fi）」并重新启动 CarPlay。若网页显示「开启声音」，点一下，再检查接收设备的音量。
+- **如何查版本或反馈问题。** 在「设置 → 关于」查看版本、检查更新或查看发布记录。反馈问题时请附 iPhone 和接收设备型号、系统、浏览器版本、HTTP/HTTPS、编码和分辨率，以及「设置 → 诊断与实验 → 日志」中相关片段。 [提交问题](https://github.com/xmz28/CarWithin/issues)
 
-CarWithin is based on tds-car-kit and uses GPL-3.0-or-later. The CarLife implementation is adapted from [OpenXPlay-Stream](https://github.com/OpenXPlay/OpenXPlay-Stream) under AGPL-3.0-only. Protocol work draws on [PlayPort](https://github.com/youcci/playport), [DiPlay](https://github.com/shihabal3amri/DiPlay), and [xcertplay](https://github.com/shilapi/xcertplay). The project also uses the MIT-licensed [BigInt](https://github.com/attaswift/BigInt) library. CarWithin is an independent project and has no official affiliation with Apple.
+## 工作原理与许可
+
+iPhone 通过虚拟配件与本机接收端建立 CarPlay 会话。CarWithin 接收 iOS 生成的画面和声音，并把触控传回系统。开启网页输出后，视频通过 WebSocket 送到接收设备，兼容模式用 MSE，支持时可用 WebCodecs 逐帧解码。
+
+CarWithin 基于 tds-car-kit，完整组合程序按 AGPL-3.0-only 分发。原有 GPL-3.0-or-later 代码及第三方组件保留各自许可，详见 LICENSE 和 THIRD_PARTY_NOTICES.txt。CarLife 实现移植自 [OpenXPlay-Stream](https://github.com/OpenXPlay/OpenXPlay-Stream)，采用 AGPL-3.0-only。协议实现参考了 [PlayPort](https://github.com/youcci/playport)、[DiPlay](https://github.com/shihabal3amri/DiPlay) 与 [xcertplay](https://github.com/shilapi/xcertplay)，并使用 MIT 许可的 [BigInt](https://github.com/attaswift/BigInt)。CarWithin 与 Apple 无官方关联。
 
 
-## Author and support
+## 作者与支持
 
-- [Follow the author on Douyin](https://v.douyin.com/x64M2NbYj0A/)
-- [Buy me a coffee via Alipay](https://qr.alipay.com/fkx16608y1puemmltuocze0)
+- [关注作者（抖音）](https://v.douyin.com/x64M2NbYj0A/)
+- [请我喝杯咖啡（支付宝）](https://qr.alipay.com/fkx16608y1puemmltuocze0)
 
 Copyright © 2026 xmz28
