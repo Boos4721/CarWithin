@@ -19,15 +19,14 @@ struct CfmotoProfile: Equatable {
     var encodeHeight: Int { height % 2 == 0 ? height : height + 1 }
     var title: String { "\(width)×\(height)" }
 
-    /// 真正发给 TailingConnection 的仪表描述：端口、握手、媒体协商都复用极核 H.264 那一套。
-    var displayProfile: TailingDisplayProfile {
-        width == 800 ? .cfmoto5 : .cfmoto62
-    }
+    /// 仪表在 PXC 媒体配置里报的尺寸按 16 对齐（800×386 → 800×384，1024×515 → 1024×512）。
+    var pxcWidth: Int { width & ~0xF }
+    var pxcHeight: Int { height & ~0xF }
 }
 
 /// 春风仪表投屏输出：把 CarPlay 的 H.264 解回像素，缩放成仪表尺寸重新编码，
-/// 再按仪表逐帧请求（PXC 协议）送过去。握手、反向连接、媒体协商全部复用
-/// TailingConnection（和极核 6.2 寸同一套），只是尺寸和日志名不同。
+/// 再按仪表逐帧请求（PXC 协议，10920/10921/10922）送过去。
+/// 握手、身份、SN 校验、媒体配置全部由 PxcConnection 负责。
 final class CfmotoOutput {
     private let queue: DispatchQueue
     private var session: Session?
@@ -76,7 +75,9 @@ final class CfmotoOutput {
         private var decodeError: Error?
         private var encoded: Result<H264EncodedFrame, Error>?
 
-        private let connection: TailingConnection
+        private var encodeWidth: Int
+        private var encodeHeight: Int
+        private let connection: PxcConnection
         private var decoder: TailingH264Decoder?
         private var encoder: H264Encoder?
         private var parameters = VideoParameterSets(codec: .h264)
@@ -92,8 +93,10 @@ final class CfmotoOutput {
              requestKeyframe: @escaping () -> Void) {
             self.queue = queue
             self.profile = profile
-            self.connection = TailingConnection(localIP: localAddress, targetIP: targetAddress,
-                profile: profile.displayProfile, phone: phone, log: onLog)
+            self.encodeWidth = profile.pxcWidth
+            self.encodeHeight = profile.pxcHeight
+            self.connection = PxcConnection(localIP: localAddress, targetIP: targetAddress,
+                                            phone: phone, dashboard: profile.label, log: onLog)
             self.onState = onState
             self.onLog = onLog
             self.requestKeyframe = requestKeyframe
@@ -105,6 +108,9 @@ final class CfmotoOutput {
                 do {
                     try connection.start()
                     guard active else { return }
+                    let size = connection.mediaSize
+                    encodeWidth = size.width
+                    encodeHeight = size.height
                     report("仪表已连接，等待 CarPlay 画面…")
                     var first = true
                     var nextFrame = ProcessInfo.processInfo.systemUptime
@@ -227,7 +233,7 @@ final class CfmotoOutput {
             do {
                 if encoder == nil {
                     guard now - lastCodecFailure >= 0.5 else { return nil }
-                    encoder = try H264Encoder(width: profile.encodeWidth, height: profile.encodeHeight,
+                    encoder = try H264Encoder(width: encodeWidth, height: encodeHeight,
                                               fps: profile.fps, bitrate: profile.bitrate) { [weak self] result in
                         guard let self else { return }
                         self.lock.withLock { self.encoded = result }
@@ -259,7 +265,7 @@ final class CfmotoOutput {
         }
 
         private func fittedImage(_ image: CVPixelBuffer) throws -> CVPixelBuffer {
-            let width = profile.encodeWidth, height = profile.encodeHeight
+            let width = encodeWidth, height = encodeHeight
             if CVPixelBufferGetWidth(image) == width, CVPixelBufferGetHeight(image) == height { return image }
             var buffer: CVPixelBuffer?
             let status = CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA,

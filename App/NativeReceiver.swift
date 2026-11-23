@@ -104,7 +104,9 @@ final class NativeReceiver {
                     onLog: { [weak self] in self?.log($0) },
                     requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "极核解码恢复") })
             }
-            if let profile = configuration.cfmotoProfile, let target = configuration.cfmotoAddress {
+            if let profile = configuration.cfmotoProfile,
+               let target = configuration.cfmotoAddress.flatMap({ $0.isEmpty ? nil : $0 })
+                   ?? PxcConnection.gateway(for: configuration.address) {
                 let output = profile == .sixInch ? self.cfmoto62 : self.cfmoto5
                 let phone = configuration.tailingPhoneInfo ?? TailingPhoneInfo(package: Bundle.main.bundleIdentifier ?? "CarWithin",
                     versionCode: Int(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0") ?? 0,

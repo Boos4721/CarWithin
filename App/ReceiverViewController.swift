@@ -1031,7 +1031,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         if !running { updateZeehoStatus("等待启动 CarPlay · 仪表 IP：\(zeehoAddressField.text ?? "192.168.0.1")") }
         cfmotoCard.isHidden = !showsLocalOutput || !outputMode.cfmoto
         if !running {
-            updateCfmotoStatus("等待启动 CarPlay · 仪表 IP：\(cfmotoAddressField.text ?? "192.168.1.10")")
+            updateCfmotoStatus("等待启动 CarPlay · 仪表 IP：\(cfmotoAddressField.text?.isEmpty == false ? cfmotoAddressField.text! : "自动取网关")")
         }
         ninebotCard.isHidden = !showsLocalOutput || outputMode != .ninebot
         if !running { updateNinebotStatus("等待启动 CarPlay · 仪表 IP：\(ninebotAddressField.text ?? "")") }
@@ -1936,7 +1936,7 @@ extension ReceiverViewController {
         zeehoAddressField.text = defaults.string(forKey: "zeehoAddress") ?? "192.168.0.1"
         zeehoAddressField.keyboardType = .decimalPad
         zeehoAddressField.addTarget(self, action: #selector(saveHeadUnitOutput), for: .editingDidEnd)
-        cfmotoAddressField.text = defaults.string(forKey: "cfmotoAddress") ?? "192.168.1.10"
+        cfmotoAddressField.text = defaults.string(forKey: "cfmotoAddress") ?? "192.168.0.1"
         cfmotoAddressField.keyboardType = .decimalPad
         cfmotoAddressField.addTarget(self, action: #selector(saveHeadUnitOutput), for: .editingDidEnd)
         ninebotAddressField.text = defaults.string(forKey: "ninebotAddress") ?? "192.168.1.1"
@@ -2584,8 +2584,8 @@ extension ReceiverViewController {
                 ])]
             case .cfmoto5, .cfmoto62:
                 return [SettingsSection(outputMode == .cfmoto5 ? "春风 5 寸" : "春风 6.2 寸",
-                    footer: "让 iPhone 加入春风仪表 Wi-Fi，填仪表 IP：App 会监听 10922/10711/10710 并向仪表 10930 发起通知，由仪表回连后逐帧拉 H.264 画面。6.2 寸编码 1024×516（仪表原生 1024×515，H.264 要求偶数）。声音由 iPhone 或蓝牙输出。", [
-                    .field("仪表 IP 地址", cfmotoAddressField, placeholder: "192.168.1.10"),
+                    footer: "让 iPhone 加入春风仪表 Wi-Fi（如 CFMOTO-xxxxxx），仪表 IP 一般就是网关 192.168.0.1，留空会自动按本机网段取 .1。App 会监听 10920/10921/10922 并向仪表 10930 探测，仪表回连后逐帧拉 H.264：5 寸编码 800×384，6.2 寸 1024×512（按 16 对齐）。声音由 iPhone 或蓝牙输出。", [
+                    .field("仪表 IP 地址", cfmotoAddressField, placeholder: "192.168.0.1（留空自动取网关）"),
                     .note(cfmotoStatus)
                 ])]
             }
