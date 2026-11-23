@@ -402,7 +402,7 @@ final class TailingConnection: @unchecked Sendable {
                 }
                 let width = request.payload.uint16LE(0)
                 let height = request.payload.uint16LE(2)
-                let validDimensions: Bool = profile.acceptsMediaSize(width: width, height: height)
+                let validDimensions: Bool = profile.acceptsMediaSize(width: Int(width), height: Int(height))
                 guard validDimensions else {
                     throw TailingError.protocolFailure("仪表媒体尺寸 \(width)×\(height) 与 \(dashboard) 配置不符")
                 }

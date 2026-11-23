@@ -228,7 +228,7 @@ final class CfmotoOutput {
                 if encoder == nil {
                     guard now - lastCodecFailure >= 0.5 else { return nil }
                     encoder = try H264Encoder(width: profile.encodeWidth, height: profile.encodeHeight,
-                                              fps: Int32(profile.fps), bitrate: profile.bitrate) { [weak self] result in
+                                              fps: profile.fps, bitrate: profile.bitrate) { [weak self] result in
                         guard let self else { return }
                         self.lock.withLock { self.encoded = result }
                     }
