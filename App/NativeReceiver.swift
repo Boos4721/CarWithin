@@ -51,6 +51,9 @@ final class NativeReceiver {
     var onZeehoState: ((String) -> Void)?
     private let ninebot = NinebotOutput()
     var onNinebotState: ((String) -> Void)?
+    private let cfmoto5 = CfmotoOutput(name: "cfmoto5")
+    private let cfmoto62 = CfmotoOutput(name: "cfmoto62")
+    var onCfmotoState: ((String) -> Void)?
     private let tailing = TailingOutput()
     var onTailingState: ((String) -> Void)?
     private lazy var carLink = CarLinkRelay(queue: queue)
@@ -100,6 +103,14 @@ final class NativeReceiver {
                     onState: { [weak self] in self?.onZeehoState?($0) },
                     onLog: { [weak self] in self?.log($0) },
                     requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "极核解码恢复") })
+            }
+            if let profile = configuration.cfmotoProfile, let target = configuration.cfmotoAddress {
+                let output = profile == .sixInch ? self.cfmoto62 : self.cfmoto5
+                output.start(localAddress: configuration.address, targetAddress: target,
+                             port: configuration.cfmotoPort, profile: profile,
+                             onState: { [weak self] in self?.onCfmotoState?($0) },
+                             onLog: { [weak self] in self?.log($0) },
+                             requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "春风解码恢复") })
             }
             if let target = configuration.ninebotAddress {
                 self.ninebot.start(localAddress: configuration.address, targetAddress: target,
@@ -321,6 +332,8 @@ final class NativeReceiver {
         carLife.stop()
         zeeho.stop()
         ninebot.stop()
+        cfmoto5.stop()
+        cfmoto62.stop()
         tailing.stop()
         carLink.stop()
         #if DEBUG
@@ -417,6 +430,10 @@ final class NativeReceiver {
                     self.videoOutput.append(data, codec: codec)
                     if configuration.zeehoAddress != nil { self.zeeho.append(data, codec: codec, keyframe: keyframe) }
                     if configuration.ninebotAddress != nil { self.ninebot.append(data, codec: codec, keyframe: keyframe) }
+                    if let cfmoto = configuration.cfmotoProfile {
+                        let output = cfmoto == .sixInch ? self.cfmoto62 : self.cfmoto5
+                        output.append(data, codec: codec, keyframe: keyframe)
+                    }
                     if configuration.tailingAddress != nil { self.tailing.append(data, codec: codec) }
                     if configuration.carLifeEnabled { self.carLife.append(data, codec: codec) }
                     if configuration.carLinkRelayAddress != nil { self.carLink.append(data, codec: codec) }

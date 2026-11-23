@@ -130,6 +130,23 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         zeehoStatus.text = message
         zeehoCardStatus.text = message
     }
+    private let cfmotoCard = UIStackView()
+    private let cfmotoCardStatus = UILabel()
+    private let cfmotoStatus = StatusLabel()
+    private let cfmotoAddressField = UITextField()
+    private let cfmotoPortField = UITextField()
+    /// 春风 5 寸 / 6.2 寸共用地址与端口，只有画面规格不同。
+    private var cfmotoProfile: CfmotoProfile? {
+        switch outputMode {
+        case .cfmoto5: return .fiveInch
+        case .cfmoto62: return .sixInch
+        default: return nil
+        }
+    }
+    private func updateCfmotoStatus(_ message: String) {
+        cfmotoStatus.text = message
+        cfmotoCardStatus.text = message
+    }
     private let ninebotCard = UIStackView()
     private let ninebotCardStatus = UILabel()
     private let ninebotStatus = StatusLabel()
@@ -171,10 +188,13 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private lazy var pictureInPicture = CarPlayPictureInPicture(surface: videoSurface)
     private let keepAlive = BackgroundKeepAlive()
     private let keepAliveSwitch = UISwitch()
-    private let headUnitOutput = ChoiceMenu(items: ["浏览器", "CarLife", "AirPlay", "台铃 4.3 寸", "九号 5 寸", "极核 6.2 寸"])
+    private let headUnitOutput = ChoiceMenu(items: ["浏览器", "CarLife", "AirPlay", "台铃 4.3 寸", "九号 5 寸", "极核 6.2 寸", "春风 5 寸", "春风 6.2 寸"])
     private enum HeadUnitOutput: Int {
-        case browser, carLife, airPlay, tailing, ninebot, zeeho
-        var usesInstrumentWiFi: Bool { self == .tailing || self == .ninebot || self == .zeeho }
+        case browser, carLife, airPlay, tailing, ninebot, zeeho, cfmoto5, cfmoto62
+        var usesInstrumentWiFi: Bool {
+            self == .tailing || self == .ninebot || self == .zeeho || self == .cfmoto5 || self == .cfmoto62
+        }
+        var cfmoto: Bool { self == .cfmoto5 || self == .cfmoto62 }
     }
     private var airPlayStreamID: UUID?
     private var airPlayStreamURL: URL?
@@ -428,6 +448,15 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         zeehoSettings.addAction(UIAction { [weak self] _ in self?.revealSettings(output: true) }, for: .touchUpInside)
         zeehoCard.addArrangedSubview(zeehoSettings)
         stack.addArrangedSubview(zeehoCard)
+
+        configureConnectionCard(cfmotoCard, title: "春风仪表连接", symbol: "scooter", color: .systemBlue,
+            instructions: "让 iPhone 加入春风仪表 Wi-Fi，打开仪表投屏后启动 CarPlay。春风走 UDP 直推，不需要仪表先发起连接。", status: cfmotoCardStatus)
+        let cfmotoSettings = UIButton(type: .system)
+        cfmotoSettings.configuration = .tinted()
+        cfmotoSettings.configuration?.title = "连接设置"
+        cfmotoSettings.addAction(UIAction { [weak self] _ in self?.revealSettings(output: true) }, for: .touchUpInside)
+        cfmotoCard.addArrangedSubview(cfmotoSettings)
+        stack.addArrangedSubview(cfmotoCard)
         configureConnectionCard(ninebotCard, title: "九号 5 寸连接", symbol: "scooter", color: .systemBlue,
             instructions: "让 iPhone 加入仪表 Wi-Fi，打开仪表投屏后启动 CarPlay。", status: ninebotCardStatus)
         let ninebotSettings = UIButton(type: .system)
@@ -569,6 +598,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         receiver.onZeehoState = { [weak self] message in
             guard let self, self.running, self.outputMode == .zeeho else { return }
             self.updateZeehoStatus(message)
+        }
+        receiver.onCfmotoState = { [weak self] message in
+            guard let self, self.running, self.outputMode.cfmoto else { return }
+            self.updateCfmotoStatus(message)
         }
         receiver.onNinebotState = { [weak self] message in
             guard let self, self.running, self.outputMode == .ninebot else { return }
@@ -753,6 +786,12 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     /// Size, frame rate and codec for the next session from the settings, the known head-unit
     /// screen and any lighter level chosen by "自动重启".
     private func planDisplay(for screen: CarScreen?) -> DisplayPlan {
+        if let cfmoto = cfmotoProfile {
+            let icon = ReceiverConfiguration.iconSizes[max(0, iconSizeControl.selectedSegmentIndex)].widthMM
+            // 按偶数对齐：H.264 4:2:0 不接受 515 这样的奇数高度。
+            return DisplayPlan(width: cfmoto.encodeWidth, height: cfmoto.encodeHeight,
+                               fps: cfmoto.fps, codec: .h264, iconWidthMM: icon)
+        }
         if outputMode == .zeeho {
             let icon = ReceiverConfiguration.iconSizes[max(0, iconSizeControl.selectedSegmentIndex)].widthMM
             return DisplayPlan(width: 1024, height: 480, fps: 30, codec: .h264, iconWidthMM: icon)
@@ -991,6 +1030,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         let showsLocalOutput = modeControl.selectedSegmentIndex != 2
         zeehoCard.isHidden = !showsLocalOutput || outputMode != .zeeho
         if !running { updateZeehoStatus("等待启动 CarPlay · 仪表 IP：\(zeehoAddressField.text ?? "192.168.0.1")") }
+        cfmotoCard.isHidden = !showsLocalOutput || !outputMode.cfmoto
+        if !running {
+            updateCfmotoStatus("等待启动 CarPlay · UDP \(cfmotoAddressField.text ?? "192.168.1.10"):\(cfmotoPortField.text ?? String(CfmotoProfile.defaultPort))")
+        }
         ninebotCard.isHidden = !showsLocalOutput || outputMode != .ninebot
         if !running { updateNinebotStatus("等待启动 CarPlay · 仪表 IP：\(ninebotAddressField.text ?? "")") }
         tailingCard.isHidden = !showsLocalOutput || outputMode != .tailing
@@ -1046,6 +1089,13 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         if outputMode == .airPlay, config.videoOutputPort != nil { config.airPlayStreamID = UUID() }
         if outputMode == .zeeho {
             config.zeehoAddress = (zeehoAddressField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if let profile = cfmotoProfile {
+            config.cfmotoAddress = (cfmotoAddressField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            config.cfmotoProfile = profile
+            if let port = UInt16((cfmotoPortField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)), port > 0 {
+                config.cfmotoPort = port
+            }
         }
         if outputMode == .ninebot {
             config.ninebotAddress = (ninebotAddressField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1656,6 +1706,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         transportProbeButton.isEnabled = value
         headUnitOutput.isEnabled = value
         zeehoAddressField.isEnabled = value
+        cfmotoAddressField.isEnabled = value
+        cfmotoPortField.isEnabled = value
         ninebotAddressField.isEnabled = value
         tailingAddressField.isEnabled = value
         carLifeAddressField.isEnabled = value
@@ -1889,6 +1941,12 @@ extension ReceiverViewController {
         zeehoAddressField.text = defaults.string(forKey: "zeehoAddress") ?? "192.168.0.1"
         zeehoAddressField.keyboardType = .decimalPad
         zeehoAddressField.addTarget(self, action: #selector(saveHeadUnitOutput), for: .editingDidEnd)
+        cfmotoAddressField.text = defaults.string(forKey: "cfmotoAddress") ?? "192.168.1.10"
+        cfmotoAddressField.keyboardType = .decimalPad
+        cfmotoAddressField.addTarget(self, action: #selector(saveHeadUnitOutput), for: .editingDidEnd)
+        cfmotoPortField.text = defaults.string(forKey: "cfmotoPort") ?? String(CfmotoProfile.defaultPort)
+        cfmotoPortField.keyboardType = .numberPad
+        cfmotoPortField.addTarget(self, action: #selector(saveHeadUnitOutput), for: .editingDidEnd)
         ninebotAddressField.text = defaults.string(forKey: "ninebotAddress") ?? "192.168.1.1"
         ninebotAddressField.keyboardType = .decimalPad
         ninebotAddressField.addTarget(self, action: #selector(saveHeadUnitOutput), for: .editingDidEnd)
@@ -1918,7 +1976,7 @@ extension ReceiverViewController {
         }
         nameField.addTarget(self, action: #selector(receiverNameChanged), for: .editingDidEnd)
         channelField.keyboardType = .numberPad
-        [nameField, ipField, ssidField, passwordField, channelField, carLifeAddressField, tailingAddressField, ninebotAddressField, zeehoAddressField, videoOutputPortField, secureVideoOutputPortField, httpsDomainField, httpsTokenField].forEach {
+        [nameField, ipField, ssidField, passwordField, channelField, carLifeAddressField, tailingAddressField, ninebotAddressField, zeehoAddressField, cfmotoAddressField, cfmotoPortField, videoOutputPortField, secureVideoOutputPortField, httpsDomainField, httpsTokenField].forEach {
             $0.returnKeyType = .done
             $0.addTarget($0, action: #selector(UIResponder.resignFirstResponder), for: .editingDidEndOnExit)
             if $0.inputAccessoryView == nil {
@@ -1937,6 +1995,8 @@ extension ReceiverViewController {
         UserDefaults.standard.set(outputMode.rawValue, forKey: "headUnitOutputV2")
         UserDefaults.standard.set(carLifeAddressField.text ?? "", forKey: "carLifeAddress")
         UserDefaults.standard.set(zeehoAddressField.text ?? "", forKey: "zeehoAddress")
+        UserDefaults.standard.set(cfmotoAddressField.text ?? "", forKey: "cfmotoAddress")
+        UserDefaults.standard.set(cfmotoPortField.text ?? "", forKey: "cfmotoPort")
         UserDefaults.standard.set(ninebotAddressField.text ?? "", forKey: "ninebotAddress")
         UserDefaults.standard.set(tailingAddressField.text ?? "", forKey: "tailingAddress")
         refreshVideoOutputSummary()
@@ -2190,6 +2250,13 @@ extension ReceiverViewController {
 
     fileprivate func displayPage() -> SettingsPageController {
         page("画面") { [unowned self] in
+            if let cfmoto = cfmotoProfile {
+                let name = outputMode == .cfmoto5 ? "春风 5 寸" : "春风 6.2 寸"
+                return [
+                    SettingsSection(name, [.info("仪表画面", "\(cfmoto.width)×\(cfmoto.height) · H.264 · UDP · \(cfmoto.fps) FPS")]),
+                    SettingsSection("图标", [.control("CarPlay 图标大小", icon: ("square.grid.2x2.fill", .systemPurple), iconSizeControl)])
+                ]
+            }
             if outputMode == .zeeho {
                 return [
                     SettingsSection("极核 6.2 寸", [.info("仪表画面", "1024×480 · H.264 · 25 FPS")]),
@@ -2524,6 +2591,13 @@ extension ReceiverViewController {
                     .field("仪表 IP 地址", ninebotAddressField, placeholder: "192.168.1.1"),
                     .note(ninebotStatus)
                 ])]
+            case .cfmoto5, .cfmoto62:
+                return [SettingsSection(outputMode == .cfmoto5 ? "春风 5 寸" : "春风 6.2 寸",
+                    footer: "让 iPhone 加入仪表 Wi-Fi，填仪表地址与它监听的 UDP 端口（默认 \(CfmotoProfile.defaultPort)）。画面以 RFC 6184 RTP 直推，仪表不主动拉帧；协议对不上时仪表只会黑屏，不影响手机端显示。声音由 iPhone 或蓝牙输出。", [
+                    .field("仪表 IP 地址", cfmotoAddressField, placeholder: "192.168.1.10"),
+                    .field("UDP 端口", cfmotoPortField, placeholder: String(CfmotoProfile.defaultPort)),
+                    .note(cfmotoStatus)
+                ])]
             }
         }
     }
@@ -2539,6 +2613,7 @@ extension ReceiverViewController {
 
     private func prepareExternalOutput(configuration: ReceiverConfiguration) {
         if configuration.zeehoAddress != nil { updateZeehoStatus("正在连接极核仪表…") }
+        if configuration.cfmotoProfile != nil { updateCfmotoStatus("正在推流到春风仪表…") }
         if configuration.ninebotAddress != nil { updateNinebotStatus("正在连接九号仪表…") }
         if configuration.tailingAddress != nil { updateTailingStatus("正在连接台铃仪表…") }
         if configuration.carLifeEnabled {
