@@ -1,0 +1,456 @@
+Command line invocation:
+    /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/xcodebuild -project TDSCarKit.xcodeproj -scheme TDSCarKit -configuration Release -sdk iphoneos -destination generic/platform=iOS -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= build
+
+Build settings from command line:
+    CODE_SIGN_IDENTITY = 
+    CODE_SIGNING_ALLOWED = NO
+    CODE_SIGNING_REQUIRED = NO
+    SDKROOT = iphoneos18.5
+
+note: Using codesigning identity override: 
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'TDSCarKit' in project 'TDSCarKit' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -x objective-c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/runner/work/CarWithin/CarWithin/App/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: d32a6cf47386b7cb9be2eddc531404e3
+Build description path: /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/XCBuildData/d32a6cf47386b7cb9be2eddc531404e3.xcbuilddata
+ClangStatCache /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk /Users/runner/work/CarWithin/CarWithin/build/SDKStatCaches.noindex/iphoneos18.5-22F76-a529daf784b3616c7c04a36aeb7f5c05.sdkstatcache
+    cd /Users/runner/work/CarWithin/CarWithin/TDSCarKit.xcodeproj
+    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -o /Users/runner/work/CarWithin/CarWithin/build/SDKStatCaches.noindex/iphoneos18.5-22F76-a529daf784b3616c7c04a36aeb7f5c05.sdkstatcache
+
+CreateBuildDirectory /Users/runner/work/CarWithin/CarWithin/build/Build/Products
+    cd /Users/runner/work/CarWithin/CarWithin/TDSCarKit.xcodeproj
+    builtin-create-build-directory /Users/runner/work/CarWithin/CarWithin/build/Build/Products
+
+CreateBuildDirectory /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex
+    cd /Users/runner/work/CarWithin/CarWithin/TDSCarKit.xcodeproj
+    builtin-create-build-directory /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex
+
+WriteAuxiliaryFile /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit-a820119691a99b97ca6e3178b25dbb34-VFS-iphoneos/all-product-headers.yaml
+    cd /Users/runner/work/CarWithin/CarWithin/TDSCarKit.xcodeproj
+    write-file /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit-a820119691a99b97ca6e3178b25dbb34-VFS-iphoneos/all-product-headers.yaml
+
+CreateBuildDirectory /Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos
+    cd /Users/runner/work/CarWithin/CarWithin/TDSCarKit.xcodeproj
+    builtin-create-build-directory /Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos
+
+CreateBuildDirectory /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/EagerLinkingTBDs/Release-iphoneos
+    cd /Users/runner/work/CarWithin/CarWithin/TDSCarKit.xcodeproj
+    builtin-create-build-directory /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/EagerLinkingTBDs/Release-iphoneos
+
+WriteAuxiliaryFile /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit.hmap (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    write-file /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit.hmap
+
+WriteAuxiliaryFile /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit.DependencyStaticMetadataFileList (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    write-file /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit.DependencyMetadataFileList (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    write-file /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit.DependencyMetadataFileList
+
+WriteAuxiliaryFile /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-project-headers.hmap (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    write-file /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-project-headers.hmap
+
+WriteAuxiliaryFile /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-own-target-headers.hmap (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    write-file /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-own-target-headers.hmap
+
+WriteAuxiliaryFile /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-generated-files.hmap (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    write-file /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-generated-files.hmap
+
+WriteAuxiliaryFile /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-all-target-headers.hmap (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    write-file /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-all-target-headers.hmap
+
+WriteAuxiliaryFile /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-all-non-framework-target-headers.hmap (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    write-file /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/e6072d4f65d7061329687fe24e3d63a7-common-args.resp (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    write-file /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/e6072d4f65d7061329687fe24e3d63a7-common-args.resp
+-target arm64-apple-ios16.0 -fobjc-arc -fmodules -gmodules '-fmodules-cache-path=/Users/runner/work/CarWithin/CarWithin/build/ModuleCache.noindex' -fpascal-strings -Os '-DOBJC_OLD_DISPATCH_PROTOTYPES=1' -isysroot /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -g '-fvisibility=hidden' -iquote /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-generated-files.hmap -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-own-target-headers.hmap -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-all-target-headers.hmap -iquote /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-project-headers.hmap -I/Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos/include -I/Users/runner/work/CarWithin/CarWithin/Sources/CTDSCarKitCrypto/include -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources-normal/arm64 -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources/arm64 -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources -F/Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos
+
+WriteAuxiliaryFile /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit_const_extract_protocols.json (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    write-file /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit_const_extract_protocols.json
+
+WriteAuxiliaryFile /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit.SwiftFileList (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    write-file /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit.SwiftFileList
+
+WriteAuxiliaryFile /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit.SwiftConstValuesFileList (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    write-file /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit.LinkFileList (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    write-file /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit.LinkFileList
+
+WriteAuxiliaryFile /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit-OutputFileMap.json (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    write-file /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit-OutputFileMap.json
+
+WriteAuxiliaryFile /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/7187679823f38a2a940e0043cdf9d637-common-args.resp (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    write-file /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/7187679823f38a2a940e0043cdf9d637-common-args.resp
+-target arm64-apple-ios16.0 -fmodules -gmodules '-fmodules-cache-path=/Users/runner/work/CarWithin/CarWithin/build/ModuleCache.noindex' -fpascal-strings -Os -isysroot /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -g '-fvisibility=hidden' -iquote /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-generated-files.hmap -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-own-target-headers.hmap -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-all-target-headers.hmap -iquote /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-project-headers.hmap -I/Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos/include -I/Users/runner/work/CarWithin/CarWithin/Sources/CTDSCarKitCrypto/include -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources-normal/arm64 -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources/arm64 -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources -F/Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos
+
+MkDir /Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos/TDSCarKit.app (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    /bin/mkdir -p /Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos/TDSCarKit.app
+
+MkDir /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/assetcatalog_output/unthinned (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    /bin/mkdir -p /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/assetcatalog_output/unthinned
+
+MkDir /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/assetcatalog_output/thinned (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    /bin/mkdir -p /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/assetcatalog_output/thinned
+
+GenerateAssetSymbols /Users/runner/work/CarWithin/CarWithin/App/Assets.xcassets (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/actool /Users/runner/work/CarWithin/CarWithin/App/Assets.xcassets --compile /Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos/TDSCarKit.app --output-format human-readable-text --notices --warnings --export-dependency-info /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/assetcatalog_dependencies --output-partial-info-plist /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/assetcatalog_generated_info.plist --app-icon AppIcon --compress-pngs --enable-on-demand-resources YES --development-region en --target-device iphone --target-device ipad --minimum-deployment-target 16.0 --platform iphoneos --bundle-identifier com.hanlinzhou.SameDeviceCarPlayPoC --generate-swift-asset-symbol-extensions NO --generate-swift-asset-symbols /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources/GeneratedAssetSymbols.swift --generate-objc-asset-symbols /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources/GeneratedAssetSymbols.h --generate-asset-symbol-index /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/* com.apple.actool.compilation-results */
+/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources/GeneratedAssetSymbols.h
+/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources/GeneratedAssetSymbols.swift
+
+
+CompileAssetCatalogVariant thinned /Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos/TDSCarKit.app /Users/runner/work/CarWithin/CarWithin/App/Assets.xcassets (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/actool /Users/runner/work/CarWithin/CarWithin/App/Assets.xcassets --compile /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/assetcatalog_output/thinned --output-format human-readable-text --notices --warnings --export-dependency-info /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/assetcatalog_dependencies_thinned --output-partial-info-plist /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/assetcatalog_generated_info.plist_thinned --app-icon AppIcon --compress-pngs --enable-on-demand-resources YES --development-region en --target-device iphone --target-device ipad --minimum-deployment-target 16.0 --platform iphoneos
+
+SwiftDriver TDSCarKit normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    builtin-SwiftDriver -- /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TDSCarKit -O -enforce-exclusivity\=checked @/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit.SwiftFileList -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -target arm64-apple-ios16.0 -g -module-cache-path /Users/runner/work/CarWithin/CarWithin/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -swift-version 5 -I /Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos -F /Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos -c -j3 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/runner/work/CarWithin/CarWithin/build/SDKStatCaches.noindex/iphoneos18.5-22F76-a529daf784b3616c7c04a36aeb7f5c05.sdkstatcache -output-file-map /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/runner/work/CarWithin/CarWithin/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-generated-files.hmap -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-own-target-headers.hmap -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-project-headers.hmap -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos/include -Xcc -I/Users/runner/work/CarWithin/CarWithin/Sources/CTDSCarKitCrypto/include -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources -emit-objc-header -emit-objc-header-path /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit-Swift.h -import-objc-header /Users/runner/work/CarWithin/CarWithin/App/TDSCarKit-Bridging-Header.h -pch-output-dir /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/PrecompiledHeaders -working-directory /Users/runner/work/CarWithin/CarWithin -experimental-emit-module-separately -disable-cmo
+
+SwiftGeneratePch normal arm64 Compiling\ bridging\ header (in target 'TDSCarKit' from project 'TDSCarKit')
+
+PrecompileSwiftBridgingHeader normal arm64 (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling bridging header (in target 'TDSCarKit' from project 'TDSCarKit')
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ TDSCarKit (in target 'TDSCarKit' from project 'TDSCarKit')
+
+EmitSwiftModule normal arm64 (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 Compiling\ WiFiPresetStore.swift,\ AccessoryIdentity.swift,\ AccessoryMessages.swift,\ AnnexB.swift,\ AudioStream.swift,\ BLEFrame.swift,\ Binary.swift,\ IAP2.swift,\ MFiSAP.swift,\ OPACK.swift,\ PairSetup.swift,\ Pairing.swift,\ RTSP.swift,\ ScreenStream.swift,\ Addition.swift,\ BigInt.swift,\ BigUInt.swift,\ Bitwise\ Ops.swift,\ Codable.swift /Users/runner/work/CarWithin/CarWithin/App/WiFiPresetStore.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/AccessoryIdentity.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/AccessoryMessages.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/AnnexB.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/AudioStream.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/BLEFrame.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Binary.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/IAP2.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/MFiSAP.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/OPACK.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/PairSetup.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Pairing.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/RTSP.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/ScreenStream.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Addition.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/BigInt.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/BigUInt.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Bitwise\ Ops.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Codable.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/WiFiPresetStore.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/AccessoryIdentity.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/AccessoryMessages.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/AnnexB.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/AudioStream.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/BLEFrame.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Binary.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/IAP2.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/MFiSAP.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/OPACK.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/PairSetup.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Pairing.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/RTSP.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/ScreenStream.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Addition.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/BigInt.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/BigUInt.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Bitwise\ Ops.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Codable.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 Compiling\ Comparable.swift,\ Data\ Conversion.swift,\ Division.swift,\ Exponentiation.swift,\ Floating\ Point\ Conversion.swift,\ GCD.swift,\ Hashable.swift,\ Integer\ Conversion.swift,\ Multiplication.swift,\ Prime\ Test.swift,\ Random.swift,\ Shifts.swift,\ Square\ Root.swift,\ Strideable.swift,\ String\ Conversion.swift,\ Subtraction.swift,\ Words\ and\ Bits.swift,\ VideoCodec.swift,\ GeneratedAssetSymbols.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Comparable.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Data\ Conversion.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Division.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Exponentiation.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Floating\ Point\ Conversion.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/GCD.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Hashable.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Integer\ Conversion.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Multiplication.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Prime\ Test.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Random.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Shifts.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Square\ Root.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Strideable.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/String\ Conversion.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Subtraction.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Words\ and\ Bits.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/VideoCodec.swift /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Comparable.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Data\ Conversion.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Division.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Exponentiation.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Floating\ Point\ Conversion.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/GCD.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Hashable.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Integer\ Conversion.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Multiplication.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Prime\ Test.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Random.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Shifts.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Square\ Root.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Strideable.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/String\ Conversion.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Subtraction.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Words\ and\ Bits.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/VideoCodec.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for TDSCarKit (in target 'TDSCarKit' from project 'TDSCarKit')
+
+SwiftDriver\ Compilation\ Requirements TDSCarKit normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TDSCarKit -O -enforce-exclusivity\=checked @/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit.SwiftFileList -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -target arm64-apple-ios16.0 -g -module-cache-path /Users/runner/work/CarWithin/CarWithin/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -swift-version 5 -I /Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos -F /Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos -c -j3 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/runner/work/CarWithin/CarWithin/build/SDKStatCaches.noindex/iphoneos18.5-22F76-a529daf784b3616c7c04a36aeb7f5c05.sdkstatcache -output-file-map /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/runner/work/CarWithin/CarWithin/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-generated-files.hmap -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-own-target-headers.hmap -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-project-headers.hmap -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos/include -Xcc -I/Users/runner/work/CarWithin/CarWithin/Sources/CTDSCarKitCrypto/include -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources -emit-objc-header -emit-objc-header-path /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit-Swift.h -import-objc-header /Users/runner/work/CarWithin/CarWithin/App/TDSCarKit-Bridging-Header.h -pch-output-dir /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/PrecompiledHeaders -working-directory /Users/runner/work/CarWithin/CarWithin -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Compiling Comparable.swift, Data Conversion.swift, Division.swift, Exponentiation.swift, Floating Point Conversion.swift, GCD.swift, Hashable.swift, Integer Conversion.swift, Multiplication.swift, Prime Test.swift, Random.swift, Shifts.swift, Square Root.swift, Strideable.swift, String Conversion.swift, Subtraction.swift, Words and Bits.swift, VideoCodec.swift, GeneratedAssetSymbols.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+
+SwiftCompile normal arm64 Compiling\ TailingConnection.swift,\ TailingH264Decoder.swift,\ TailingIdentity.swift,\ TailingOutput.swift,\ ZeehoOutput.swift,\ CfmotoOutput.swift,\ NinebotH264Encoder.swift,\ NinebotUDPSocket.swift,\ NinebotProtocol.swift,\ NinebotOutput.swift,\ TailingProtocol.swift,\ TailingSocket.swift,\ HTTPSConfiguration.swift,\ AccessoryIdentityStore.swift,\ AirPlayCredentials.swift,\ AppDelegate.swift,\ AppReleaseViews.swift,\ AppReleaseService.swift,\ BLEBootstrap.swift,\ BackgroundKeepAlive.swift /Users/runner/work/CarWithin/CarWithin/App/TailingConnection.swift /Users/runner/work/CarWithin/CarWithin/App/TailingH264Decoder.swift /Users/runner/work/CarWithin/CarWithin/App/TailingIdentity.swift /Users/runner/work/CarWithin/CarWithin/App/TailingOutput.swift /Users/runner/work/CarWithin/CarWithin/App/ZeehoOutput.swift /Users/runner/work/CarWithin/CarWithin/App/CfmotoOutput.swift /Users/runner/work/CarWithin/CarWithin/App/NinebotH264Encoder.swift /Users/runner/work/CarWithin/CarWithin/App/NinebotUDPSocket.swift /Users/runner/work/CarWithin/CarWithin/App/NinebotProtocol.swift /Users/runner/work/CarWithin/CarWithin/App/NinebotOutput.swift /Users/runner/work/CarWithin/CarWithin/App/TailingProtocol.swift /Users/runner/work/CarWithin/CarWithin/App/TailingSocket.swift /Users/runner/work/CarWithin/CarWithin/App/HTTPSConfiguration.swift /Users/runner/work/CarWithin/CarWithin/App/AccessoryIdentityStore.swift /Users/runner/work/CarWithin/CarWithin/App/AirPlayCredentials.swift /Users/runner/work/CarWithin/CarWithin/App/AppDelegate.swift /Users/runner/work/CarWithin/CarWithin/App/AppReleaseViews.swift /Users/runner/work/CarWithin/CarWithin/App/AppReleaseService.swift /Users/runner/work/CarWithin/CarWithin/App/BLEBootstrap.swift /Users/runner/work/CarWithin/CarWithin/App/BackgroundKeepAlive.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+Failed frontend command:
+/Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c -primary-file /Users/runner/work/CarWithin/CarWithin/App/TailingConnection.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/TailingH264Decoder.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/TailingIdentity.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/TailingOutput.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/ZeehoOutput.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/CfmotoOutput.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/NinebotH264Encoder.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/NinebotUDPSocket.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/NinebotProtocol.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/NinebotOutput.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/TailingProtocol.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/TailingSocket.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/HTTPSConfiguration.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/AccessoryIdentityStore.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/AirPlayCredentials.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/AppDelegate.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/AppReleaseViews.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/AppReleaseService.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/BLEBootstrap.swift -primary-file /Users/runner/work/CarWithin/CarWithin/App/BackgroundKeepAlive.swift /Users/runner/work/CarWithin/CarWithin/App/BrowserReceiverPage.swift /Users/runner/work/CarWithin/CarWithin/App/CarLifeOutput.swift /Users/runner/work/CarWithin/CarWithin/App/CarLinkRelay.swift /Users/runner/work/CarWithin/CarWithin/App/CarPlayAudio.swift /Users/runner/work/CarWithin/CarWithin/App/CarPlayControlBrowser.swift /Users/runner/work/CarWithin/CarWithin/App/CarPlayControls.swift /Users/runner/work/CarWithin/CarWithin/App/CarPlayInfo.swift /Users/runner/work/CarWithin/CarWithin/App/CarPlayMediaSession.swift /Users/runner/work/CarWithin/CarWithin/App/CarPlayPictureInPicture.swift /Users/runner/work/CarWithin/CarWithin/App/CarScreenStore.swift /Users/runner/work/CarWithin/CarWithin/App/FragmentedMP4.swift /Users/runner/work/CarWithin/CarWithin/App/H264Surface.swift /Users/runner/work/CarWithin/CarWithin/App/LocalTLSIdentity.swift /Users/runner/work/CarWithin/CarWithin/App/MediaSockets.swift /Users/runner/work/CarWithin/CarWithin/App/NativeReceiver.swift /Users/runner/work/CarWithin/CarWithin/App/ReceiverConfiguration.swift /Users/runner/work/CarWithin/CarWithin/App/ReceiverViewController.swift /Users/runner/work/CarWithin/CarWithin/App/SameDeviceProbe.swift /Users/runner/work/CarWithin/CarWithin/App/SettingsUI.swift /Users/runner/work/CarWithin/CarWithin/App/VideoOutputServer.swift /Users/runner/work/CarWithin/CarWithin/App/WiFiPresetStore.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/AccessoryIdentity.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/AccessoryMessages.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/AnnexB.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/AudioStream.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/BLEFrame.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Binary.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/IAP2.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/MFiSAP.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/OPACK.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/PairSetup.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Pairing.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/RTSP.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/ScreenStream.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Addition.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/BigInt.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/BigUInt.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Bitwise\ Ops.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Codable.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Comparable.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Data\ Conversion.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Division.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Exponentiation.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Floating\ Point\ Conversion.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/GCD.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Hashable.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Integer\ Conversion.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Multiplication.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Prime\ Test.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Random.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Shifts.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Square\ Root.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Strideable.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/String\ Conversion.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Subtraction.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/Vendor/BigInt/Words\ and\ Bits.swift /Users/runner/work/CarWithin/CarWithin/Sources/TDSCarKitCore/VideoCodec.swift /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources/GeneratedAssetSymbols.swift -supplementary-output-file-map /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/supplementaryOutputs-1 -target arm64-apple-ios16.0 -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -I /Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos -F /Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos -no-color-diagnostics -g -debug-info-format\=dwarf -dwarf-version\=4 -module-cache-path /Users/runner/work/CarWithin/CarWithin/build/ModuleCache.noindex -swift-version 5 -enforce-exclusivity\=checked -O -serialize-debugging-options -const-gather-protocols-file /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit_const_extract_protocols.json -enable-experimental-feature DebugDescriptionMacro -enable-bare-slash-regex -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/runner/work/CarWithin/CarWithin/build/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /Users/runner/work/CarWithin/CarWithin -resource-dir /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift -file-compilation-dir /Users/runner/work/CarWithin/CarWithin -Xcc -ivfsstatcache -Xcc /Users/runner/work/CarWithin/CarWithin/build/SDKStatCaches.noindex/iphoneos18.5-22F76-a529daf784b3616c7c04a36aeb7f5c05.sdkstatcache -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/swift-overrides.hmap -Xcc -iquote -Xcc /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-generated-files.hmap -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-own-target-headers.hmap -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/TDSCarKit-project-headers.hmap -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Products/Release-iphoneos/include -Xcc -I/Users/runner/work/CarWithin/CarWithin/Sources/CTDSCarKitCrypto/include -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources -import-objc-header /Users/runner/work/CarWithin/CarWithin/App/TDSCarKit-Bridging-Header.h -pch-output-dir /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/PrecompiledHeaders -pch-disable-validation -module-name TDSCarKit -frontend-parseable-output -disable-clang-spi -target-sdk-version 18.5 -target-sdk-name iphoneos18.5 -external-plugin-path /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins\#/Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server -external-plugin-path /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/local/lib/swift/host/plugins\#/Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server -in-process-plugin-server-path /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -plugin-path /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins -plugin-path /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/local/lib/swift/host/plugins -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TailingConnection.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TailingH264Decoder.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TailingIdentity.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TailingOutput.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/ZeehoOutput.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/CfmotoOutput.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/NinebotH264Encoder.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/NinebotUDPSocket.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/NinebotProtocol.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/NinebotOutput.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TailingProtocol.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TailingSocket.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/HTTPSConfiguration.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/AccessoryIdentityStore.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/AirPlayCredentials.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/AppDelegate.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/AppReleaseViews.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/AppReleaseService.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/BLEBootstrap.o -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/BackgroundKeepAlive.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TailingConnection.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TailingH264Decoder.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TailingIdentity.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TailingOutput.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/ZeehoOutput.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/CfmotoOutput.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/NinebotH264Encoder.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/NinebotUDPSocket.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/NinebotProtocol.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/NinebotOutput.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TailingProtocol.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TailingSocket.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/HTTPSConfiguration.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/AccessoryIdentityStore.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/AirPlayCredentials.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/AppDelegate.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/AppReleaseViews.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/AppReleaseService.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/BLEBootstrap.o -index-unit-output-path /TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/BackgroundKeepAlive.o
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/TailingConnection.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+/Users/runner/work/CarWithin/CarWithin/App/TailingConnection.swift:405:77: error: cannot convert value of type 'UInt16' to expected argument type 'Int'
+                let validDimensions: Bool = profile.acceptsMediaSize(width: width, height: height)
+                                                                            ^
+                                                                            Int( )
+/Users/runner/work/CarWithin/CarWithin/App/TailingConnection.swift:405:92: error: cannot convert value of type 'UInt16' to expected argument type 'Int'
+                let validDimensions: Bool = profile.acceptsMediaSize(width: width, height: height)
+                                                                                           ^
+                                                                                           Int(  )
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/TailingH264Decoder.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/TailingIdentity.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/TailingOutput.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+/Users/runner/work/CarWithin/CarWithin/App/TailingOutput.swift:244:53: warning: capture of 'buffer' with non-sendable type 'CVPixelBuffer' (aka 'CVBuffer') in an isolated closure; this is an error in the Swift 6 language mode
+                let source = CIImage(cvPixelBuffer: buffer)
+                                                    ^
+CoreVideo.CVBuffer:1:14: note: class 'CVBuffer' does not conform to the 'Sendable' protocol
+public class CVBuffer : _CFObject {
+             ^
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/ZeehoOutput.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/CfmotoOutput.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+/Users/runner/work/CarWithin/CarWithin/App/CfmotoOutput.swift:231:52: error: cannot convert value of type 'Int32' to expected argument type 'Int'
+                                              fps: Int32(profile.fps), bitrate: profile.bitrate) { [weak self] result in
+                                                   ^
+                                                   Int(              )
+/Users/runner/work/CarWithin/CarWithin/App/CfmotoOutput.swift:249:15: warning: 'catch' block is unreachable because no errors are thrown in 'do' block
+            } catch H264EncoderError.frameDropped {
+              ^
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/NinebotH264Encoder.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/NinebotUDPSocket.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/NinebotProtocol.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/NinebotOutput.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/TailingProtocol.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/TailingSocket.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/HTTPSConfiguration.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/AccessoryIdentityStore.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/AirPlayCredentials.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/AppDelegate.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/AppReleaseViews.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/AppReleaseService.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/BLEBootstrap.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/BackgroundKeepAlive.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    
+
+SwiftMergeGeneratedHeaders /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources/TDSCarKit-Swift.h /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit-Swift.h (in target 'TDSCarKit' from project 'TDSCarKit')
+    cd /Users/runner/work/CarWithin/CarWithin
+    builtin-swiftHeaderTool -arch arm64 /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/Objects-normal/arm64/TDSCarKit-Swift.h -o /Users/runner/work/CarWithin/CarWithin/build/Build/Intermediates.noindex/TDSCarKit.build/Release-iphoneos/TDSCarKit.build/DerivedSources/TDSCarKit-Swift.h
+
+note: Disabling previews because SWIFT_VERSION is set and SWIFT_OPTIMIZATION_LEVEL=-O, expected -Onone (in target 'TDSCarKit' from project 'TDSCarKit')
+** BUILD FAILED **
+
+
+The following build commands failed:
+	SwiftCompile normal arm64 Compiling\ TailingConnection.swift,\ TailingH264Decoder.swift,\ TailingIdentity.swift,\ TailingOutput.swift,\ ZeehoOutput.swift,\ CfmotoOutput.swift,\ NinebotH264Encoder.swift,\ NinebotUDPSocket.swift,\ NinebotProtocol.swift,\ NinebotOutput.swift,\ TailingProtocol.swift,\ TailingSocket.swift,\ HTTPSConfiguration.swift,\ AccessoryIdentityStore.swift,\ AirPlayCredentials.swift,\ AppDelegate.swift,\ AppReleaseViews.swift,\ AppReleaseService.swift,\ BLEBootstrap.swift,\ BackgroundKeepAlive.swift /Users/runner/work/CarWithin/CarWithin/App/TailingConnection.swift /Users/runner/work/CarWithin/CarWithin/App/TailingH264Decoder.swift /Users/runner/work/CarWithin/CarWithin/App/TailingIdentity.swift /Users/runner/work/CarWithin/CarWithin/App/TailingOutput.swift /Users/runner/work/CarWithin/CarWithin/App/ZeehoOutput.swift /Users/runner/work/CarWithin/CarWithin/App/CfmotoOutput.swift /Users/runner/work/CarWithin/CarWithin/App/NinebotH264Encoder.swift /Users/runner/work/CarWithin/CarWithin/App/NinebotUDPSocket.swift /Users/runner/work/CarWithin/CarWithin/App/NinebotProtocol.swift /Users/runner/work/CarWithin/CarWithin/App/NinebotOutput.swift /Users/runner/work/CarWithin/CarWithin/App/TailingProtocol.swift /Users/runner/work/CarWithin/CarWithin/App/TailingSocket.swift /Users/runner/work/CarWithin/CarWithin/App/HTTPSConfiguration.swift /Users/runner/work/CarWithin/CarWithin/App/AccessoryIdentityStore.swift /Users/runner/work/CarWithin/CarWithin/App/AirPlayCredentials.swift /Users/runner/work/CarWithin/CarWithin/App/AppDelegate.swift /Users/runner/work/CarWithin/CarWithin/App/AppReleaseViews.swift /Users/runner/work/CarWithin/CarWithin/App/AppReleaseService.swift /Users/runner/work/CarWithin/CarWithin/App/BLEBootstrap.swift /Users/runner/work/CarWithin/CarWithin/App/BackgroundKeepAlive.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+	SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/TailingConnection.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+	SwiftCompile normal arm64 /Users/runner/work/CarWithin/CarWithin/App/CfmotoOutput.swift (in target 'TDSCarKit' from project 'TDSCarKit')
+	Building project TDSCarKit with scheme TDSCarKit and configuration Release
+(4 failures)
