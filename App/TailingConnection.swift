@@ -1,10 +1,35 @@
 // Adapted from xmz28/ninebot_pro: NinebotPro/Networking/TailingConnection.swift
 struct TailingDisplayProfile {
+    /// 协议里回给仪表的宽（仪表原生像素）。
     let width: Int
+    /// 协议里回给仪表的高（仪表原生像素，允许奇数，例如春风 6.2 寸是 515）。
     let height: Int
     let isZeeho: Bool
+    /// H.264 编码尺寸；0 表示与 width/height 相同。
+    var encodeWidth: Int = 0
+    var encodeHeight: Int = 0
+    /// 日志里的仪表称呼。
+    var label: String = ""
+    /// 春风仪表：尺寸校验按仪表实际上报值放行（允许 ±2 的高度差）。
+    var isCfmoto: Bool = false
+
     static let tailing43 = TailingDisplayProfile(width: 480, height: 272, isZeeho: false)
     static let zeeho62 = TailingDisplayProfile(width: 1024, height: 480, isZeeho: true)
+    static let cfmoto5 = TailingDisplayProfile(width: 800, height: 386, isZeeho: true,
+                                              encodeWidth: 800, encodeHeight: 386,
+                                              label: "春风", isCfmoto: true)
+    /// 春风 6.2 寸仪表原生 1024×515；H.264 4:2:0 要求偶数，编码按 1024×516。
+    static let cfmoto62 = TailingDisplayProfile(width: 1024, height: 515, isZeeho: true,
+                                                encodeWidth: 1024, encodeHeight: 516,
+                                                label: "春风", isCfmoto: true)
+
+    var effectiveEncodeWidth: Int { encodeWidth > 0 ? encodeWidth : width }
+    var effectiveEncodeHeight: Int { encodeHeight > 0 ? encodeHeight : height }
+
+    func acceptsMediaSize(width w: Int, height h: Int) -> Bool {
+        if isCfmoto { return w == width && abs(h - height) <= 2 }
+        return isZeeho ? w == 1024 && (h == 480 || h == 488) : w == 480 && h == 272
+    }
 }
 
 import Foundation
@@ -58,7 +83,7 @@ final class TailingConnection: @unchecked Sendable {
     private var mediaStarted = false
     private var configured = false
     private var isZeeho: Bool { profile.isZeeho }
-    private var dashboard: String { profile.isZeeho ? "极核" : "台铃" }
+    private var dashboard: String { profile.label.isEmpty ? (profile.isZeeho ? "极核" : "台铃") : profile.label }
 
     init(localIP: String, targetIP: String, profile: TailingDisplayProfile, phone: TailingPhoneInfo,
          ports: TailingPorts = .ios, identityProvider: @escaping () throws -> TailingIdentity = TailingIdentity.load,
@@ -185,9 +210,9 @@ final class TailingConnection: @unchecked Sendable {
         if let reverse {
             do {
                 try sendMirrorControl(reverse, start: false, identifier: UInt32.max, timeout: 0.25)
-                log("极核已发送停止投屏通知")
+                log("\(dashboard)已发送停止投屏通知")
             } catch {
-                log("极核停止通知发送失败：\(error.localizedDescription)")
+                log("\(dashboard)停止通知发送失败：\(error.localizedDescription)")
             }
         }
         sockets.forEach { $0.close() }
@@ -209,7 +234,7 @@ final class TailingConnection: @unchecked Sendable {
         do {
             while true {
                 let socket = try tracked(server.accept(remoteIP: targetIP))
-                if isZeeho { log("极核 TCP\(port) 已回连") }
+                if isZeeho { log("\(dashboard) TCP\(port) 已回连") }
                 if port == ports.video {
                     condition.lock()
                     if video == nil && !closed { video = socket; condition.broadcast() }
@@ -249,7 +274,7 @@ final class TailingConnection: @unchecked Sendable {
                 break
             case 0x103e0 where isZeeho:
                 // 0x103e1 是收件确认。序列号校验结果使用独立命令。
-                log("极核收到序列号校验请求，等待仪表继续媒体协商")
+                log("\(dashboard)收到序列号校验请求，等待仪表继续媒体协商")
             case 0x10010:
                 let object = try TailingProtocol.object(request.payload)
                 guard let name = object["HUName"] as? String, !name.isEmpty, name.utf8.count <= 128,
@@ -329,7 +354,7 @@ final class TailingConnection: @unchecked Sendable {
         guard reverseControl == nil else { return }
         try sendMirrorControl(socket, start: true, identifier: 6, timeout: 0.25)
         reverseControl = socket
-        log("极核已发送开始投屏通知")
+        log("\(dashboard)已发送开始投屏通知")
         condition.broadcast()
     }
 
@@ -377,8 +402,7 @@ final class TailingConnection: @unchecked Sendable {
                 }
                 let width = request.payload.uint16LE(0)
                 let height = request.payload.uint16LE(2)
-                let validDimensions = isZeeho ? width == 1024 && (height == 480 || height == 488)
-                    : width == 480 && height == 272
+                let validDimensions: Bool = profile.acceptsMediaSize(width: width, height: height)
                 guard validDimensions else {
                     throw TailingError.protocolFailure("仪表媒体尺寸 \(width)×\(height) 与 \(dashboard) 配置不符")
                 }
@@ -394,11 +418,11 @@ final class TailingConnection: @unchecked Sendable {
                       echoed == signature else { throw TailingError.protocolFailure("媒体身份回显不匹配") }
                 try identity.verify(echoed, huid: huid)
                 payload.appendLE(UInt32(isZeeho ? 2 : 1))
-                payload.appendLE(UInt16(profile.width))
-                payload.appendLE(UInt16(profile.height))
+                payload.appendLE(UInt16(profile.effectiveEncodeWidth))
+                payload.appendLE(UInt16(profile.effectiveEncodeHeight))
                 response = 0x11
                 condition.lock(); configured = true; condition.unlock()
-                log("媒体身份回显校验通过，仪表报告 \(width)×\(height)，回应 \(isZeeho ? "H.264" : "JPEG") / \(profile.width)×\(profile.height)")
+                log("媒体身份回显校验通过，仪表报告 \(width)×\(height)，回应 \(isZeeho ? "H.264" : "JPEG") / \(profile.effectiveEncodeWidth)×\(profile.effectiveEncodeHeight)")
             case 0x70:
                 condition.lock(); let ready = configured; condition.unlock()
                 guard ready else { throw TailingError.protocolFailure("仪表在配置完成前请求媒体启动") }

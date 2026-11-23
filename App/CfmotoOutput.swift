@@ -2,26 +2,32 @@ import CoreImage
 import Foundation
 import VideoToolbox
 
-/// 春风 / MotoPlay 仪表的输出规格。分辨率取仪表实际像素；编码时按偶数对齐
-/// （H.264 4:2:0 要求宽高为偶数，1024×515 会按 1024×516 编码）。
+/// 春风仪表（HUName 形如 CFMOTO-xxxxxx）的输出规格。
+/// 仪表原生像素：5 寸 800×386，6.2 寸 1024×515；H.264 4:2:0 要求偶数，
+/// 1024×515 按 1024×516 编码，协议里回给仪表的就是实际编码尺寸。
 struct CfmotoProfile: Equatable {
     let width: Int
     let height: Int
     let fps: Int
     let bitrate: Int
+    let label: String
 
-    static let defaultPort: UInt16 = 21000
-    static let fiveInch = CfmotoProfile(width: 800, height: 386, fps: 30, bitrate: 3_500_000)
-    static let sixInch = CfmotoProfile(width: 1024, height: 515, fps: 30, bitrate: 4_500_000)
+    static let fiveInch = CfmotoProfile(width: 800, height: 386, fps: 30, bitrate: 3_500_000, label: "春风 5 寸")
+    static let sixInch = CfmotoProfile(width: 1024, height: 515, fps: 30, bitrate: 4_500_000, label: "春风 6.2 寸")
 
     var encodeWidth: Int { width - width % 2 }
     var encodeHeight: Int { height % 2 == 0 ? height : height + 1 }
     var title: String { "\(width)×\(height)" }
+
+    /// 真正发给 TailingConnection 的仪表描述：端口、握手、媒体协商都复用极核 H.264 那一套。
+    var displayProfile: TailingDisplayProfile {
+        width == 800 ? .cfmoto5 : .cfmoto62
+    }
 }
 
-/// 把 CarPlay 的 H.264 画面重新编码成仪表规格，再按帧推到一个 UDP 端口。
-/// 与极核/九号不同，这里没有仪表拉帧的握手：起点是「App 直推」，
-/// 仪表侧协议对不上时只会黑屏，不会影响本机 CarPlay 显示。
+/// 春风仪表投屏输出：把 CarPlay 的 H.264 解回像素，缩放成仪表尺寸重新编码，
+/// 再按仪表逐帧请求（PXC 协议）送过去。握手、反向连接、媒体协商全部复用
+/// TailingConnection（和极核 6.2 寸同一套），只是尺寸和日志名不同。
 final class CfmotoOutput {
     private let queue: DispatchQueue
     private var session: Session?
@@ -32,13 +38,12 @@ final class CfmotoOutput {
 
     deinit { stop() }
 
-    func start(localAddress: String, targetAddress: String, port: UInt16, profile: CfmotoProfile,
-               mode: CfmotoUDPChannel.Mode = .rtp,
+    func start(localAddress: String, targetAddress: String, phone: TailingPhoneInfo, profile: CfmotoProfile,
                onState: @escaping (String) -> Void, onLog: @escaping (String) -> Void,
                requestKeyframe: @escaping () -> Void) {
         stop()
         let next = Session(queue: queue, localAddress: localAddress, targetAddress: targetAddress,
-                           port: port, profile: profile, mode: mode,
+                           phone: phone, profile: profile,
                            onState: onState, onLog: onLog, requestKeyframe: requestKeyframe)
         session = next
         next.start()
@@ -71,11 +76,7 @@ final class CfmotoOutput {
         private var decodeError: Error?
         private var encoded: Result<H264EncodedFrame, Error>?
 
-        private let localAddress: String
-        private let targetAddress: String
-        private let port: UInt16
-        private let mode: CfmotoUDPChannel.Mode
-        private var channel: CfmotoUDPChannel?
+        private let connection: TailingConnection
         private var decoder: TailingH264Decoder?
         private var encoder: H264Encoder?
         private var parameters = VideoParameterSets(codec: .h264)
@@ -86,65 +87,74 @@ final class CfmotoOutput {
         private var lastCodecFailure = -Double.infinity
         private var status = ""
 
-        init(queue: DispatchQueue, localAddress: String, targetAddress: String, port: UInt16,
-             profile: CfmotoProfile, mode: CfmotoUDPChannel.Mode,
-             onState: @escaping (String) -> Void, onLog: @escaping (String) -> Void,
+        init(queue: DispatchQueue, localAddress: String, targetAddress: String, phone: TailingPhoneInfo,
+             profile: CfmotoProfile, onState: @escaping (String) -> Void, onLog: @escaping (String) -> Void,
              requestKeyframe: @escaping () -> Void) {
             self.queue = queue
             self.profile = profile
+            self.connection = TailingConnection(localIP: localAddress, targetIP: targetAddress,
+                profile: profile.displayProfile, phone: phone, log: onLog)
             self.onState = onState
             self.onLog = onLog
             self.requestKeyframe = requestKeyframe
-            self.localAddress = localAddress
-            self.targetAddress = targetAddress
-            self.port = port
-            self.mode = mode
         }
 
-        private var active: Bool { lock.withLock { !cancelled } }
-
         func start() {
-            report("正在推流到春风仪表 \(profile.title) · UDP")
+            report("正在连接\(profile.label)仪表…")
             DispatchQueue.global(qos: .userInitiated).async { [self] in
-                var first = true
-                var nextFrame = ProcessInfo.processInfo.systemUptime
                 do {
-                    channel = try CfmotoUDPChannel(localIP: localAddress, targetIP: targetAddress,
-                                                   port: port, fps: profile.fps, mode: mode)
+                    try connection.start()
+                    guard active else { return }
+                    report("仪表已连接，等待 CarPlay 画面…")
+                    var first = true
+                    var nextFrame = ProcessInfo.processInfo.systemUptime
                     while active {
+                        try connection.checkHealth()
                         let ready = queue.sync { latest != nil }
-                        if !ready { Thread.sleep(forTimeInterval: 0.02); continue }
+                        if !ready { Thread.sleep(forTimeInterval: 0.05); continue }
                         let remaining = nextFrame - ProcessInfo.processInfo.systemUptime
                         if remaining > 0 { Thread.sleep(forTimeInterval: min(remaining, 0.04)); continue }
+                        try connection.waitForH264Request()
                         nextFrame = ProcessInfo.processInfo.systemUptime + 1.0 / Double(profile.fps)
+                        guard active else { break }
                         let result = queue.sync { () -> H264EncodedFrame? in
                             guard active, let image = latest else { return nil }
                             return encode(image, at: ProcessInfo.processInfo.systemUptime, forceKeyframe: first)
                         }
                         guard let result else {
-                            // 编码器刚重建时先等一帧，避免把时间片空转掉。
-                            Thread.sleep(forTimeInterval: 0.03)
+                            // 仪表已经拉帧，这里保留请求，等一帧可编码画面用关键帧补上。
+                            var recovered: H264EncodedFrame?
+                            for _ in 0..<20 where active && recovered == nil {
+                                Thread.sleep(forTimeInterval: 0.05)
+                                recovered = queue.sync {
+                                    guard let image = latest else { return nil }
+                                    return encode(image, at: ProcessInfo.processInfo.systemUptime, forceKeyframe: true)
+                                }
+                            }
+                            guard let recovered else { throw TailingError.timeout("等待 H.264 编码画面") }
+                            try connection.sendH264(recovered.data)
+                            first = false
+                            report("正在投屏 · \(profile.title) · H.264")
                             continue
                         }
-                        try channel?.send(accessUnit: result.data, keyframe: result.isKeyframe)
+                        try connection.sendH264(result.data)
                         first = false
-                        report("正在投屏 · \(profile.title) · H.264 · UDP")
+                        report("正在投屏 · \(profile.title) · H.264")
                     }
                 } catch {
                     if active {
-                        onLog("春风输出失败：\(error.localizedDescription)")
-                        report("春风连接失败：\(error.localizedDescription)")
+                        onLog("\(profile.label)输出失败：\(error.localizedDescription)")
+                        report("\(profile.label)连接失败：\(error.localizedDescription)")
                     }
                 }
-                channel?.close()
+                connection.close()
                 queue.async { [self] in close() }
             }
         }
 
-        func cancel() {
-            lock.withLock { cancelled = true }
-            channel?.close()
-        }
+        private var active: Bool { lock.withLock { !cancelled } }
+
+        func cancel() { lock.withLock { cancelled = true }; connection.close() }
 
         func append(_ data: Data, keyframe: Bool) {
             let (accepted, needsKeyframe) = lock.withLock {
@@ -218,15 +228,15 @@ final class CfmotoOutput {
                 if encoder == nil {
                     guard now - lastCodecFailure >= 0.5 else { return nil }
                     encoder = try H264Encoder(width: profile.encodeWidth, height: profile.encodeHeight,
-                                              fps: profile.fps, bitrate: profile.bitrate) { [weak self] result in
+                                              fps: Int32(profile.fps), bitrate: profile.bitrate) { [weak self] result in
                         guard let self else { return }
                         self.lock.withLock { self.encoded = result }
                     }
                     lastKeyframe = -.infinity
                 }
                 guard let encoder else { return nil }
-                try encoder.encode(try fittedImage(image),
-                                   presentationTime: CMTime(seconds: now, preferredTimescale: 1_000_000),
+                let stamp = CMTime(seconds: now, preferredTimescale: 1_000_000)
+                try encoder.encode(try fittedImage(image), presentationTime: stamp,
                                    forceKeyframe: forceKeyframe || lastKeyframe == -.infinity)
                 encoder.complete()
                 let result = lock.withLock {
@@ -255,7 +265,7 @@ final class CfmotoOutput {
             let status = CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA,
                                              [kCVPixelBufferIOSurfacePropertiesKey: [:]] as CFDictionary, &buffer)
             guard status == kCVReturnSuccess, let buffer else {
-                throw ConfigurationError("无法分配春风缩放画面（\(status)）")
+                throw ConfigurationError("无法分配\(profile.label)缩放画面（\(status)）")
             }
             let source = CIImage(cvPixelBuffer: image)
             let scale = min(CGFloat(width) / source.extent.width, CGFloat(height) / source.extent.height)
@@ -271,7 +281,7 @@ final class CfmotoOutput {
 
         private func logCodecFailure(_ stage: String, _ error: Error) {
             let now = ProcessInfo.processInfo.systemUptime
-            if now - lastCodecFailure > 4 { onLog("春风\(stage)恢复：\(error.localizedDescription)") }
+            if now - lastCodecFailure > 4 { onLog("\(profile.label)\(stage)恢复：\(error.localizedDescription)") }
             lastCodecFailure = now
         }
 
@@ -286,7 +296,7 @@ final class CfmotoOutput {
 
         func close() {
             lock.withLock { acceptingFrames = false }
-            channel?.close()
+            connection.close()
             decoder?.invalidate()
             decoder = nil
             encoder?.invalidate()

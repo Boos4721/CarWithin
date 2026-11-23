@@ -106,8 +106,11 @@ final class NativeReceiver {
             }
             if let profile = configuration.cfmotoProfile, let target = configuration.cfmotoAddress {
                 let output = profile == .sixInch ? self.cfmoto62 : self.cfmoto5
-                output.start(localAddress: configuration.address, targetAddress: target,
-                             port: configuration.cfmotoPort, profile: profile,
+                let phone = configuration.tailingPhoneInfo ?? TailingPhoneInfo(package: Bundle.main.bundleIdentifier ?? "CarWithin",
+                    versionCode: Int(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0") ?? 0,
+                    model: "iPhone", systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
+                    width: configuration.width, height: configuration.height, rotation: 1)
+                output.start(localAddress: configuration.address, targetAddress: target, phone: phone, profile: profile,
                              onState: { [weak self] in self?.onCfmotoState?($0) },
                              onLog: { [weak self] in self?.log($0) },
                              requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "春风解码恢复") })

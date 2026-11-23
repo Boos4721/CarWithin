@@ -27,9 +27,8 @@ struct ReceiverConfiguration {
     /// Head unit IPv4 for CarLife discovery; nil sweeps the local network.
     var carLifeAddress: String?
     var zeehoAddress: String?
-    /// 春风 MotoPlay 仪表：UDP 直推地址、端口与画面规格。
+    /// 春风仪表：走和极核同一套 PXC（TCP 10922/10711/10710 + 10930 通知），只需要仪表 IP。
     var cfmotoAddress: String?
-    var cfmotoPort: UInt16 = CfmotoProfile.defaultPort
     var cfmotoProfile: CfmotoProfile?
     var ninebotAddress: String?
     var tailingAddress: String?
@@ -161,9 +160,6 @@ struct ReceiverConfiguration {
                   !cfmotoAddress.hasPrefix("127."), !cfmotoAddress.hasPrefix("0."),
                   !cfmotoAddress.hasPrefix("169.254."), UInt32(bigEndian: target.s_addr) < 0xe0000000 else {
                 throw ConfigurationError("请输入有效的春风仪表 IPv4 地址，与本机 IP 不同。")
-            }
-            guard cfmotoPort != 0 else {
-                throw ConfigurationError("春风 UDP 端口不能为 0。")
             }
         }
         if let ninebotAddress {
