@@ -106,17 +106,34 @@ final class TailingConnection: @unchecked Sendable {
             DispatchQueue.global(qos: .userInitiated).async { [self] in accept(server, port: port) }
         }
         log("\(dashboard) TCP 已监听 \(localIP):\(ports.control)/\(ports.auxiliary)/\(ports.video)，正在协商")
-        let announcement = try tracked(TailingSocket.create())
-        defer { announcement.close() }
-        try announcement.connect(localIP: localIP, remoteIP: targetIP, port: ports.announcement)
-        try announcement.write(TailingProtocol.control(0x70000010, payload: TailingProtocol.json([
-            "phoneType": "iOS", "packageName": phone.package
-        ])))
-        let reply = try TailingProtocol.readControl { try announcement.readExactly($0, timeout: 3) }
-        guard reply.command == 0x70000011,
-              try TailingProtocol.object(reply.payload)["status"] as? Bool == true else {
-            throw TailingError.protocolFailure("仪表未接受 iOS 投屏请求")
+        // 通知仪表反向连接。这里失败不再直接终止整个输出：
+        // 换网/仪表还没起来/本地网络权限未放行时都会连不上，重试几次往往就能恢复。
+        var lastAnnouncementError: Error?
+        for attempt in 1...4 {
+            do {
+                let announcement = try tracked(TailingSocket.create())
+                defer { announcement.close() }
+                try announcement.connect(localIP: localIP, remoteIP: targetIP, port: ports.announcement)
+                try announcement.write(TailingProtocol.control(0x70000010, payload: TailingProtocol.json([
+                    "phoneType": "iOS", "packageName": phone.package
+                ])))
+                let reply = try TailingProtocol.readControl { try announcement.readExactly($0, timeout: 3) }
+                guard reply.command == 0x70000011,
+                      try TailingProtocol.object(reply.payload)["status"] as? Bool == true else {
+                    throw TailingError.protocolFailure("仪表未接受 iOS 投屏请求")
+                }
+                lastAnnouncementError = nil
+                break
+            } catch {
+                lastAnnouncementError = error
+                log("\(dashboard) 通知仪表\(targetIP):\(ports.announcement) 第 \(attempt) 次失败：\(error.localizedDescription)")
+                if let tailing = error as? TailingError, case .system(_, let code) = tailing, code == EPERM {
+                    log("系统拒绝访问局域网（EPERM）。请到 iPhone「设置 → 隐私与安全性 → 本地网络」把 CarWithin 打开后重试。")
+                }
+                if attempt < 4 { Thread.sleep(forTimeInterval: 1.2) }
+            }
         }
+        if let lastAnnouncementError { throw lastAnnouncementError }
         let deadline = Date().addingTimeInterval(20)
         condition.lock()
         defer { condition.unlock() }
