@@ -22,7 +22,7 @@ jobs:
             git config user.name "CarWithin builder"
             git config user.email "builder@users.noreply.github.com"
             git add -A
-            git commit -m "Apply CFMOTO UDP output [skip ci]"
+            git commit -m "Apply CFMOTO patch [skip ci]"
             git push || echo "push skipped"
           else
             echo "patch already applied or context mismatch; continue"
@@ -30,9 +30,20 @@ jobs:
 
       - name: Build
         run: |
+          set +e
           xcodebuild -project TDSCarKit.xcodeproj -scheme TDSCarKit -configuration Release \
             -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build 2>&1 | tee build.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            cp build.log ci-build-log.txt
+            git config user.name "CarWithin builder"
+            git config user.email "builder@users.noreply.github.com"
+            git add -f ci-build-log.txt
+            git commit -m "CI build log [skip ci]" || true
+            git push || true
+          fi
+          exit $status
 
       - name: Package IPA
         run: |
