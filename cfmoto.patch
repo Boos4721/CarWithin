@@ -1,0 +1,817 @@
+diff --git a/.github/workflows/build-unsigned-ipa.yml b/.github/workflows/build-unsigned-ipa.yml
+new file mode 100644
+index 0000000..d1338cf
+--- /dev/null
++++ b/.github/workflows/build-unsigned-ipa.yml
+@@ -0,0 +1,46 @@
++name: Build unsigned IPA
++
++on:
++  push:
++    branches: [ main ]
++  workflow_dispatch:
++
++jobs:
++  build:
++    runs-on: macos-14
++    steps:
++      - uses: actions/checkout@v4
++
++      - name: Select Xcode
++        uses: maxim-lobanov/setup-xcode@v1
++        with:
++          xcode-version: '16.0'
++
++      - name: Build (no signing)
++        run: |
++          set -o pipefail
++          xcodebuild \
++            -project TDSCarKit.xcodeproj \
++            -scheme TDSCarKit \
++            -configuration Release \
++            -sdk iphoneos \
++            -destination 'generic/platform=iOS' \
++            -derivedDataPath build \
++            CODE_SIGNING_ALLOWED=NO \
++            CODE_SIGNING_REQUIRED=NO \
++            CODE_SIGN_IDENTITY="" \
++            build
++
++      - name: Package IPA
++        run: |
++          APP="build/Build/Products/Release-iphoneos/TDSCarKit.app"
++          test -d "$APP"
++          mkdir -p Payload
++          cp -R "$APP" Payload/
++          zip -qry CarWithin-unsigned.ipa Payload
++          ls -lh CarWithin-unsigned.ipa
++
++      - uses: actions/upload-artifact@v4
++        with:
++          name: CarWithin-unsigned-ipa
++          path: CarWithin-unsigned.ipa
+diff --git a/App/CfmotoOutput.swift b/App/CfmotoOutput.swift
+new file mode 100644
+index 0000000..661ba47
+--- /dev/null
++++ b/App/CfmotoOutput.swift
+@@ -0,0 +1,297 @@
++import CoreImage
++import Foundation
++import VideoToolbox
++
++/// 春风 / MotoPlay 仪表的输出规格。分辨率取仪表实际像素；编码时按偶数对齐
++/// （H.264 4:2:0 要求宽高为偶数，1024×515 会按 1024×516 编码）。
++struct CfmotoProfile: Equatable {
++    let width: Int
++    let height: Int
++    let fps: Int
++    let bitrate: Int
++
++    static let defaultPort: UInt16 = 21000
++    static let fiveInch = CfmotoProfile(width: 800, height: 386, fps: 30, bitrate: 3_500_000)
++    static let sixInch = CfmotoProfile(width: 1024, height: 515, fps: 30, bitrate: 4_500_000)
++
++    var encodeWidth: Int { width - width % 2 }
++    var encodeHeight: Int { height % 2 == 0 ? height : height + 1 }
++    var title: String { "\(width)×\(height)" }
++}
++
++/// 把 CarPlay 的 H.264 画面重新编码成仪表规格，再按帧推到一个 UDP 端口。
++/// 与极核/九号不同，这里没有仪表拉帧的握手：起点是「App 直推」，
++/// 仪表侧协议对不上时只会黑屏，不会影响本机 CarPlay 显示。
++final class CfmotoOutput {
++    private let queue: DispatchQueue
++    private var session: Session?
++
++    init(name: String = "cfmoto") {
++        queue = DispatchQueue(label: "CarWithin.\(name)", qos: .userInitiated)
++    }
++
++    deinit { stop() }
++
++    func start(localAddress: String, targetAddress: String, port: UInt16, profile: CfmotoProfile,
++               mode: CfmotoUDPChannel.Mode = .rtp,
++               onState: @escaping (String) -> Void, onLog: @escaping (String) -> Void,
++               requestKeyframe: @escaping () -> Void) {
++        stop()
++        let next = Session(queue: queue, localAddress: localAddress, targetAddress: targetAddress,
++                           port: port, profile: profile, mode: mode,
++                           onState: onState, onLog: onLog, requestKeyframe: requestKeyframe)
++        session = next
++        next.start()
++    }
++
++    func append(_ data: Data, codec: VideoCodec, keyframe: Bool) {
++        guard codec == .h264 else { return }
++        session?.append(data, keyframe: keyframe)
++    }
++
++    func stop() {
++        guard let previous = session else { return }
++        session = nil
++        previous.cancel()
++        queue.async { previous.close() }
++    }
++
++    private final class Session: @unchecked Sendable {
++        let queue: DispatchQueue
++        let profile: CfmotoProfile
++        let onState: (String) -> Void
++        let onLog: (String) -> Void
++        let requestKeyframe: () -> Void
++        private let lock = NSLock()
++        private var cancelled = false
++        private var acceptingFrames = true
++        private var queued = 0
++        private var skipping = false
++        private var decoded: CVPixelBuffer?
++        private var decodeError: Error?
++        private var encoded: Result<H264EncodedFrame, Error>?
++
++        private let localAddress: String
++        private let targetAddress: String
++        private let port: UInt16
++        private let mode: CfmotoUDPChannel.Mode
++        private var channel: CfmotoUDPChannel?
++        private var decoder: TailingH264Decoder?
++        private var encoder: H264Encoder?
++        private var parameters = VideoParameterSets(codec: .h264)
++        private var waitingForIDR = true
++        private var latest: CVPixelBuffer?
++        private lazy var compositor = CIContext(options: [.useSoftwareRenderer: true, .cacheIntermediates: false])
++        private var lastKeyframe = -Double.infinity
++        private var lastCodecFailure = -Double.infinity
++        private var status = ""
++
++        init(queue: DispatchQueue, localAddress: String, targetAddress: String, port: UInt16,
++             profile: CfmotoProfile, mode: CfmotoUDPChannel.Mode,
++             onState: @escaping (String) -> Void, onLog: @escaping (String) -> Void,
++             requestKeyframe: @escaping () -> Void) {
++            self.queue = queue
++            self.profile = profile
++            self.onState = onState
++            self.onLog = onLog
++            self.requestKeyframe = requestKeyframe
++            self.localAddress = localAddress
++            self.targetAddress = targetAddress
++            self.port = port
++            self.mode = mode
++        }
++
++        private var active: Bool { lock.withLock { !cancelled } }
++
++        func start() {
++            report("正在推流到春风仪表 \(profile.title) · UDP")
++            DispatchQueue.global(qos: .userInitiated).async { [self] in
++                var first = true
++                var nextFrame = ProcessInfo.processInfo.systemUptime
++                do {
++                    channel = try CfmotoUDPChannel(localIP: localAddress, targetIP: targetAddress,
++                                                   port: port, fps: profile.fps, mode: mode)
++                    while active {
++                        let ready = queue.sync { latest != nil }
++                        if !ready { Thread.sleep(forTimeInterval: 0.02); continue }
++                        let remaining = nextFrame - ProcessInfo.processInfo.systemUptime
++                        if remaining > 0 { Thread.sleep(forTimeInterval: min(remaining, 0.04)); continue }
++                        nextFrame = ProcessInfo.processInfo.systemUptime + 1.0 / Double(profile.fps)
++                        let result = queue.sync { () -> H264EncodedFrame? in
++                            guard active, let image = latest else { return nil }
++                            return encode(image, at: ProcessInfo.processInfo.systemUptime, forceKeyframe: first)
++                        }
++                        guard let result else {
++                            // 编码器刚重建时先等一帧，避免把时间片空转掉。
++                            Thread.sleep(forTimeInterval: 0.03)
++                            continue
++                        }
++                        try channel?.send(accessUnit: result.data, keyframe: result.isKeyframe)
++                        first = false
++                        report("正在投屏 · \(profile.title) · H.264 · UDP")
++                    }
++                } catch {
++                    if active {
++                        onLog("春风输出失败：\(error.localizedDescription)")
++                        report("春风连接失败：\(error.localizedDescription)")
++                    }
++                }
++                channel?.close()
++                queue.async { [self] in close() }
++            }
++        }
++
++        func cancel() {
++            lock.withLock { cancelled = true }
++            channel?.close()
++        }
++
++        func append(_ data: Data, keyframe: Bool) {
++            let (accepted, needsKeyframe) = lock.withLock {
++                guard !cancelled, acceptingFrames else { return (false, false) }
++                if queued >= 6 {
++                    let request = !skipping
++                    skipping = true
++                    return (false, request)
++                }
++                guard !skipping || keyframe else { return (false, false) }
++                skipping = false
++                queued += 1
++                return (true, false)
++            }
++            if needsKeyframe { requestKeyframe() }
++            guard accepted else { return }
++            queue.async { [self] in
++                defer { lock.withLock { queued -= 1 } }
++                guard lock.withLock({ !cancelled && acceptingFrames }) else { return }
++                decode(data, keyframe: keyframe)
++            }
++        }
++
++        private func decode(_ data: Data, keyframe: Bool) {
++            do {
++                var picture: [Data] = []
++                for unit in try AnnexB.units(in: data) {
++                    if VideoCodec.h264.parameterSet(unit) != nil {
++                        if parameters.absorb(unit) { waitingForIDR = true }
++                    } else { picture.append(unit) }
++                }
++                if waitingForIDR {
++                    guard parameters.isComplete, keyframe, !picture.isEmpty else { return }
++                    guard ProcessInfo.processInfo.systemUptime - lastCodecFailure >= 0.5 else {
++                        requestKeyframe()
++                        return
++                    }
++                    decoder?.invalidate()
++                    decoder = try TailingH264Decoder(configuration: parameters.decoderConfigurationRecord(),
++                        output: { [weak self] image in
++                            guard let self else { return }
++                            self.lock.withLock { self.decoded = image }
++                        }, failure: { [weak self] error in
++                            guard let self else { return }
++                            self.lock.withLock { self.decodeError = error }
++                        })
++                    waitingForIDR = false
++                }
++                guard let decoder, !picture.isEmpty else { return }
++                try decoder.decode(AnnexB.lengthPrefixed(picture),
++                    presentationTimeMicroseconds: Int64(ProcessInfo.processInfo.systemUptime * 1_000_000), isKeyframe: keyframe)
++                decoder.waitForFrames()
++                let (image, error) = lock.withLock {
++                    defer { decoded = nil; decodeError = nil }
++                    return (decoded, decodeError)
++                }
++                if let error { throw error }
++                if let image { latest = image }
++            } catch {
++                decoder?.invalidate()
++                decoder = nil
++                lock.withLock { decoded = nil; decodeError = nil }
++                waitingForIDR = true
++                logCodecFailure("解码", error)
++                requestKeyframe()
++            }
++        }
++
++        private func encode(_ image: CVPixelBuffer, at now: Double, forceKeyframe: Bool) -> H264EncodedFrame? {
++            do {
++                if encoder == nil {
++                    guard now - lastCodecFailure >= 0.5 else { return nil }
++                    encoder = try H264Encoder(width: profile.encodeWidth, height: profile.encodeHeight,
++                                              fps: profile.fps, bitrate: profile.bitrate) { [weak self] result in
++                        guard let self else { return }
++                        self.lock.withLock { self.encoded = result }
++                    }
++                    lastKeyframe = -.infinity
++                }
++                guard let encoder else { return nil }
++                try encoder.encode(try fittedImage(image),
++                                   presentationTime: CMTime(seconds: now, preferredTimescale: 1_000_000),
++                                   forceKeyframe: forceKeyframe || lastKeyframe == -.infinity)
++                encoder.complete()
++                let result = lock.withLock {
++                    defer { encoded = nil }
++                    return encoded
++                }
++                let frame = try result?.get()
++                if frame?.isKeyframe == true { lastKeyframe = now }
++                return frame
++            } catch H264EncoderError.frameDropped {
++                return nil
++            } catch {
++                encoder?.invalidate()
++                encoder = nil
++                lastKeyframe = -.infinity
++                lock.withLock { encoded = nil }
++                logCodecFailure("编码", error)
++                return nil
++            }
++        }
++
++        private func fittedImage(_ image: CVPixelBuffer) throws -> CVPixelBuffer {
++            let width = profile.encodeWidth, height = profile.encodeHeight
++            if CVPixelBufferGetWidth(image) == width, CVPixelBufferGetHeight(image) == height { return image }
++            var buffer: CVPixelBuffer?
++            let status = CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA,
++                                             [kCVPixelBufferIOSurfacePropertiesKey: [:]] as CFDictionary, &buffer)
++            guard status == kCVReturnSuccess, let buffer else {
++                throw ConfigurationError("无法分配春风缩放画面（\(status)）")
++            }
++            let source = CIImage(cvPixelBuffer: image)
++            let scale = min(CGFloat(width) / source.extent.width, CGFloat(height) / source.extent.height)
++            let scaled = source.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
++            let positioned = scaled.transformed(by: CGAffineTransform(
++                translationX: (CGFloat(width) - scaled.extent.width) / 2,
++                y: (CGFloat(height) - scaled.extent.height) / 2))
++            let bounds = CGRect(x: 0, y: 0, width: width, height: height)
++            compositor.render(positioned.composited(over: CIImage(color: .black)).cropped(to: bounds),
++                              to: buffer, bounds: bounds, colorSpace: CGColorSpaceCreateDeviceRGB())
++            return buffer
++        }
++
++        private func logCodecFailure(_ stage: String, _ error: Error) {
++            let now = ProcessInfo.processInfo.systemUptime
++            if now - lastCodecFailure > 4 { onLog("春风\(stage)恢复：\(error.localizedDescription)") }
++            lastCodecFailure = now
++        }
++
++        private func report(_ message: String) {
++            guard active, message != status else { return }
++            status = message
++            DispatchQueue.main.async { [weak self] in
++                guard let self, self.active else { return }
++                self.onState(message)
++            }
++        }
++
++        func close() {
++            lock.withLock { acceptingFrames = false }
++            channel?.close()
++            decoder?.invalidate()
++            decoder = nil
++            encoder?.invalidate()
++            encoder = nil
++            latest = nil
++        }
++    }
++}
+diff --git a/App/CfmotoUDPChannel.swift b/App/CfmotoUDPChannel.swift
+new file mode 100644
+index 0000000..aefed5c
+--- /dev/null
++++ b/App/CfmotoUDPChannel.swift
+@@ -0,0 +1,148 @@
++// 春风 MotoPlay 仪表 UDP 通道：一帧 H.264 访问单元打成一个 RTP 时间戳。
++import Darwin
++import Foundation
++
++/// Sends H.264 access units over UDP.
++///
++/// `.rtp` 按 RFC 6184 打包（载荷类型 96，超过 MTU 用 FU-A 分片），这是大多数车机/仪表
++/// 视频端口期望的形态；`.rawAnnexB` 不加头，直接把 Annex-B 字节切块发出，只用于电脑自测：
++/// `ffplay -f h264 udp://0.0.0.0:21000`。
++final class CfmotoUDPChannel {
++    enum Mode { case rtp, rawAnnexB }
++
++    private let fd: Int32
++    private let mode: Mode
++    private let fps: Int
++    private let payloadLimit = 1400
++    private var sequence: UInt16 = 0
++    private var timestamp: UInt32 = 0
++    private let ssrc: UInt32
++    private let closeLock = NSLock()
++    private var closed = false
++
++    init(localIP: String, targetIP: String, port: UInt16, fps: Int, mode: Mode) throws {
++        var local = sockaddr_in()
++        local.sin_family = sa_family_t(AF_INET)
++        local.sin_port = 0
++        guard inet_pton(AF_INET, localIP, &local.sin_addr) == 1 else {
++            throw ConfigurationError("春风的本地地址无效：\(localIP)")
++        }
++        let socketFD = socket(AF_INET, SOCK_DGRAM, 0)
++        guard socketFD >= 0 else { throw TailingError.system("创建春风 UDP 套接字", errno) }
++        let bound = withUnsafePointer(to: &local) { pointer in
++            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
++                bind(socketFD, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
++            }
++        }
++        guard bound == 0 else {
++            let code = errno
++            Darwin.close(socketFD)
++            throw TailingError.system("绑定春风 UDP 地址", code)
++        }
++        var remote = sockaddr_in()
++        remote.sin_family = sa_family_t(AF_INET)
++        remote.sin_port = port.bigEndian
++        guard inet_pton(AF_INET, targetIP, &remote.sin_addr) == 1 else {
++            Darwin.close(socketFD)
++            throw ConfigurationError("春风仪表地址无效：\(targetIP)")
++        }
++        let connected = withUnsafePointer(to: &remote) { pointer in
++            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
++                connect(socketFD, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
++            }
++        }
++        guard connected == 0 else {
++            let code = errno
++            Darwin.close(socketFD)
++            throw TailingError.system("连接春风仪表 UDP 端口", code)
++        }
++        self.fd = socketFD
++        self.mode = mode
++        self.fps = max(1, fps)
++        self.ssrc = UInt32.random(in: 1...UInt32.max)
++    }
++
++    deinit { close() }
++
++    func send(accessUnit: Data, keyframe: Bool) throws {
++        switch mode {
++        case .rtp:
++            let units = try AnnexB.units(in: accessUnit)
++            guard !units.isEmpty else { return }
++            timestamp &+= UInt32(90_000 / fps)
++            try sendRTP(units)
++        case .rawAnnexB:
++            try sendRaw(accessUnit)
++        }
++    }
++
++    func close() {
++        closeLock.lock()
++        defer { closeLock.unlock() }
++        guard !closed else { return }
++        closed = true
++        Darwin.close(fd)
++    }
++
++    private func sendRTP(_ units: [Data]) throws {
++        for (index, unit) in units.enumerated() {
++            guard let first = unit.first else { continue }
++            let lastUnit = index == units.count - 1
++            if unit.count <= payloadLimit {
++                var packet = rtpHeader(marker: lastUnit)
++                packet.append(unit)
++                try write(packet)
++                continue
++            }
++            // FU-A：指示字节沿用原 NAL 的 F/NRI，后续分片带起始/结束位。
++            let indicator = (first & 0xE0) | 28
++            let type = first & 0x1F
++            var offset = 1
++            while offset < unit.count {
++                let size = min(payloadLimit - 2, unit.count - offset)
++                let ends = offset + size >= unit.count
++                var packet = rtpHeader(marker: lastUnit && ends)
++                packet.append(indicator)
++                packet.append((offset == 1 ? 0x80 : 0) | (ends ? 0x40 : 0) | type)
++                packet.append(contentsOf: unit[offset..<(offset + size)])
++                try write(packet)
++                offset += size
++            }
++        }
++    }
++
++    private func sendRaw(_ data: Data) throws {
++        var offset = 0
++        while offset < data.count {
++            let size = min(payloadLimit, data.count - offset)
++            try write(data[offset..<(offset + size)])
++            offset += size
++        }
++    }
++
++    private func rtpHeader(marker: Bool) -> Data {
++        var header = Data(capacity: 12)
++        header.append(0x80)
++        header.append((marker ? 0x80 : 0x00) | 96)
++        header.append(UInt8(truncatingIfNeeded: sequence >> 8))
++        header.append(UInt8(truncatingIfNeeded: sequence))
++        sequence &+= 1
++        header.append(UInt8(truncatingIfNeeded: timestamp >> 24))
++        header.append(UInt8(truncatingIfNeeded: timestamp >> 16))
++        header.append(UInt8(truncatingIfNeeded: timestamp >> 8))
++        header.append(UInt8(truncatingIfNeeded: timestamp))
++        header.append(UInt8(truncatingIfNeeded: ssrc >> 24))
++        header.append(UInt8(truncatingIfNeeded: ssrc >> 16))
++        header.append(UInt8(truncatingIfNeeded: ssrc >> 8))
++        header.append(UInt8(truncatingIfNeeded: ssrc))
++        return header
++    }
++
++    private func write(_ data: Data) throws {
++        let result = data.withUnsafeBytes { (buffer: UnsafeRawBufferPointer) -> Int in
++            guard let base = buffer.baseAddress else { return 0 }
++            return Darwin.send(fd, base, buffer.count, 0)
++        }
++        if result < 0 { throw TailingError.system("发送春风 UDP 画面", errno) }
++    }
++}
+diff --git a/App/NativeReceiver.swift b/App/NativeReceiver.swift
+index c30941f..86adf3c 100644
+--- a/App/NativeReceiver.swift
++++ b/App/NativeReceiver.swift
+@@ -51,6 +51,9 @@ final class NativeReceiver {
+     var onZeehoState: ((String) -> Void)?
+     private let ninebot = NinebotOutput()
+     var onNinebotState: ((String) -> Void)?
++    private let cfmoto5 = CfmotoOutput(name: "cfmoto5")
++    private let cfmoto62 = CfmotoOutput(name: "cfmoto62")
++    var onCfmotoState: ((String) -> Void)?
+     private let tailing = TailingOutput()
+     var onTailingState: ((String) -> Void)?
+     private lazy var carLink = CarLinkRelay(queue: queue)
+@@ -101,6 +104,14 @@ final class NativeReceiver {
+                     onLog: { [weak self] in self?.log($0) },
+                     requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "极核解码恢复") })
+             }
++            if let profile = configuration.cfmotoProfile, let target = configuration.cfmotoAddress {
++                let output = profile == .sixInch ? self.cfmoto62 : self.cfmoto5
++                output.start(localAddress: configuration.address, targetAddress: target,
++                             port: configuration.cfmotoPort, profile: profile,
++                             onState: { [weak self] in self?.onCfmotoState?($0) },
++                             onLog: { [weak self] in self?.log($0) },
++                             requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "春风解码恢复") })
++            }
+             if let target = configuration.ninebotAddress {
+                 self.ninebot.start(localAddress: configuration.address, targetAddress: target,
+                     onState: { [weak self] in self?.onNinebotState?($0) },
+@@ -321,6 +332,8 @@ final class NativeReceiver {
+         carLife.stop()
+         zeeho.stop()
+         ninebot.stop()
++        cfmoto5.stop()
++        cfmoto62.stop()
+         tailing.stop()
+         carLink.stop()
+         #if DEBUG
+@@ -417,6 +430,10 @@ final class NativeReceiver {
+                     self.videoOutput.append(data, codec: codec)
+                     if configuration.zeehoAddress != nil { self.zeeho.append(data, codec: codec, keyframe: keyframe) }
+                     if configuration.ninebotAddress != nil { self.ninebot.append(data, codec: codec, keyframe: keyframe) }
++                    if let cfmoto = configuration.cfmotoProfile {
++                        let output = cfmoto == .sixInch ? self.cfmoto62 : self.cfmoto5
++                        output.append(data, codec: codec, keyframe: keyframe)
++                    }
+                     if configuration.tailingAddress != nil { self.tailing.append(data, codec: codec) }
+                     if configuration.carLifeEnabled { self.carLife.append(data, codec: codec) }
+                     if configuration.carLinkRelayAddress != nil { self.carLink.append(data, codec: codec) }
+diff --git a/App/ReceiverConfiguration.swift b/App/ReceiverConfiguration.swift
+index 59cade4..7d8d143 100644
+--- a/App/ReceiverConfiguration.swift
++++ b/App/ReceiverConfiguration.swift
+@@ -27,6 +27,10 @@ struct ReceiverConfiguration {
+     /// Head unit IPv4 for CarLife discovery; nil sweeps the local network.
+     var carLifeAddress: String?
+     var zeehoAddress: String?
++    /// 春风 MotoPlay 仪表：UDP 直推地址、端口与画面规格。
++    var cfmotoAddress: String?
++    var cfmotoPort: UInt16 = CfmotoProfile.defaultPort
++    var cfmotoProfile: CfmotoProfile?
+     var ninebotAddress: String?
+     var tailingAddress: String?
+     var tailingPhoneInfo: TailingPhoneInfo?
+@@ -151,6 +155,17 @@ struct ReceiverConfiguration {
+                 throw ConfigurationError("请输入有效的极核仪表 IPv4 地址，与本机 IP 不同。")
+             }
+         }
++        if let cfmotoAddress {
++            var target = in_addr()
++            guard inet_pton(AF_INET, cfmotoAddress, &target) == 1, cfmotoAddress != address,
++                  !cfmotoAddress.hasPrefix("127."), !cfmotoAddress.hasPrefix("0."),
++                  !cfmotoAddress.hasPrefix("169.254."), UInt32(bigEndian: target.s_addr) < 0xe0000000 else {
++                throw ConfigurationError("请输入有效的春风仪表 IPv4 地址，与本机 IP 不同。")
++            }
++            guard cfmotoPort != 0 else {
++                throw ConfigurationError("春风 UDP 端口不能为 0。")
++            }
++        }
+         if let ninebotAddress {
+             var target = in_addr()
+             guard inet_pton(AF_INET, ninebotAddress, &target) == 1, ninebotAddress != address,
+diff --git a/App/ReceiverViewController.swift b/App/ReceiverViewController.swift
+index aa4de76..8035455 100644
+--- a/App/ReceiverViewController.swift
++++ b/App/ReceiverViewController.swift
+@@ -130,6 +130,23 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate
+         zeehoStatus.text = message
+         zeehoCardStatus.text = message
+     }
++    private let cfmotoCard = UIStackView()
++    private let cfmotoCardStatus = UILabel()
++    private let cfmotoStatus = StatusLabel()
++    private let cfmotoAddressField = UITextField()
++    private let cfmotoPortField = UITextField()
++    /// 春风 5 寸 / 6.2 寸共用地址与端口，只有画面规格不同。
++    private var cfmotoProfile: CfmotoProfile? {
++        switch outputMode {
++        case .cfmoto5: return .fiveInch
++        case .cfmoto62: return .sixInch
++        default: return nil
++        }
++    }
++    private func updateCfmotoStatus(_ message: String) {
++        cfmotoStatus.text = message
++        cfmotoCardStatus.text = message
++    }
+     private let ninebotCard = UIStackView()
+     private let ninebotCardStatus = UILabel()
+     private let ninebotStatus = StatusLabel()
+@@ -171,10 +188,13 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate
+     private lazy var pictureInPicture = CarPlayPictureInPicture(surface: videoSurface)
+     private let keepAlive = BackgroundKeepAlive()
+     private let keepAliveSwitch = UISwitch()
+-    private let headUnitOutput = ChoiceMenu(items: ["浏览器", "CarLife", "AirPlay", "台铃 4.3 寸", "九号 5 寸", "极核 6.2 寸"])
++    private let headUnitOutput = ChoiceMenu(items: ["浏览器", "CarLife", "AirPlay", "台铃 4.3 寸", "九号 5 寸", "极核 6.2 寸", "春风 5 寸", "春风 6.2 寸"])
+     private enum HeadUnitOutput: Int {
+-        case browser, carLife, airPlay, tailing, ninebot, zeeho
+-        var usesInstrumentWiFi: Bool { self == .tailing || self == .ninebot || self == .zeeho }
++        case browser, carLife, airPlay, tailing, ninebot, zeeho, cfmoto5, cfmoto62
++        var usesInstrumentWiFi: Bool {
++            self == .tailing || self == .ninebot || self == .zeeho || self == .cfmoto5 || self == .cfmoto62
++        }
++        var cfmoto: Bool { self == .cfmoto5 || self == .cfmoto62 }
+     }
+     private var airPlayStreamID: UUID?
+     private var airPlayStreamURL: URL?
+@@ -428,6 +448,15 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate
+         zeehoSettings.addAction(UIAction { [weak self] _ in self?.revealSettings(output: true) }, for: .touchUpInside)
+         zeehoCard.addArrangedSubview(zeehoSettings)
+         stack.addArrangedSubview(zeehoCard)
++
++        configureConnectionCard(cfmotoCard, title: "春风仪表连接", symbol: "scooter", color: .systemBlue,
++            instructions: "让 iPhone 加入春风仪表 Wi-Fi，打开仪表投屏后启动 CarPlay。春风走 UDP 直推，不需要仪表先发起连接。", status: cfmotoCardStatus)
++        let cfmotoSettings = UIButton(type: .system)
++        cfmotoSettings.configuration = .tinted()
++        cfmotoSettings.configuration?.title = "连接设置"
++        cfmotoSettings.addAction(UIAction { [weak self] _ in self?.revealSettings(output: true) }, for: .touchUpInside)
++        cfmotoCard.addArrangedSubview(cfmotoSettings)
++        stack.addArrangedSubview(cfmotoCard)
+         configureConnectionCard(ninebotCard, title: "九号 5 寸连接", symbol: "scooter", color: .systemBlue,
+             instructions: "让 iPhone 加入仪表 Wi-Fi，打开仪表投屏后启动 CarPlay。", status: ninebotCardStatus)
+         let ninebotSettings = UIButton(type: .system)
+@@ -570,6 +599,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate
+             guard let self, self.running, self.outputMode == .zeeho else { return }
+             self.updateZeehoStatus(message)
+         }
++        receiver.onCfmotoState = { [weak self] message in
++            guard let self, self.running, self.outputMode.cfmoto else { return }
++            self.updateCfmotoStatus(message)
++        }
+         receiver.onNinebotState = { [weak self] message in
+             guard let self, self.running, self.outputMode == .ninebot else { return }
+             self.updateNinebotStatus(message)
+@@ -753,6 +786,12 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate
+     /// Size, frame rate and codec for the next session from the settings, the known head-unit
+     /// screen and any lighter level chosen by "自动重启".
+     private func planDisplay(for screen: CarScreen?) -> DisplayPlan {
++        if let cfmoto = cfmotoProfile {
++            let icon = ReceiverConfiguration.iconSizes[max(0, iconSizeControl.selectedSegmentIndex)].widthMM
++            // 按偶数对齐：H.264 4:2:0 不接受 515 这样的奇数高度。
++            return DisplayPlan(width: cfmoto.encodeWidth, height: cfmoto.encodeHeight,
++                               fps: cfmoto.fps, codec: .h264, iconWidthMM: icon)
++        }
+         if outputMode == .zeeho {
+             let icon = ReceiverConfiguration.iconSizes[max(0, iconSizeControl.selectedSegmentIndex)].widthMM
+             return DisplayPlan(width: 1024, height: 480, fps: 30, codec: .h264, iconWidthMM: icon)
+@@ -991,6 +1030,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate
+         let showsLocalOutput = modeControl.selectedSegmentIndex != 2
+         zeehoCard.isHidden = !showsLocalOutput || outputMode != .zeeho
+         if !running { updateZeehoStatus("等待启动 CarPlay · 仪表 IP：\(zeehoAddressField.text ?? "192.168.0.1")") }
++        cfmotoCard.isHidden = !showsLocalOutput || !outputMode.cfmoto
++        if !running {
++            updateCfmotoStatus("等待启动 CarPlay · UDP \(cfmotoAddressField.text ?? "192.168.1.10"):\(cfmotoPortField.text ?? String(CfmotoProfile.defaultPort))")
++        }
+         ninebotCard.isHidden = !showsLocalOutput || outputMode != .ninebot
+         if !running { updateNinebotStatus("等待启动 CarPlay · 仪表 IP：\(ninebotAddressField.text ?? "")") }
+         tailingCard.isHidden = !showsLocalOutput || outputMode != .tailing
+@@ -1047,6 +1090,13 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate
+         if outputMode == .zeeho {
+             config.zeehoAddress = (zeehoAddressField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+         }
++        if let profile = cfmotoProfile {
++            config.cfmotoAddress = (cfmotoAddressField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
++            config.cfmotoProfile = profile
++            if let port = UInt16((cfmotoPortField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)), port > 0 {
++                config.cfmotoPort = port
++            }
++        }
+         if outputMode == .ninebot {
+             config.ninebotAddress = (ninebotAddressField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+         }
+@@ -1656,6 +1706,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate
+         transportProbeButton.isEnabled = value
+         headUnitOutput.isEnabled = value
+         zeehoAddressField.isEnabled = value
++        cfmotoAddressField.isEnabled = value
++        cfmotoPortField.isEnabled = value
+         ninebotAddressField.isEnabled = value
+         tailingAddressField.isEnabled = value
+         carLifeAddressField.isEnabled = value
+@@ -1889,6 +1941,12 @@ extension ReceiverViewController {
+         zeehoAddressField.text = defaults.string(forKey: "zeehoAddress") ?? "192.168.0.1"
+         zeehoAddressField.keyboardType = .decimalPad
+         zeehoAddressField.addTarget(self, action: #selector(saveHeadUnitOutput), for: .editingDidEnd)
++        cfmotoAddressField.text = defaults.string(forKey: "cfmotoAddress") ?? "192.168.1.10"
++        cfmotoAddressField.keyboardType = .decimalPad
++        cfmotoAddressField.addTarget(self, action: #selector(saveHeadUnitOutput), for: .editingDidEnd)
++        cfmotoPortField.text = defaults.string(forKey: "cfmotoPort") ?? String(CfmotoProfile.defaultPort)
++        cfmotoPortField.keyboardType = .numberPad
++        cfmotoPortField.addTarget(self, action: #selector(saveHeadUnitOutput), for: .editingDidEnd)
+         ninebotAddressField.text = defaults.string(forKey: "ninebotAddress") ?? "192.168.1.1"
+         ninebotAddressField.keyboardType = .decimalPad
+         ninebotAddressField.addTarget(self, action: #selector(saveHeadUnitOutput), for: .editingDidEnd)
+@@ -1918,7 +1976,7 @@ extension ReceiverViewController {
+         }
+         nameField.addTarget(self, action: #selector(receiverNameChanged), for: .editingDidEnd)
+         channelField.keyboardType = .numberPad
+-        [nameField, ipField, ssidField, passwordField, channelField, carLifeAddressField, tailingAddressField, ninebotAddressField, zeehoAddressField, videoOutputPortField, secureVideoOutputPortField, httpsDomainField, httpsTokenField].forEach {
++        [nameField, ipField, ssidField, passwordField, channelField, carLifeAddressField, tailingAddressField, ninebotAddressField, zeehoAddressField, cfmotoAddressField, cfmotoPortField, videoOutputPortField, secureVideoOutputPortField, httpsDomainField, httpsTokenField].forEach {
+             $0.returnKeyType = .done
+             $0.addTarget($0, action: #selector(UIResponder.resignFirstResponder), for: .editingDidEndOnExit)
+             if $0.inputAccessoryView == nil {
+@@ -1937,6 +1995,8 @@ extension ReceiverViewController {
+         UserDefaults.standard.set(outputMode.rawValue, forKey: "headUnitOutputV2")
+         UserDefaults.standard.set(carLifeAddressField.text ?? "", forKey: "carLifeAddress")
+         UserDefaults.standard.set(zeehoAddressField.text ?? "", forKey: "zeehoAddress")
++        UserDefaults.standard.set(cfmotoAddressField.text ?? "", forKey: "cfmotoAddress")
++        UserDefaults.standard.set(cfmotoPortField.text ?? "", forKey: "cfmotoPort")
+         UserDefaults.standard.set(ninebotAddressField.text ?? "", forKey: "ninebotAddress")
+         UserDefaults.standard.set(tailingAddressField.text ?? "", forKey: "tailingAddress")
+         refreshVideoOutputSummary()
+@@ -2190,6 +2250,13 @@ extension ReceiverViewController {
+ 
+     fileprivate func displayPage() -> SettingsPageController {
+         page("画面") { [unowned self] in
++            if let cfmoto = cfmotoProfile {
++                let name = outputMode == .cfmoto5 ? "春风 5 寸" : "春风 6.2 寸"
++                return [
++                    SettingsSection(name, [.info("仪表画面", "\(cfmoto.width)×\(cfmoto.height) · H.264 · UDP · \(cfmoto.fps) FPS")]),
++                    SettingsSection("图标", [.control("CarPlay 图标大小", icon: ("square.grid.2x2.fill", .systemPurple), iconSizeControl)])
++                ]
++            }
+             if outputMode == .zeeho {
+                 return [
+                     SettingsSection("极核 6.2 寸", [.info("仪表画面", "1024×480 · H.264 · 25 FPS")]),
+@@ -2524,6 +2591,13 @@ extension ReceiverViewController {
+                     .field("仪表 IP 地址", ninebotAddressField, placeholder: "192.168.1.1"),
+                     .note(ninebotStatus)
+                 ])]
++            case .cfmoto5, .cfmoto62:
++                return [SettingsSection(outputMode == .cfmoto5 ? "春风 5 寸" : "春风 6.2 寸",
++                    footer: "让 iPhone 加入仪表 Wi-Fi，填仪表地址与它监听的 UDP 端口（默认 \(CfmotoProfile.defaultPort)）。画面以 RFC 6184 RTP 直推，仪表不主动拉帧；协议对不上时仪表只会黑屏，不影响手机端显示。声音由 iPhone 或蓝牙输出。", [
++                    .field("仪表 IP 地址", cfmotoAddressField, placeholder: "192.168.1.10"),
++                    .field("UDP 端口", cfmotoPortField, placeholder: String(CfmotoProfile.defaultPort)),
++                    .note(cfmotoStatus)
++                ])]
+             }
+         }
+     }
+@@ -2539,6 +2613,7 @@ extension ReceiverViewController {
+ 
+     private func prepareExternalOutput(configuration: ReceiverConfiguration) {
+         if configuration.zeehoAddress != nil { updateZeehoStatus("正在连接极核仪表…") }
++        if configuration.cfmotoProfile != nil { updateCfmotoStatus("正在推流到春风仪表…") }
+         if configuration.ninebotAddress != nil { updateNinebotStatus("正在连接九号仪表…") }
+         if configuration.tailingAddress != nil { updateTailingStatus("正在连接台铃仪表…") }
+         if configuration.carLifeEnabled {
+diff --git a/TDSCarKit.xcodeproj/project.pbxproj b/TDSCarKit.xcodeproj/project.pbxproj
+index 9772aae..4d6c62a 100644
+--- a/TDSCarKit.xcodeproj/project.pbxproj
++++ b/TDSCarKit.xcodeproj/project.pbxproj
+@@ -11,6 +11,8 @@
+ 		BF8C88925F55D6937482C442 /* App/TailingProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1742C549D25653794782E49 /* App/TailingProtocol.swift */; };
+ 		88C07C68A7CFD386DB471AF9 /* App/TailingOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15C6BB68729B79CB1589593B /* App/TailingOutput.swift */; };
+ 		3E993C6802C1E33EC03EFBC5 /* App/ZeehoOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F89B7E1AD4F9FE63CB7E8F /* App/ZeehoOutput.swift */; };
++		9C9DA6E71ACC402FB61922A8 /* App/CfmotoOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69EBFF5CA6E6489AB00B62CB /* App/CfmotoOutput.swift */; };
++		4A00296CF4BC4A678A568398 /* App/CfmotoUDPChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D904A71D4E0F4907B190EEC4 /* App/CfmotoUDPChannel.swift */; };
+ 		64576F6B578385AC20CCF3BF /* App/NinebotH264Encoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AF3F2E542AC14DF20A41F8A /* App/NinebotH264Encoder.swift */; };
+ 		73708DB94B38AB7D108A63DC /* App/NinebotUDPSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6983BA5CA7041AE8981B978 /* App/NinebotUDPSocket.swift */; };
+ 		787B68294EBA398040FCE3F1 /* App/NinebotProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9D368B6A679BA4668F1A3B6 /* App/NinebotProtocol.swift */; };
+@@ -93,6 +95,8 @@
+ 		E1742C549D25653794782E49 /* App/TailingProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/TailingProtocol.swift; sourceTree = "<group>"; };
+ 		15C6BB68729B79CB1589593B /* App/TailingOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/TailingOutput.swift; sourceTree = "<group>"; };
+ 		C9F89B7E1AD4F9FE63CB7E8F /* App/ZeehoOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/ZeehoOutput.swift; sourceTree = "<group>"; };
++		69EBFF5CA6E6489AB00B62CB /* App/CfmotoOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/CfmotoOutput.swift; sourceTree = "<group>"; };
++		D904A71D4E0F4907B190EEC4 /* App/CfmotoUDPChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/CfmotoUDPChannel.swift; sourceTree = "<group>"; };
+ 		6AF3F2E542AC14DF20A41F8A /* App/NinebotH264Encoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/NinebotH264Encoder.swift; sourceTree = "<group>"; };
+ 		D6983BA5CA7041AE8981B978 /* App/NinebotUDPSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/NinebotUDPSocket.swift; sourceTree = "<group>"; };
+ 		E9D368B6A679BA4668F1A3B6 /* App/NinebotProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/NinebotProtocol.swift; sourceTree = "<group>"; };
+@@ -190,6 +194,8 @@
+ 				B04FAD42C897506E681468AD /* App/TailingIdentity.swift */,
+ 				15C6BB68729B79CB1589593B /* App/TailingOutput.swift */,
+ 				C9F89B7E1AD4F9FE63CB7E8F /* App/ZeehoOutput.swift */,
++				69EBFF5CA6E6489AB00B62CB /* App/CfmotoOutput.swift */,
++				D904A71D4E0F4907B190EEC4 /* App/CfmotoUDPChannel.swift */,
+ 				6AF3F2E542AC14DF20A41F8A /* App/NinebotH264Encoder.swift */,
+ 				D6983BA5CA7041AE8981B978 /* App/NinebotUDPSocket.swift */,
+ 				E9D368B6A679BA4668F1A3B6 /* App/NinebotProtocol.swift */,
+@@ -343,6 +349,8 @@
+ 				20981E104E400F63191A9A75 /* App/TailingIdentity.swift in Sources */,
+ 				88C07C68A7CFD386DB471AF9 /* App/TailingOutput.swift in Sources */,
+ 				3E993C6802C1E33EC03EFBC5 /* App/ZeehoOutput.swift in Sources */,
++				9C9DA6E71ACC402FB61922A8 /* App/CfmotoOutput.swift in Sources */,
++				4A00296CF4BC4A678A568398 /* App/CfmotoUDPChannel.swift in Sources */,
+ 				64576F6B578385AC20CCF3BF /* App/NinebotH264Encoder.swift in Sources */,
+ 				73708DB94B38AB7D108A63DC /* App/NinebotUDPSocket.swift in Sources */,
+ 				787B68294EBA398040FCE3F1 /* App/NinebotProtocol.swift in Sources */,
