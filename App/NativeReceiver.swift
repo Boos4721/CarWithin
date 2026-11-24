@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import CoreGraphics
 
 /// All listener/session state is confined to queue. UI callbacks are always main-thread.
 final class NativeReceiver {
@@ -71,6 +72,12 @@ final class NativeReceiver {
     var onAirPlayReady: ((UUID) -> Void)?
     var onVideoOutputState: ((String) -> Void)?
     var onFailure: (() -> Void)?
+
+    /// BMS updates are serialized with output startup; CoreGraphics images are
+    /// immutable and reused by the instrument encoder until the next update.
+    func setBMSOverlay(_ image: CGImage?, configuration: ANTBMSCardConfiguration) {
+        queue.async { [weak self] in self?.ninebot.setBMSOverlay(image, configuration: configuration) }
+    }
 
     func start(configuration: ReceiverConfiguration, identity: AccessoryIdentity, advertise: Bool = true,
                preferredViewer: UUID? = nil) {

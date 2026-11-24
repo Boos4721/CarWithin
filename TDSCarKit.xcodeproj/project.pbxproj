@@ -92,6 +92,14 @@
 		FD04C6B75D83204140C4DEEA /* App/DirectAccessoryTransport.m in Sources */ = {isa = PBXBuildFile; fileRef = 43A08A842E89C864862B3AB0 /* App/DirectAccessoryTransport.m */; };
 		5622E6B0FD20B264F6535DB5 /* App/AppReleaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7363CE38FC2E2B8EC79091DD /* App/AppReleaseService.swift */; };
 		55285D4FEF6F81A4317B6BCF /* App/AppReleaseViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF380427ACDEC6B0D0675D84 /* App/AppReleaseViews.swift */; };
+		958FF5BA17BA9021F5076BFC /* App/ANTBMSClient.swift */ = {isa = PBXBuildFile; fileRef = 5AE3FD3B152F054D10D2D79D; };
+		265C2C116740E45DFC9D9495 /* App/ANTBMSController.swift */ = {isa = PBXBuildFile; fileRef = 75A37F601A1BC4418DBF5673; };
+		BF8116F0ECCF3A7B5A7C0913 /* App/BMSCardOrderViewController.swift */ = {isa = PBXBuildFile; fileRef = 4C1AE09B96606444A46AA132; };
+		8ED8630B5F751E9E253B8A33 /* App/BMSCardPreviewView.swift */ = {isa = PBXBuildFile; fileRef = 1B7CC79EFBED7594F84DBD37; };
+		4BAE9BD8B0499B80AB53221C /* App/BMSLiveSummaryView.swift */ = {isa = PBXBuildFile; fileRef = EEA5EA14F4F25876D95A1285; };
+		E930864F8105F55C8A988836 /* App/BMSOverlay.swift */ = {isa = PBXBuildFile; fileRef = C73ED9EB7064ACDBB2EF3041; };
+		5731981ECDAF108184A64D8B /* Sources/TDSCarKitCore/ANTBMSProtocol.swift */ = {isa = PBXBuildFile; fileRef = 1C1816364EE73AD87BF627E7; };
+		DE9CAF6EAE8A9EEE38B602D4 /* Sources/TDSCarKitCore/ANTBMSCardConfiguration.swift */ = {isa = PBXBuildFile; fileRef = 29C0B88DFD31A3CB69BAF601; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -181,6 +189,14 @@
 		FD01B522CF927B62CC738785 /* Sources/TDSCarKitCore/AudioStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TDSCarKitCore/AudioStream.swift; sourceTree = "<group>"; };
 		7363CE38FC2E2B8EC79091DD /* App/AppReleaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppReleaseService.swift; sourceTree = "<group>"; };
 		EF380427ACDEC6B0D0675D84 /* App/AppReleaseViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppReleaseViews.swift; sourceTree = "<group>"; };
+		5AE3FD3B152F054D10D2D79D /* App/ANTBMSClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/ANTBMSClient.swift; sourceTree = "<group>"; };
+		75A37F601A1BC4418DBF5673 /* App/ANTBMSController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/ANTBMSController.swift; sourceTree = "<group>"; };
+		4C1AE09B96606444A46AA132 /* App/BMSCardOrderViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/BMSCardOrderViewController.swift; sourceTree = "<group>"; };
+		1B7CC79EFBED7594F84DBD37 /* App/BMSCardPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/BMSCardPreviewView.swift; sourceTree = "<group>"; };
+		EEA5EA14F4F25876D95A1285 /* App/BMSLiveSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/BMSLiveSummaryView.swift; sourceTree = "<group>"; };
+		C73ED9EB7064ACDBB2EF3041 /* App/BMSOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/BMSOverlay.swift; sourceTree = "<group>"; };
+		1C1816364EE73AD87BF627E7 /* Sources/TDSCarKitCore/ANTBMSProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TDSCarKitCore/ANTBMSProtocol.swift; sourceTree = "<group>"; };
+		29C0B88DFD31A3CB69BAF601 /* Sources/TDSCarKitCore/ANTBMSCardConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TDSCarKitCore/ANTBMSCardConfiguration.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -197,6 +213,14 @@
 		64292B1C2B2E13EAD8788FC8 = {
 			isa = PBXGroup;
 			children = (
+				5AE3FD3B152F054D10D2D79D /* App/ANTBMSClient.swift */,
+				75A37F601A1BC4418DBF5673 /* App/ANTBMSController.swift */,
+				4C1AE09B96606444A46AA132 /* App/BMSCardOrderViewController.swift */,
+				1B7CC79EFBED7594F84DBD37 /* App/BMSCardPreviewView.swift */,
+				EEA5EA14F4F25876D95A1285 /* App/BMSLiveSummaryView.swift */,
+				C73ED9EB7064ACDBB2EF3041 /* App/BMSOverlay.swift */,
+				1C1816364EE73AD87BF627E7 /* Sources/TDSCarKitCore/ANTBMSProtocol.swift */,
+				29C0B88DFD31A3CB69BAF601 /* Sources/TDSCarKitCore/ANTBMSCardConfiguration.swift */,
 				7BAEDF1212F9D1065D1112FF /* App/TailingConnection.swift */,
 				F1F1006A6933CF59351244FE /* App/TailingH264Decoder.swift */,
 				B04FAD42C897506E681468AD /* App/TailingIdentity.swift */,
@@ -360,6 +384,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				958FF5BA17BA9021F5076BFC /* App/ANTBMSClient.swift in Sources */,
+				265C2C116740E45DFC9D9495 /* App/ANTBMSController.swift in Sources */,
+				BF8116F0ECCF3A7B5A7C0913 /* App/BMSCardOrderViewController.swift in Sources */,
+				8ED8630B5F751E9E253B8A33 /* App/BMSCardPreviewView.swift in Sources */,
+				4BAE9BD8B0499B80AB53221C /* App/BMSLiveSummaryView.swift in Sources */,
+				E930864F8105F55C8A988836 /* App/BMSOverlay.swift in Sources */,
+				5731981ECDAF108184A64D8B /* Sources/TDSCarKitCore/ANTBMSProtocol.swift in Sources */,
+				DE9CAF6EAE8A9EEE38B602D4 /* Sources/TDSCarKitCore/ANTBMSCardConfiguration.swift in Sources */,
 				F981D54C81AFEB10623F8DF2 /* App/TailingConnection.swift in Sources */,
 				2A62092D5FAB7508B5E75585 /* App/TailingH264Decoder.swift in Sources */,
 				20981E104E400F63191A9A75 /* App/TailingIdentity.swift in Sources */,
