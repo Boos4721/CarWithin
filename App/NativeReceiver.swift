@@ -12,6 +12,14 @@ final class NativeReceiver {
     private var localInFlight = 0
     private var localSkipping = false
     private let maximumLocalInFlight = 12
+    private var localVideoEnabled = true
+
+    func setLocalVideoEnabled(_ enabled: Bool) {
+        queue.async { [weak self] in
+            self?.localVideoEnabled = enabled
+            if !enabled { self?.localSkipping = false }
+        }
+    }
     #if DEBUG
     private var diagnosticStarted = ProcessInfo.processInfo.systemUptime
     private var diagnosticCPU = TailingPerformanceDiagnostics.cpuTime()
@@ -48,6 +56,7 @@ final class NativeReceiver {
     private let videoOutput = VideoOutputServer()
     private let carLife = CarLifeOutput()
     private let zeeho = ZeehoOutput()
+    private let zeeho62 = Zeeho62Legacy.ZeehoOutput()
     var onZeehoState: ((String) -> Void)?
     private let ninebot = NinebotOutput()
     var onNinebotState: ((String) -> Void)?
@@ -96,10 +105,24 @@ final class NativeReceiver {
                     versionCode: Int(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0") ?? 0,
                     model: "iPhone", systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
                     width: configuration.width, height: configuration.height, rotation: 1)
-                self.zeeho.start(localAddress: configuration.address, targetAddress: target, phone: phone,
-                    onState: { [weak self] in self?.onZeehoState?($0) },
-                    onLog: { [weak self] in self?.log($0) },
-                    requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "极核解码恢复") })
+                if configuration.zeehoProfile == .zeeho62 {
+                    let legacyPhone = Zeeho62Legacy.TailingPhoneInfo(package: phone.package, versionCode: phone.versionCode,
+                        model: phone.model, systemVersion: phone.systemVersion, width: phone.width, height: phone.height, rotation: phone.rotation)
+                    self.zeeho62.start(localAddress: configuration.address,
+                        targetAddress: configuration.zeehoAutomaticAddress ? "" : target, phone: legacyPhone,
+                        onState: { [weak self] in self?.onZeehoState?($0) },
+                        onLog: { [weak self] in self?.log($0) },
+                        requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "极核 6.2 寸解码恢复") })
+                } else {
+                    self.zeeho.start(localAddress: configuration.address,
+                        targetAddress: configuration.zeehoAutomaticAddress ? "" : target,
+                        profile: configuration.zeehoProfile, frameRate: configuration.zeehoFrameRate,
+                        videoMode: configuration.zeehoVideoMode,
+                        sourceSize: InstrumentFrameSize(width: configuration.width, height: configuration.height), phone: phone,
+                        onState: { [weak self] in self?.onZeehoState?($0) },
+                        onLog: { [weak self] in self?.log($0) },
+                        requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "极核解码恢复") })
+                }
             }
             if let target = configuration.ninebotAddress {
                 self.ninebot.start(localAddress: configuration.address, targetAddress: target, mode: configuration.ninebotMode,
@@ -320,6 +343,7 @@ final class NativeReceiver {
         videoOutput.stop()
         carLife.stop()
         zeeho.stop()
+        zeeho62.stop()
         ninebot.stop()
         tailing.stop()
         carLink.stop()
@@ -415,11 +439,15 @@ final class NativeReceiver {
                     let keyframe = Self.containsRandomAccess(data, codec: codec)
                     if keyframe { self.keyframeArrived() }
                     self.videoOutput.append(data, codec: codec)
-                    if configuration.zeehoAddress != nil { self.zeeho.append(data, codec: codec, keyframe: keyframe) }
+                    if configuration.zeehoAddress != nil {
+                        if configuration.zeehoProfile == .zeeho62 { self.zeeho62.append(data, codec: codec, keyframe: keyframe) }
+                        else { self.zeeho.append(data, codec: codec, keyframe: keyframe) }
+                    }
                     if configuration.ninebotAddress != nil { self.ninebot.append(data, codec: codec, keyframe: keyframe) }
                     if configuration.tailingAddress != nil { self.tailing.append(data, codec: codec) }
                     if configuration.carLifeEnabled { self.carLife.append(data, codec: codec) }
                     if configuration.carLinkRelayAddress != nil { self.carLink.append(data, codec: codec) }
+                    guard self.localVideoEnabled else { return }
                     if self.localSkipping {
                         guard keyframe, self.localInFlight < self.maximumLocalInFlight / 2 else { return }
                         self.localSkipping = false

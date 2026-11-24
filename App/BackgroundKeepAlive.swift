@@ -79,6 +79,8 @@ final class BackgroundKeepAlive {
         observers.forEach(NotificationCenter.default.removeObserver)
         observers = []
         player?.stop()
+        player = nil
+        CarPlayAudio.endMediaSession()
         onLog?("后台保持已关闭")
     }
 

@@ -76,7 +76,7 @@ Fixed display sizes support common landscape and portrait aspect ratios.
 
 ### ZEEHO AE4 MAX2+ 6.2-inch display
 
-Connect the iPhone to the instrument Wi-Fi, select the matching preset and choose ZEEHO 6.2-inch under Current output. Open projection on the instrument, then start CarPlay. The default instrument IP is 192.168.0.1. Video uses H.264 at 1024×480 and up to 25 fps. Audio plays through the iPhone or Bluetooth. Operate CarPlay on the phone.
+Connect the iPhone to the instrument Wi-Fi, select the matching preset and choose ZEEHO 6.2-inch under Current output. Open projection on the instrument, then start CarPlay. Instrument IP discovery is enabled by default; turn it off under Output settings to use the retained manual address. Video uses H.264 at 1024×480 and up to 25 fps. Audio plays through the iPhone or Bluetooth. Operate CarPlay on the phone.
 
 One instrument was tested successfully, including screen lock. Other models and long sessions require further testing.
 
@@ -85,6 +85,12 @@ One instrument was tested successfully, including screen lock. Other models and 
 - **Ninebot 7-inch:** Connect to the dashboard Wi-Fi, select this output, start CarPlay, then enable navigation casting in Ninebot app and keep it running in the background. Display was confirmed on one dashboard.
 - **Ninebot 4.3-inch (experimental):** Uses the N1 90 protocol, with default address `192.168.169.1`. Follow the same startup order. Physical dashboard testing is pending.
 - **AirPlay (experimental):** Startup and reconnection may fail, and the receiver may retain the last picture after stopping.
+
+### ZEEHO SE+ 5/5.5-inch display (experimental)
+
+Choose the separate SE+ output. Both ZEEHO modes offer automatic IP discovery and retain manual addresses. The 6.2-inch mode keeps its isolated original handshake/output at 1024×480 and 25 FPS.
+
+SE+ offers a 1600×770 wide canvas or 800×480 compatibility canvas, plus 25/30/60 FPS targets. Start with 30 FPS and default compatibility transcoding. H.264 passthrough is opt-in and still needs instrument testing, as do sustained 60 FPS and lock-screen stability. Sent FPS is not panel refresh. The sound page provides the system audio route picker. See [implementation and validation scope](docs/zeeho-seplus-experimental.md).
 
 ### Ninebot 5-inch display
 

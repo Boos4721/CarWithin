@@ -37,6 +37,18 @@ enum TailingProtocol {
         return Control(command: command, identifier: head.uint32LE(12), payload: payload)
     }
 
+    /// MotoPlay waits for an empty, identifier-preserving ack for these notifications.
+    /// Commands that require a response body retain their dedicated handlers.
+    static func zeehoExtensionReply(to request: Control, profile: TailingDisplayProfile) throws -> Data? {
+        guard profile == .zeehoSEPlus else { return nil }
+        switch request.command {
+        case 0x103b0, 0x103a0, 0x10470, 0x104a0, 0x10020:
+            return try control(request.command + 1, identifier: request.identifier)
+        default:
+            return nil
+        }
+    }
+
     static func auxiliary(_ command: UInt16, token: UInt32 = 0, payload: Data = Data()) throws -> Data {
         guard payload.count <= 8_192 else { throw TailingError.protocolFailure("媒体控制帧过长") }
         var data = Data()
@@ -53,6 +65,14 @@ enum TailingProtocol {
         let payload = try read(length)
         guard payload.count == length else { throw TailingError.protocolFailure("媒体控制载荷截断") }
         return Auxiliary(command: head.uint16LE(0), token: head.uint32LE(4), payload: payload)
+    }
+
+    static func mediaConfiguration(size: InstrumentFrameSize, h264: Bool) -> Data {
+        var payload = Data()
+        payload.appendLE(UInt32(h264 ? 2 : 1))
+        payload.appendLE(UInt16(size.width))
+        payload.appendLE(UInt16(size.height))
+        return payload
     }
 
     static func jpeg(_ jpeg: Data) throws -> Data {
@@ -115,7 +135,7 @@ enum TailingError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .protocolFailure(let text): return "台铃协议：\(text)"
+        case .protocolFailure(let text): return "PXC 协议：\(text)"
         case .timeout(let text): return "台铃等待超时：\(text)"
         case .closed: return "台铃会话已关闭"
         case .channel(let name, let error): return "\(name)：\(error.localizedDescription)"

@@ -27,6 +27,10 @@ struct ReceiverConfiguration {
     /// Head unit IPv4 for CarLife discovery; nil sweeps the local network.
     var carLifeAddress: String?
     var zeehoAddress: String?
+    var zeehoAutomaticAddress = false
+    var zeehoProfile: TailingDisplayProfile = .zeeho62
+    var zeehoFrameRate: ZeehoFrameRate = .fps25
+    var zeehoVideoMode: ZeehoVideoMode = .transcode
     var ninebotAddress: String?
     var ninebotMode: NinebotOutput.Mode = .fiveInch
     var tailingAddress: String?
@@ -144,7 +148,7 @@ struct ReceiverConfiguration {
                 throw ConfigurationError("CarLife 车机 IP 地址无效，请填写 IPv4 地址或留空。")
             }
         }
-        if let zeehoAddress {
+        if let zeehoAddress, !zeehoAutomaticAddress {
             var target = in_addr()
             guard inet_pton(AF_INET, zeehoAddress, &target) == 1, zeehoAddress != address,
                   !zeehoAddress.hasPrefix("127."), !zeehoAddress.hasPrefix("0."),
