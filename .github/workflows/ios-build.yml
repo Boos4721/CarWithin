@@ -56,6 +56,16 @@ jobs:
             -o "$RUNNER_TEMP/CarWithinExperienceStoreSmoke"
           "$RUNNER_TEMP/CarWithinExperienceStoreSmoke" | tee artifacts/profile-migration.log
 
+      - name: Verify ZEEHO and Tailing integration
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 Tools/verify_legacy62.py 2>&1 | tee artifacts/zeeho-legacy-tests.log
+          bash Tools/test_zeeho_seplus.sh 2>&1 | tee artifacts/zeeho-seplus-tests.log
+          bash Tools/test_tailing_discovery.sh 2>&1 | tee artifacts/tailing-discovery-tests.log
+          bash Tools/test_zeeho_control.sh 2>&1 | tee artifacts/zeeho-control-tests.log
+          bash Tools/test_tailing.sh 2>&1 | tee artifacts/tailing-media-tests.log
+
       - name: Build iPhone and iPad app
         shell: bash
         run: |

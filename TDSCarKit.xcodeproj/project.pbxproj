@@ -109,6 +109,9 @@
 		5622E6B0FD20B264F6535DB5 /* App/AppReleaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7363CE38FC2E2B8EC79091DD /* App/AppReleaseService.swift */; };
 		55285D4FEF6F81A4317B6BCF /* App/AppReleaseViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF380427ACDEC6B0D0675D84 /* App/AppReleaseViews.swift */; };
 		1D2E11B5513BA3D6482F7528 /* Sources/TDSCarKitCore/NinebotProjectionDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EF8A98A0A99149F2D595EFD; };
+		9DC61C66646BBB14BE84E746 /* App/TailingDisplayProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = D81C00A6973F944302FCC28C /* App/TailingDisplayProfile.swift */; };
+		878C53DFB771A8B34DE36F21 /* App/TailingDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5981FAF46062A6323066CC1 /* App/TailingDiscovery.swift */; };
+		9140DE44B47D11023645E54B /* App/Zeeho62Legacy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1DFF5C89446FB55ABE66E51 /* App/Zeeho62Legacy.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -215,6 +218,9 @@
 		7363CE38FC2E2B8EC79091DD /* App/AppReleaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppReleaseService.swift; sourceTree = "<group>"; };
 		EF380427ACDEC6B0D0675D84 /* App/AppReleaseViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppReleaseViews.swift; sourceTree = "<group>"; };
 		6EF8A98A0A99149F2D595EFD /* Sources/TDSCarKitCore/NinebotProjectionDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TDSCarKitCore/NinebotProjectionDiagnostics.swift; sourceTree = "<group>"; };
+		D81C00A6973F944302FCC28C /* App/TailingDisplayProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/TailingDisplayProfile.swift"; sourceTree = "<group>"; };
+		B5981FAF46062A6323066CC1 /* App/TailingDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/TailingDiscovery.swift"; sourceTree = "<group>"; };
+		F1DFF5C89446FB55ABE66E51 /* App/Zeeho62Legacy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/Zeeho62Legacy.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -248,6 +254,9 @@
 				6EF8A98A0A99149F2D595EFD /* Sources/TDSCarKitCore/NinebotProjectionDiagnostics.swift */,
 				4459D2CAF8024F4246C19DD4 /* Sources/TDSCarKitCore/ConnectionTimeline.swift */,
 				CCED75C259FA04696F817035 /* Sources/TDSCarKitCore/CarPlayWiFiBootstrap.swift */,
+				F1DFF5C89446FB55ABE66E51 /* App/Zeeho62Legacy.swift */,
+				B5981FAF46062A6323066CC1 /* App/TailingDiscovery.swift */,
+				D81C00A6973F944302FCC28C /* App/TailingDisplayProfile.swift */,
 				7BAEDF1212F9D1065D1112FF /* App/TailingConnection.swift */,
 				F1F1006A6933CF59351244FE /* App/TailingH264Decoder.swift */,
 				B04FAD42C897506E681468AD /* App/TailingIdentity.swift */,
@@ -428,6 +437,9 @@
 				1D2E11B5513BA3D6482F7528 /* Sources/TDSCarKitCore/NinebotProjectionDiagnostics.swift in Sources */,
 				E26C16854D5907BF95A82E43 /* Sources/TDSCarKitCore/ConnectionTimeline.swift in Sources */,
 				10109BA21419978567A750F6 /* Sources/TDSCarKitCore/CarPlayWiFiBootstrap.swift in Sources */,
+				9140DE44B47D11023645E54B /* App/Zeeho62Legacy.swift in Sources */,
+				878C53DFB771A8B34DE36F21 /* App/TailingDiscovery.swift in Sources */,
+				9DC61C66646BBB14BE84E746 /* App/TailingDisplayProfile.swift in Sources */,
 				F981D54C81AFEB10623F8DF2 /* App/TailingConnection.swift in Sources */,
 				2A62092D5FAB7508B5E75585 /* App/TailingH264Decoder.swift in Sources */,
 				20981E104E400F63191A9A75 /* App/TailingIdentity.swift in Sources */,

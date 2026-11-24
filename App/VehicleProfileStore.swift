@@ -21,6 +21,11 @@ struct VehicleProfile: Codable, Identifiable {
     var autoFullscreen: Bool
     /// Absent in build 23 profiles; nil retains the original 86% background.
     var cardBackground: Int? = nil
+    /// Optional additions for PR #35; older vehicle profiles keep loading unchanged.
+    var zeehoAutomaticAddress: Bool? = nil
+    var zeehoFrameRate: Int? = nil
+    var zeehoCanvas: Int? = nil
+    var zeehoVideoMode: Int? = nil
 }
 
 enum VehicleProfileStore {

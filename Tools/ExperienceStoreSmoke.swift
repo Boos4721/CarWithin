@@ -15,6 +15,8 @@ enum ExperienceStoreSmoke {
         let decoder = JSONDecoder(), encoder = JSONEncoder()
         var profile = try decoder.decode(VehicleProfile.self, from: JSONSerialization.data(withJSONObject: legacy))
         precondition(profile.cardBackground == nil)
+        precondition(profile.output == 4 && profile.zeehoAutomaticAddress == nil && profile.zeehoFrameRate == nil
+            && profile.zeehoCanvas == nil && profile.zeehoVideoMode == nil)
         precondition(ANTBMSCardConfiguration(positionRawValue: profile.cardPosition,
             backgroundRawValue: profile.cardBackground).position == .bottomRight)
         precondition(ANTBMSCardConfiguration(backgroundRawValue: profile.cardBackground).background == .standard)
@@ -26,6 +28,16 @@ enum ExperienceStoreSmoke {
         let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
         precondition(json["password"] == nil)
         print("Vehicle profile migration: legacy schema and new card preferences passed")
+        var zeeho = profile
+        zeeho.output = 8; zeeho.instrumentAddress = "192.168.2.1"
+        zeeho.zeehoAutomaticAddress = false; zeeho.zeehoFrameRate = 60
+        zeeho.zeehoCanvas = 0; zeeho.zeehoVideoMode = 1
+        let restoredZeeho = try decoder.decode(VehicleProfile.self, from: encoder.encode(zeeho))
+        precondition(restoredZeeho.output == 8 && restoredZeeho.instrumentAddress == "192.168.2.1")
+        precondition(restoredZeeho.zeehoAutomaticAddress == false && restoredZeeho.zeehoFrameRate == 60
+            && restoredZeeho.zeehoCanvas == 0 && restoredZeeho.zeehoVideoMode == 1)
+        precondition(profile.output == 4 && profile.zeehoAutomaticAddress == nil)
+        print("ZEEHO profiles: SE+ address, automatic/manual selection, frame rate, canvas and video mode round-trip passed")
 
         let now = ISO8601DateFormatter().date(from: "2026-11-24T12:00:00Z")!
         var calendar = Calendar(identifier: .gregorian)

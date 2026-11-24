@@ -26,6 +26,7 @@ final class H264Surface: UIView {
     private var requesting = false
     private var hasEnqueuedFrame = false
     private var awaitingKeyframe = false
+    private var suspended = false
     private var lastRecovery = -Double.infinity
     private var checkingDisplaySince: TimeInterval?
     private var rendererNeedsRecovery: Bool { display.requiresFlushToResumeDecoding || display.status == .failed }
@@ -50,7 +51,7 @@ final class H264Surface: UIView {
 
     @objc private func decodeFailed(_ note: Notification) {
         DispatchQueue.main.async { [weak self] in
-            guard let self, self.format != nil, self.rendererNeedsRecovery,
+            guard let self, !self.suspended, self.format != nil, self.rendererNeedsRecovery,
                   ProcessInfo.processInfo.systemUptime - self.lastRecovery >= 0.5 else { return }
             let error = note.userInfo?[AVSampleBufferDisplayLayerFailedToDecodeNotificationErrorKey] as? NSError
             self.recover(reason: "本机解码失败\(error.map { "（\($0.code)）" } ?? "")")
@@ -59,13 +60,14 @@ final class H264Surface: UIView {
 
     @objc private func rendererFlushChanged() {
         DispatchQueue.main.async { [weak self] in
-            guard let self, self.format != nil, self.display.requiresFlushToResumeDecoding,
+            guard let self, !self.suspended, self.format != nil, self.display.requiresFlushToResumeDecoding,
                   ProcessInfo.processInfo.systemUptime - self.lastRecovery >= 0.5 else { return }
             self.recover(reason: "系统要求恢复视频解码")
         }
     }
 
     private func recover(reason: String) {
+        guard !suspended else { return }
         display.stopRequestingMediaData(); requesting = false
         pending.removeAll(); pendingBytes = 0
         display.flush()
@@ -86,6 +88,7 @@ final class H264Surface: UIView {
 
     /// Frames were skipped while the app was in the background: start again at a fresh keyframe.
     func resumeAfterBackground(skippedFrames: Bool) {
+        suspended = false
         guard format != nil else { return }
         if skippedFrames || rendererNeedsRecovery {
             recover(reason: "回到前台")
@@ -99,6 +102,7 @@ final class H264Surface: UIView {
     }
 
     func reset() {
+        suspended = false
         checkingDisplaySince = nil; lastRecovery = -.infinity
         releaseAllTouches()
         display.stopRequestingMediaData(); requesting = false
@@ -131,6 +135,7 @@ final class H264Surface: UIView {
     @discardableResult
     func enqueue(accessUnit: Data, codec: VideoCodec) throws -> Bool {
         dispatchPrecondition(condition: .onQueue(.main))
+        guard !suspended else { return false }
         let units = try AnnexB.units(in: accessUnit)
         if parameters?.codec != codec { parameters = VideoParameterSets(codec: codec); format = nil }
         var picture: [Data] = []
@@ -205,7 +210,15 @@ final class H264Surface: UIView {
         return true
     }
 
+    func suspendForExternalOutput() {
+        suspended = true
+        display.stopRequestingMediaData(); requesting = false
+        pending.removeAll(); pendingBytes = 0
+        display.flush()
+    }
+
     private func drain() {
+        guard !suspended else { return }
         while display.isReadyForMoreMediaData, !pending.isEmpty {
             let (sample, bytes) = pending.removeFirst(); pendingBytes -= bytes
             display.enqueue(sample)
