@@ -179,9 +179,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private lazy var pictureInPicture = CarPlayPictureInPicture(surface: videoSurface)
     private let keepAlive = BackgroundKeepAlive()
     private let keepAliveSwitch = UISwitch()
-    private let headUnitOutput = ChoiceMenu(items: ["浏览器", "CarLife", "AirPlay", "台铃 4.3 寸", "九号 5 寸", "极核 6.2 寸", "九号 7 寸", "九号 4.3 寸（实验）"])
+    private let headUnitOutput = ChoiceMenu(items: ["浏览器", "CarLife", "AirPlay", "台铃 4.3 寸", "九号 5 寸", "极核 6.2 寸", "九号 7 寸", "九号 4.3 寸（实验）", "极核 AE2 Pro 5 寸"])
     private enum HeadUnitOutput: Int {
-        case browser, carLife, airPlay, tailing, ninebot, zeeho, ninebotSeven, ninebot43
+        case browser, carLife, airPlay, tailing, ninebot, zeeho, ninebotSeven, ninebot43, zeehoAE2
+        var isZeeho: Bool { self == .zeeho || self == .zeehoAE2 }
         var ninebotMode: NinebotOutput.Mode? {
             switch self {
             case .ninebot: .fiveInch
@@ -190,7 +191,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             default: nil
             }
         }
-        var usesInstrumentWiFi: Bool { self == .tailing || self == .zeeho || ninebotMode != nil }
+        var usesInstrumentWiFi: Bool { self == .tailing || isZeeho || ninebotMode != nil }
     }
     private var airPlayStreamID: UUID?
     private var airPlayStreamURL: URL?
@@ -440,7 +441,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         carLifeCard.addArrangedSubview(carLifeSettings)
         stack.addArrangedSubview(carLifeCard)
 
-        configureConnectionCard(zeehoCard, title: "极核 6.2 寸连接", symbol: "scooter", color: .systemBlue,
+        configureConnectionCard(zeehoCard, title: "极核仪表连接", symbol: "scooter", color: .systemBlue,
             instructions: "让 iPhone 加入极核仪表 Wi-Fi，打开仪表投屏后启动 CarPlay。", status: zeehoCardStatus)
         let zeehoSettings = UIButton(type: .system)
         zeehoSettings.configuration = .tinted()
@@ -587,7 +588,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             self?.refreshFullscreenExitButton()
         }
         receiver.onZeehoState = { [weak self] message in
-            guard let self, self.running, self.outputMode == .zeeho else { return }
+            guard let self, self.running, self.outputMode.isZeeho else { return }
             self.updateZeehoStatus(message)
         }
         receiver.onNinebotState = { [weak self] message in
@@ -773,7 +774,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     /// Size, frame rate and codec for the next session from the settings, the known head-unit
     /// screen and any lighter level chosen by "自动重启".
     private func planDisplay(for screen: CarScreen?) -> DisplayPlan {
-        if outputMode == .zeeho {
+        if outputMode.isZeeho {
             let icon = ReceiverConfiguration.iconSizes[max(0, iconSizeControl.selectedSegmentIndex)].widthMM
             return DisplayPlan(width: 1024, height: 480, fps: 30, codec: .h264, iconWidthMM: icon)
         }
@@ -1017,7 +1018,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         secureVideoOutputPortField.placeholder = String(defaultSecurePort)
         portStatus.text = browserPortError ?? (running ? "停止 CarPlay 后可修改端口。" : "启动 CarPlay 后即可打开上方地址。")
         let showsLocalOutput = modeControl.selectedSegmentIndex != 2
-        zeehoCard.isHidden = !showsLocalOutput || outputMode != .zeeho
+        zeehoCard.isHidden = !showsLocalOutput || !outputMode.isZeeho
         if !running { updateZeehoStatus("等待启动 CarPlay · 仪表 IP：\(zeehoAddressField.text ?? "192.168.0.1")") }
         ninebotCard.isHidden = !showsLocalOutput || outputMode.ninebotMode == nil
         ninebotCardInstructions?.text = ninebotInstructions
@@ -1073,7 +1074,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         log("画面计划：\(plan.width)×\(plan.height) @ \(plan.fps) FPS \(plan.codec.displayName)（\(source)\(lightLevel > 0 ? "，减轻档 \(lightLevel)" : "")）")
         config.browserAudio = soundOutput == .browser && config.videoOutputPort != nil && outputMode == .browser
         if outputMode == .airPlay, config.videoOutputPort != nil { config.airPlayStreamID = UUID() }
-        if outputMode == .zeeho {
+        if outputMode.isZeeho {
+            config.zeehoFollowsReportedSize = outputMode == .zeehoAE2
             config.zeehoAddress = (zeehoAddressField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         }
         if let mode = outputMode.ninebotMode {
@@ -2232,9 +2234,9 @@ extension ReceiverViewController {
 
     fileprivate func displayPage() -> SettingsPageController {
         page("画面") { [unowned self] in
-            if outputMode == .zeeho {
+            if outputMode.isZeeho {
                 return [
-                    SettingsSection("极核 6.2 寸", [.info("仪表画面", "1024×480 · H.264 · 25 FPS")]),
+                    SettingsSection(headUnitOutput.selectedTitle, [.info("仪表画面", outputMode == .zeehoAE2 ? "跟随仪表协商尺寸 · H.264 · 25 FPS" : "1024×480 · H.264 · 25 FPS")]),
                     SettingsSection("图标", [.control("CarPlay 图标大小", icon: ("square.grid.2x2.fill", .systemPurple), iconSizeControl)])
                 ]
             }
@@ -2562,8 +2564,8 @@ extension ReceiverViewController {
             case .carLife: return carLifeOutputSections()
             case .airPlay: return airPlayOutputSections()
             case .tailing: return tailingOutputSections()
-            case .zeeho:
-                return [SettingsSection("极核 AE4 MAX2+ 6.2 寸", footer: "让 iPhone 加入仪表 Wi-Fi，选择同名预设。结束其他投屏，打开仪表投屏后启动 CarPlay。声音由 iPhone 或蓝牙输出。", [
+            case .zeeho, .zeehoAE2:
+                return [SettingsSection(headUnitOutput.selectedTitle, footer: "让 iPhone 加入仪表 Wi-Fi，选择同名预设。结束其他投屏，打开仪表投屏后启动 CarPlay。声音由 iPhone 或蓝牙输出。AE2 Pro 模式会按仪表上报的尺寸输出。", [
                     .field("仪表 IP 地址", zeehoAddressField, placeholder: "192.168.0.1"),
                     .note(zeehoStatus)
                 ])]

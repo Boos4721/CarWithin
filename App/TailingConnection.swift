@@ -3,6 +3,8 @@ struct TailingDisplayProfile {
     let width: Int
     let height: Int
     let isZeeho: Bool
+    var followsReportedSize = false
+    static let zeehoAE2 = TailingDisplayProfile(width: 1024, height: 480, isZeeho: true, followsReportedSize: true)
     static let tailing43 = TailingDisplayProfile(width: 480, height: 272, isZeeho: false)
     static let zeeho62 = TailingDisplayProfile(width: 1024, height: 480, isZeeho: true)
 }
@@ -57,6 +59,26 @@ final class TailingConnection: @unchecked Sendable {
     private var sentH264Prefix = false
     private var mediaStarted = false
     private var configured = false
+    private var negotiatedSize: (width: Int, height: Int)?
+    var outputSize: (width: Int, height: Int) {
+        condition.lock(); defer { condition.unlock() }
+        return negotiatedSize ?? (profile.width, profile.height)
+    }
+
+    static func outputSize(for profile: TailingDisplayProfile, reportedWidth: Int, reportedHeight: Int) throws -> (width: Int, height: Int) {
+        if profile.followsReportedSize {
+            // Keep allocation and encoder work bounded. H.264 output uses even dimensions.
+            guard reportedWidth >= 240, reportedWidth <= 1920,
+                  reportedHeight >= 240, reportedHeight <= 1080 else {
+                throw TailingError.protocolFailure("仪表媒体尺寸异常：\(reportedWidth)×\(reportedHeight)")
+            }
+            return (reportedWidth & ~1, reportedHeight & ~1)
+        }
+        let valid = profile.isZeeho ? reportedWidth == 1024 && (reportedHeight == 480 || reportedHeight == 488)
+            : reportedWidth == 480 && reportedHeight == 272
+        guard valid else { throw TailingError.protocolFailure("仪表媒体尺寸 \(reportedWidth)×\(reportedHeight) 与配置不符") }
+        return (profile.width, profile.height)
+    }
     private var isZeeho: Bool { profile.isZeeho }
     private var dashboard: String { profile.isZeeho ? "极核" : "台铃" }
 
@@ -377,11 +399,8 @@ final class TailingConnection: @unchecked Sendable {
                 }
                 let width = request.payload.uint16LE(0)
                 let height = request.payload.uint16LE(2)
-                let validDimensions = isZeeho ? width == 1024 && (height == 480 || height == 488)
-                    : width == 480 && height == 272
-                guard validDimensions else {
-                    throw TailingError.protocolFailure("仪表媒体尺寸 \(width)×\(height) 与 \(dashboard) 配置不符")
-                }
+                log("仪表请求媒体尺寸：\(width)×\(height)")
+                let size = try Self.outputSize(for: profile, reportedWidth: Int(width), reportedHeight: Int(height))
                 let deadline = Date().addingTimeInterval(5)
                 condition.lock()
                 while signedHUID == nil && !closed {
@@ -394,11 +413,18 @@ final class TailingConnection: @unchecked Sendable {
                       echoed == signature else { throw TailingError.protocolFailure("媒体身份回显不匹配") }
                 try identity.verify(echoed, huid: huid)
                 payload.appendLE(UInt32(isZeeho ? 2 : 1))
-                payload.appendLE(UInt16(profile.width))
-                payload.appendLE(UInt16(profile.height))
+                payload.appendLE(UInt16(size.width))
+                payload.appendLE(UInt16(size.height))
                 response = 0x11
-                condition.lock(); configured = true; condition.unlock()
-                log("媒体身份回显校验通过，仪表报告 \(width)×\(height)，回应 \(isZeeho ? "H.264" : "JPEG") / \(profile.width)×\(profile.height)")
+                condition.lock()
+                if configured, let previous = negotiatedSize,
+                   previous.width != size.width || previous.height != size.height {
+                    condition.unlock()
+                    throw TailingError.protocolFailure("会话内媒体尺寸发生变化，请停止后重新启动投屏")
+                }
+                negotiatedSize = size; configured = true
+                condition.unlock()
+                log("媒体身份回显校验通过，仪表报告 \(width)×\(height)，回应 \(isZeeho ? "H.264" : "JPEG") / \(size.width)×\(size.height)")
             case 0x70:
                 condition.lock(); let ready = configured; condition.unlock()
                 guard ready else { throw TailingError.protocolFailure("仪表在配置完成前请求媒体启动") }

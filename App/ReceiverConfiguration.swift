@@ -27,6 +27,7 @@ struct ReceiverConfiguration {
     /// Head unit IPv4 for CarLife discovery; nil sweeps the local network.
     var carLifeAddress: String?
     var zeehoAddress: String?
+    var zeehoFollowsReportedSize = false
     var ninebotAddress: String?
     var ninebotMode: NinebotOutput.Mode = .fiveInch
     var tailingAddress: String?

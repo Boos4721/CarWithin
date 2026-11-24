@@ -13,10 +13,10 @@ final class ZeehoOutput {
 
     deinit { stop() }
 
-    func start(localAddress: String, targetAddress: String, phone: TailingPhoneInfo, onState: @escaping (String) -> Void,
+    func start(localAddress: String, targetAddress: String, profile: TailingDisplayProfile = .zeeho62, phone: TailingPhoneInfo, onState: @escaping (String) -> Void,
                onLog: @escaping (String) -> Void, requestKeyframe: @escaping () -> Void) {
         stop()
-        let next = Session(queue: queue, localAddress: localAddress, targetAddress: targetAddress, phone: phone, onState: onState, onLog: onLog, requestKeyframe: requestKeyframe)
+        let next = Session(queue: queue, localAddress: localAddress, targetAddress: targetAddress, profile: profile, phone: phone, onState: onState, onLog: onLog, requestKeyframe: requestKeyframe)
         session = next
         next.start()
     }
@@ -65,11 +65,11 @@ final class ZeehoOutput {
         private var sentPicture = false
         private var status = ""
 
-        init(queue: DispatchQueue, localAddress: String, targetAddress: String, phone: TailingPhoneInfo, onState: @escaping (String) -> Void, onLog: @escaping (String) -> Void,
+        init(queue: DispatchQueue, localAddress: String, targetAddress: String, profile: TailingDisplayProfile, phone: TailingPhoneInfo, onState: @escaping (String) -> Void, onLog: @escaping (String) -> Void,
              requestKeyframe: @escaping () -> Void) {
             self.queue = queue
             self.connection = TailingConnection(localIP: localAddress, targetIP: targetAddress,
-                profile: .zeeho62, phone: phone, log: onLog)
+                profile: profile, phone: phone, log: onLog)
             self.onState = onState
             self.onLog = onLog
             self.requestKeyframe = requestKeyframe
@@ -110,12 +110,12 @@ final class ZeehoOutput {
                             guard let recovered else { throw TailingError.timeout("等待 H.264 编码画面") }
                             try connection.sendH264(recovered.data)
                             first = false
-                            report("正在投屏 · 1024×480 · H.264")
+                            report("正在投屏 · \(connection.outputSize.width)×\(connection.outputSize.height) · H.264")
                             continue
                         }
                         try connection.sendH264(result.data)
                         first = false
-                        report("正在投屏 · 1024×480 · H.264")
+                        report("正在投屏 · \(connection.outputSize.width)×\(connection.outputSize.height) · H.264")
                     }
                 } catch {
                     if active {
@@ -204,7 +204,7 @@ final class ZeehoOutput {
             do {
                 if encoder == nil {
                     guard now - lastCodecFailure >= 0.5 else { return nil }
-                    encoder = try H264Encoder(width: ZeehoOutput.width, height: ZeehoOutput.height,
+                    encoder = try H264Encoder(width: connection.outputSize.width, height: connection.outputSize.height,
                                               fps: ZeehoOutput.fps, bitrate: 2_500_000) { [weak self] result in
                         guard let self else { return }
                         self.lock.withLock { self.encoded = result }
@@ -235,7 +235,7 @@ final class ZeehoOutput {
         }
 
         private func fittedImage(_ image: CVPixelBuffer) throws -> CVPixelBuffer {
-            let width = ZeehoOutput.width, height = ZeehoOutput.height
+            let (width, height) = connection.outputSize
             if CVPixelBufferGetWidth(image) == width, CVPixelBufferGetHeight(image) == height { return image }
             var buffer: CVPixelBuffer?
             let status = CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA,
