@@ -7,11 +7,9 @@ final class BMSOverlayPresenter {
     private let imageView = UIImageView()
     private var cachedText: String?
     private var cachedImage: CGImage?
+    private var cachedConfiguration: ANTBMSCardConfiguration?
     private var constraints: [NSLayoutConstraint] = []
-    private var positionAtTop: Bool?
-    private var widthFraction = 0.46
-    private var renderedLineCount = 2
-    var onImage: ((CGImage?, Bool, Double) -> Void)?
+    var onImage: ((CGImage?, ANTBMSCardConfiguration) -> Void)?
 
     func attach(to surface: UIView) {
         imageView.isUserInteractionEnabled = false
@@ -19,17 +17,17 @@ final class BMSOverlayPresenter {
         imageView.accessibilityLabel = "电池实时信息"
         imageView.contentMode = .scaleAspectFit
         imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.isHidden = true
         surface.addSubview(imageView)
-        layout(on: surface, atTop: true)
     }
 
-    func update(enabled: Bool, reading: ANTBMSReading?, status: String, atTop: Bool,
+    func update(enabled: Bool, reading: ANTBMSReading?, status: String,
                 configuration: ANTBMSCardConfiguration) {
         guard enabled else {
             let wasVisible = !imageView.isHidden
             imageView.isHidden = true
-            cachedText = nil; cachedImage = nil
-            if wasVisible { onImage?(nil, atTop, configuration.size.widthFraction) }
+            cachedText = nil; cachedImage = nil; cachedConfiguration = nil
+            if wasVisible { onImage?(nil, configuration) }
             return
         }
         let text: String
@@ -39,43 +37,52 @@ final class BMSOverlayPresenter {
             text = "ANT BMS · 无实时数据\n" + (status.contains("过期") || status.contains("断开") || status.contains("重连")
                 ? "连接失联，等待恢复" : "等待电池数据")
         }
-        let nextWidth = configuration.size.widthFraction
-        let changed = text != cachedText || positionAtTop != atTop || widthFraction != nextWidth || imageView.isHidden
-        let needsLayout = renderedLineCount != text.components(separatedBy: "\n").count
-            || positionAtTop != atTop || widthFraction != nextWidth
-        widthFraction = nextWidth
-        if text != cachedText {
-            cachedText = text
-            cachedImage = render(text, alarm: reading?.hasAlarm == true)
+        let previousLineCount = cachedText?.components(separatedBy: "\n").count
+        let lineCount = min(2, text.components(separatedBy: "\n").count)
+        let changed = text != cachedText || cachedConfiguration != configuration || imageView.isHidden
+        let needsLayout = previousLineCount != lineCount || cachedConfiguration != configuration
+        if text != cachedText || cachedConfiguration?.background != configuration.background {
+            cachedImage = Self.render(text, alarm: reading?.hasAlarm == true, background: configuration.background)
             imageView.image = cachedImage.map { UIImage(cgImage: $0) }
             imageView.accessibilityValue = text.replacingOccurrences(of: "\n", with: "，")
         }
+        cachedText = text; cachedConfiguration = configuration
         imageView.isHidden = false
-        if let surface = imageView.superview, needsLayout { layout(on: surface, atTop: atTop) }
-        if changed { onImage?(cachedImage, atTop, widthFraction) }
+        if let surface = imageView.superview, needsLayout {
+            layout(on: surface, configuration: configuration, lineCount: lineCount)
+        }
+        if changed { onImage?(cachedImage, configuration) }
     }
 
-    private func layout(on surface: UIView, atTop: Bool) {
-        positionAtTop = atTop
+    /// Used by settings only. A sample reading must never enter the live overlay.
+    static func preview(_ reading: ANTBMSReading, configuration: ANTBMSCardConfiguration) -> CGImage? {
+        render(configuration.lines(for: reading).joined(separator: "\n"),
+               alarm: reading.hasAlarm, background: configuration.background)
+    }
+
+    private func layout(on surface: UIView, configuration: ANTBMSCardConfiguration, lineCount: Int) {
         NSLayoutConstraint.deactivate(constraints)
         constraints = [
-            imageView.trailingAnchor.constraint(equalTo: surface.trailingAnchor, constant: -6),
-            imageView.widthAnchor.constraint(equalTo: surface.widthAnchor, multiplier: CGFloat(widthFraction)),
+            configuration.position.isAtRight
+                ? imageView.trailingAnchor.constraint(equalTo: surface.trailingAnchor, constant: -6)
+                : imageView.leadingAnchor.constraint(equalTo: surface.leadingAnchor, constant: 6),
+            imageView.widthAnchor.constraint(equalTo: surface.widthAnchor, multiplier: CGFloat(configuration.size.widthFraction)),
             imageView.heightAnchor.constraint(equalTo: imageView.widthAnchor,
-                multiplier: CGFloat(renderedLineCount == 1 ? 72 : 122) / 640),
-            atTop ? imageView.topAnchor.constraint(equalTo: surface.topAnchor, constant: 6)
-                  : imageView.bottomAnchor.constraint(equalTo: surface.bottomAnchor, constant: -6)
+                multiplier: CGFloat(lineCount == 1 ? 72 : 122) / 640),
+            configuration.position.isAtTop
+                ? imageView.topAnchor.constraint(equalTo: surface.topAnchor, constant: 6)
+                : imageView.bottomAnchor.constraint(equalTo: surface.bottomAnchor, constant: -6)
         ]
         NSLayoutConstraint.activate(constraints)
     }
 
-    private func render(_ text: String, alarm: Bool) -> CGImage? {
-        renderedLineCount = min(2, text.components(separatedBy: "\n").count)
-        let size = CGSize(width: 640, height: renderedLineCount == 1 ? 72 : 122)
+    private static func render(_ text: String, alarm: Bool, background: ANTBMSCardConfiguration.Background) -> CGImage? {
+        let lineCount = min(2, text.components(separatedBy: "\n").count)
+        let size = CGSize(width: 640, height: lineCount == 1 ? 72 : 122)
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         return UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            UIColor.black.withAlphaComponent(0.86).setFill()
+            UIColor.black.withAlphaComponent(background.opacity).setFill()
             UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: 16).fill()
             let paragraph = NSMutableParagraphStyle()
             paragraph.lineBreakMode = .byTruncatingTail

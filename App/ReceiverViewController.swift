@@ -22,6 +22,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let ipField = UITextField()
     private let ssidField = UITextField()
     private let passwordField = UITextField()
+    private let showWiFiPasswordSwitch = UISwitch()
+    private let pasteWiFiPassword = UIPasteControl(configuration: .init())
     private var passwordLoadedForSSID: String?
     private let channelField = UITextField()
     private let openNetworkSwitch = UISwitch()
@@ -220,13 +222,16 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let bmsClient = ANTBMSClient()
     private let bmsOverlay = BMSOverlayPresenter()
     private let bmsEnabledSwitch = UISwitch()
-    private let bmsPosition = ChoiceMenu(items: ["右上角", "右下角"])
+    private let bmsPosition = ChoiceMenu(items: ANTBMSCardConfiguration.Position.allCases.map(\.title))
     private let bmsCardSize = ChoiceMenu(items: ANTBMSCardConfiguration.Size.allCases.map(\.title))
+    private let bmsCardBackground = ChoiceMenu(items: ANTBMSCardConfiguration.Background.allCases.map(\.title))
     private var bmsCardConfiguration = ANTBMSCardConfiguration()
     private var bmsFieldSwitches: [ANTBMSCardConfiguration.Field: UISwitch] = [:]
-    private let bmsCardPreview = UIImageView()
+    private let bmsCardPreview = BMSCardPreviewView()
+    private let bmsCardPreviewStatus = StatusLabel()
     private let bmsStatus = StatusLabel()
     private let bmsDetails = StatusLabel()
+    private let bmsLiveSummary = BMSLiveSummaryView()
     private var bmsDeviceList: [UUID] = []
     private let inlineVideoContainer = UIView()
     private var inlineVideoConstraints: [NSLayoutConstraint] = []
@@ -334,7 +339,13 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                 "vehicle": vehiclePage, "sound": soundPage, "output": headUnitPage,
                 "tailing": { [unowned self] in self.headUnitOutput.selectedSegmentIndex = HeadUnitOutput.tailing.rawValue; self.refreshVideoOutputSummary(); return self.headUnitPage() },
                 "web": headUnitPage, "log": logPage, "lab": diagnosticsPage, "about": aboutPage,
-                "usage": usagePage, "updates": aboutPage, "https": httpsSettingsPage]
+                "usage": usagePage, "updates": aboutPage, "https": httpsSettingsPage,
+                "bms": bmsPage, "bms-devices": bmsDevicesPage, "bms-card": bmsCardPage,
+                "bms-order": { [unowned self] in
+                    BMSCardOrderViewController(fields: self.bmsCardConfiguration.fields) { _, _ in }
+                },
+                "bms-trend": { [unowned self] in self.bmsTrendPreview(legacy: false) },
+                "bms-old-trend": { [unowned self] in self.bmsTrendPreview(legacy: true) }]
             if arguments.indices.contains(index + 1), let make = pages[arguments[index + 1]] {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
                     self?.settingsNavigation?.pushViewController(make(), animated: false)
@@ -830,13 +841,17 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
 
     private func configureBMS() {
         bmsEnabledSwitch.isOn = UserDefaults.standard.bool(forKey: "antBMSEnabled")
-        bmsPosition.selectedSegmentIndex = UserDefaults.standard.integer(forKey: "antBMSPosition") == 1 ? 1 : 0
         bmsEnabledSwitch.addTarget(self, action: #selector(bmsSettingsChanged), for: .valueChanged)
-        bmsPosition.addTarget(self, action: #selector(bmsSettingsChanged), for: .valueChanged)
+        bmsPosition.addTarget(self, action: #selector(bmsCardAppearanceChanged), for: .valueChanged)
+        bmsCardBackground.addTarget(self, action: #selector(bmsCardAppearanceChanged), for: .valueChanged)
         bmsCardConfiguration = ANTBMSCardConfiguration(
             savedFields: UserDefaults.standard.stringArray(forKey: "antBMSCardFields"),
-            sizeRawValue: UserDefaults.standard.object(forKey: "antBMSCardSize") as? Int)
+            sizeRawValue: UserDefaults.standard.object(forKey: "antBMSCardSize") as? Int,
+            positionRawValue: UserDefaults.standard.object(forKey: "antBMSPosition") as? Int,
+            backgroundRawValue: UserDefaults.standard.object(forKey: "antBMSCardBackground") as? Int)
         bmsCardSize.selectedSegmentIndex = bmsCardConfiguration.size.rawValue
+        bmsPosition.selectedSegmentIndex = bmsCardConfiguration.position.rawValue
+        bmsCardBackground.selectedSegmentIndex = bmsCardConfiguration.background.rawValue
         bmsCardSize.addTarget(self, action: #selector(bmsCardSizeChanged), for: .valueChanged)
         for field in ANTBMSCardConfiguration.Field.allCases {
             let control = UISwitch()
@@ -855,13 +870,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         bmsDetails.numberOfLines = 0
         bmsDetails.font = .monospacedDigitSystemFont(ofSize: 14, weight: .regular)
         bmsOverlay.attach(to: videoSurface)
-        bmsCardPreview.contentMode = .scaleAspectFit
-        bmsCardPreview.heightAnchor.constraint(equalToConstant: 100).isActive = true
-        bmsCardPreview.isAccessibilityElement = true
-        bmsCardPreview.accessibilityLabel = "BMS 卡片预览"
-        bmsOverlay.onImage = { [weak self] image, atTop, widthFraction in
-            self?.receiver.setBMSOverlay(image, atTop: atTop, widthFraction: widthFraction)
-            self?.bmsCardPreview.image = image.map { UIImage(cgImage: $0) }
+        bmsOverlay.onImage = { [weak self] image, configuration in
+            self?.receiver.setBMSOverlay(image, configuration: configuration)
         }
         bmsClient.onLog = { [weak self] message in self?.log("BMS：" + message) }
         bmsClient.onChange = { [weak self] in self?.refreshBMS() }
@@ -887,9 +897,17 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         saveBMSCardConfiguration()
     }
 
+    @objc private func bmsCardAppearanceChanged() {
+        bmsCardConfiguration.position = ANTBMSCardConfiguration.Position(rawValue: bmsPosition.selectedSegmentIndex) ?? .topRight
+        bmsCardConfiguration.background = ANTBMSCardConfiguration.Background(rawValue: bmsCardBackground.selectedSegmentIndex) ?? .standard
+        saveBMSCardConfiguration()
+    }
+
     private func saveBMSCardConfiguration() {
         UserDefaults.standard.set(bmsCardConfiguration.fields.map(\.rawValue), forKey: "antBMSCardFields")
         UserDefaults.standard.set(bmsCardConfiguration.size.rawValue, forKey: "antBMSCardSize")
+        UserDefaults.standard.set(bmsCardConfiguration.position.rawValue, forKey: "antBMSPosition")
+        UserDefaults.standard.set(bmsCardConfiguration.background.rawValue, forKey: "antBMSCardBackground")
         saveActiveVehicleProfile()
         refreshBMS()
         reloadVisibleSettings()
@@ -897,7 +915,9 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
 
     private func applyBMSCardPreset(_ fields: [ANTBMSCardConfiguration.Field]) {
         bmsCardConfiguration = ANTBMSCardConfiguration(savedFields: fields.map(\.rawValue),
-            sizeRawValue: bmsCardConfiguration.size.rawValue)
+            sizeRawValue: bmsCardConfiguration.size.rawValue,
+            positionRawValue: bmsCardConfiguration.position.rawValue,
+            backgroundRawValue: bmsCardConfiguration.background.rawValue)
         for (field, control) in bmsFieldSwitches { control.isOn = bmsCardConfiguration.fields.contains(field) }
         saveBMSCardConfiguration()
     }
@@ -919,6 +939,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         }
         bmsSessionStatus.text = bmsStatisticsText(bmsSession)
         bmsStatus.text = bmsEnabledSwitch.isOn ? bmsClient.status : "BMS 显示已关闭"
+        bmsLiveSummary.update(reading)
         if let reading {
             let temperature = reading.maximumTemperature.map { String(format: "%.0f°C", $0) } ?? "--"
             let mos = reading.mosTemperature.map { String(format: "%.0f°C", $0) } ?? "--"
@@ -932,9 +953,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             bmsDetails.text = "电量 -- · 电压 -- · 电流 -- · 功率 --\n等待校验有效的 ANT 实时数据。"
         }
         bmsOverlay.update(enabled: bmsEnabledSwitch.isOn, reading: reading, status: bmsClient.status,
-                          atTop: bmsPosition.selectedSegmentIndex == 0, configuration: bmsCardConfiguration)
-        bmsCardPreview.accessibilityValue = reading.map { bmsCardConfiguration.lines(for: $0).joined(separator: "，") }
-            ?? "等待实时数据"
+                          configuration: bmsCardConfiguration)
+        bmsCardPreview.update(reading: reading, configuration: bmsCardConfiguration,
+                             aspectRatio: outputMode == .ninebotSeven ? 1024 / 600 : 848 / 480)
+        bmsCardPreviewStatus.text = reading == nil ? "示例数据 · 当前没有实时读数" : "实时数据 · 当前连接的 ANT BMS"
         let ids = bmsClient.devices.map(\.id)
         if ids != bmsDeviceList {
             bmsDeviceList = ids
@@ -1502,60 +1524,31 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     }
     @objc private func loadWiFiPassword() {
         let ssid = ssidField.text ?? ""
+        guard !ssid.isEmpty else { return }
         // Merely revisiting the name field must not overwrite an edited password with Keychain.
-        guard passwordLoadedForSSID != ssid else { return }
-        passwordLoadedForSSID = ssid
+        guard (passwordField.text ?? "").isEmpty else { return }
         do {
             if let saved = try WiFiCredentials.password(for: ssid) {
                 passwordField.text = saved; openNetworkSwitch.isOn = saved.isEmpty
-                passwordStatus.text = "已读取保存的 Wi-Fi 配置"
-            }
-        } catch { passwordStatus.text = "无法读取已保存的密码，请重新输入。" }
-    }
-
-    /// User-supplied candidate, not a password read from iOS or a confirmed
-    /// universal factory password. Fill only on an explicit tap for 5/7-inch output.
-    private func fillNinebotPasswordCandidate() {
-        guard supportsCurrentWiFiStartup, !running, !waitingForNetwork else { return }
-        view.endEditing(true)
-        let ssid = ssidField.text ?? ""
-        guard !ssid.isEmpty, ssid.utf8.count <= 32, !ssid.contains("\0") else {
-            passwordStatus.text = "请先读取或填写自己的仪表 Wi-Fi 名称。"
-            reloadVisibleSettings()
-            return
-        }
-        guard !openNetworkSwitch.isOn else {
-            passwordStatus.text = "当前标为开放网络，无需填写密码。"
-            reloadVisibleSettings()
-            return
-        }
-        // Check Keychain even if the field was cleared or a prior read failed.
-        do {
-            if let saved = try WiFiCredentials.password(for: ssid) {
-                if (passwordField.text ?? "").isEmpty {
-                    passwordField.text = saved
-                    openNetworkSwitch.isOn = saved.isEmpty
-                    passwordLoadedForSSID = ssid
-                }
-                passwordStatus.text = "此网络已有保存的配置，已保留；如需更改请手动编辑密码。"
-                reloadVisibleSettings()
-                return
+                passwordLoadedForSSID = ssid
+                passwordStatus.text = saved.isEmpty ? "已读取本 App 保存的开放网络配置。" : "已读取本 App 保存的 Wi-Fi 密码。"
+            } else {
+                passwordLoadedForSSID = nil
+                passwordStatus.text = "已读取 Wi-Fi 名称，但本 App 尚未保存该网络的密码。请在系统设置中查看并复制密码，粘贴到这里后保存。"
             }
         } catch {
-            passwordStatus.text = "无法读取已保存的配置，未填入候选密码。请稍后重试或手动填写。"
-            reloadVisibleSettings()
-            return
+            // A locked Keychain or changed signing access group must remain retryable.
+            passwordLoadedForSSID = nil
+            passwordStatus.text = "无法读取本 App 保存的密码。请解锁后重新读取；若更换过签名或安装包，请重新粘贴并保存密码。"
         }
-        guard (passwordField.text ?? "").isEmpty else {
-            passwordStatus.text = "已保留当前输入的密码；需要更改时可手动编辑。"
-            reloadVisibleSettings()
-            return
-        }
-        passwordField.text = "72276986"
-        passwordLoadedForSSID = ssid
-        passwordStatus.text = "已填入候选密码，尚未验证。可修改；返回会保存，或点「保存并加入 Wi-Fi」尝试连接。"
-        reloadVisibleSettings()
     }
+
+    @objc private func showWiFiPasswordChanged() {
+        let text = passwordField.text
+        passwordField.isSecureTextEntry = !showWiFiPasswordSwitch.isOn
+        passwordField.text = text
+    }
+
     private func refreshNetworkSummary() {
         let name = ssidField.text ?? ""
         if needsNetworkDetails, !name.isEmpty {
@@ -1603,8 +1596,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                     return
                 }
                 if self.ssidField.text != network.ssid {
-                    self.ssidField.text = network.ssid; self.networkNameChanged(); self.loadWiFiPassword()
+                    self.ssidField.text = network.ssid; self.networkNameChanged()
                 }
+                // Also retry when the SSID is unchanged but the password is missing.
+                self.loadWiFiPassword()
                 self.refreshNetworkSummary()
                 if requestPermission { self.reloadVisibleSettings() }
             }
@@ -2423,6 +2418,8 @@ extension ReceiverViewController {
         appearanceControl.selectedSegmentIndex = defaults.integer(forKey: "carPlayAppearance")
         appearanceControl.addTarget(self, action: #selector(appearanceChanged), for: .valueChanged)
         passwordField.isSecureTextEntry = true
+        showWiFiPasswordSwitch.addTarget(self, action: #selector(showWiFiPasswordChanged), for: .valueChanged)
+        pasteWiFiPassword.target = passwordField
         httpsMode.selectedSegmentIndex = HTTPSConfiguration.mode.rawValue
         httpsMode.addTarget(self, action: #selector(httpsModeChanged), for: .valueChanged)
         httpsDomainField.text = HTTPSConfiguration.domain
@@ -2800,7 +2797,8 @@ extension ReceiverViewController {
             bmsEnabled: bmsEnabledSwitch.isOn, cardFields: bmsCardConfiguration.fields.map(\.rawValue),
             cardSize: bmsCardConfiguration.size.rawValue, cardPosition: bmsPosition.selectedSegmentIndex,
             autoConnect: ninebotAutoConnectSwitch.isOn, currentWiFiExperiment: ninebotCurrentWiFiSwitch.isOn,
-            keepAlive: keepAliveSwitch.isOn, autoFullscreen: autoFullscreenSwitch.isOn)
+            keepAlive: keepAliveSwitch.isOn, autoFullscreen: autoFullscreenSwitch.isOn,
+            cardBackground: bmsCardConfiguration.background.rawValue)
     }
 
     private func saveActiveVehicleProfile() {
@@ -2898,8 +2896,10 @@ extension ReceiverViewController {
         applyWiFiPreset(WiFiPreset(ssid: profile.ssid, channel: profile.channel, isOpen: profile.openNetwork))
         bmsClient.restoreSelection(id: profile.bmsID, name: profile.bmsName)
         bmsEnabledSwitch.isOn = profile.bmsEnabled
-        bmsPosition.selectedSegmentIndex = profile.cardPosition == 1 ? 1 : 0
-        bmsCardConfiguration = ANTBMSCardConfiguration(savedFields: profile.cardFields, sizeRawValue: profile.cardSize)
+        bmsCardConfiguration = ANTBMSCardConfiguration(savedFields: profile.cardFields, sizeRawValue: profile.cardSize,
+            positionRawValue: profile.cardPosition, backgroundRawValue: profile.cardBackground)
+        bmsPosition.selectedSegmentIndex = bmsCardConfiguration.position.rawValue
+        bmsCardBackground.selectedSegmentIndex = bmsCardConfiguration.background.rawValue
         bmsCardSize.selectedSegmentIndex = bmsCardConfiguration.size.rawValue
         for (field, control) in bmsFieldSwitches { control.isOn = bmsCardConfiguration.fields.contains(field) }
         ninebotAutoConnectSwitch.isOn = profile.autoConnect
@@ -3032,7 +3032,7 @@ extension ReceiverViewController {
     private func bmsStatisticsText(_ statistics: ANTBMSSessionStatistics) -> String {
         guard statistics.sampleCount > 0 else { return "暂无有效样本。启动 CarPlay 且开启 BMS 后自动记录，也可手动开始。" }
         let charge = statistics.firstCharge.flatMap { first in statistics.lastCharge.map { "\(first)% → \($0)%" } } ?? "--"
-        return String(format: "有效采样 %.0f 秒 · %d 帧\n电量 %@\n电压 %.2f–%.2f V\n峰值电流 |I| %.1f A · 峰值功率 |P| %ld W\n最高温度 %@ · 最大压差 %@",
+        return String(format: "有效采样 %.0f 秒 · %d 帧\n电量 %@\n全程电压 %.2f–%.2f V\n峰值电流 |I| %.1f A · 峰值功率 |P| %ld W\n最高温度 %@ · 最大压差 %@",
             statistics.sampledSeconds, statistics.sampleCount, charge, statistics.minimumVoltage ?? 0, statistics.maximumVoltage ?? 0,
             statistics.peakAbsoluteCurrent, statistics.peakAbsolutePower,
             statistics.maximumTemperature.map { String(format: "%.0f°C", $0) } ?? "--",
@@ -3074,7 +3074,7 @@ extension ReceiverViewController {
                 }
                 return row
             }
-            sections.append(SettingsSection("最近记录", footer: "保存在本机，最多保留 20 次，每 15 秒保存片段。每次趋势保留最近 120 个采样点；断线不会用直线补齐。停止 CarPlay 或关闭 BMS 时完成记录。", history))
+            sections.append(SettingsSection("最近记录", footer: "保存在本机，最多保留 20 次，每 15 秒保存片段。趋势保留最近 120 个五秒区间的最低、最高和最新电压；全程范围包含全部有效帧。断线不会用直线补齐。停止 CarPlay 或关闭 BMS 时完成记录。", history))
             return sections
         }
     }
@@ -3155,17 +3155,44 @@ extension ReceiverViewController {
 
     private func bmsPage() -> SettingsPageController {
         page("电池与 BMS") { [unowned self] in
-            var sections = [SettingsSection("蚂蚁 ANT BMS", footer: "通过蓝牙读取默认 FFE0/FFE1 通道。只查询实时信息。显示在手机 CarPlay 画面，以及九号五寸、七寸投屏；浏览器、其他输出和画中画暂不叠加。", [
+            [SettingsSection("蚂蚁 ANT BMS", [
                 .control("读取并显示 BMS", self.bmsEnabledSwitch),
+                .note(self.bmsStatus),
+                .page("连接设备", icon: ("antenna.radiowaves.left.and.right", .systemBlue), detail: { [unowned self] in
+                    self.bmsClient.selectedName
+                }) { [unowned self] in self.bmsDevicesPage() }
+            ]),
+            SettingsSection("实时电池", footer: "只显示最近 5 秒内的有效数据，断开后自动清空旧值。", [.view(self.bmsLiveSummary)]),
+            SettingsSection("显示与记录", [
                 .page("卡片显示", icon: ("rectangle.topthird.inset.filled", .systemBlue), detail: { [unowned self] in
                     "\(self.bmsCardConfiguration.fields.count) 项 · \(self.bmsCardConfiguration.size.title)号"
                 }) { [unowned self] in self.bmsCardPage() },
                 .page("本次统计与记录", icon: ("chart.xyaxis.line", .systemGreen)) { [unowned self] in self.bmsStatisticsPage() },
+                .page("电池详情", icon: ("list.bullet.rectangle", .systemGray)) { [unowned self] in
+                    self.page("电池详情") { [unowned self] in
+                        [SettingsSection("实时参数", footer: "电流保留 ANT 原始符号。容量、温度、串数和状态由 BMS 上报。", [.note(self.bmsDetails)])]
+                    }
+                }
+            ])]
+        }
+    }
+
+    private func bmsDevicesPage() -> SettingsPageController {
+        page("BMS 连接设备") { [unowned self] in
+            var sections = [SettingsSection("当前设备", [
                 .info("已记住的设备", self.bmsClient.selectedName),
                 .note(self.bmsStatus)
             ])]
-            guard self.bmsEnabledSwitch.isOn else { return sections }
-            sections.append(SettingsSection("连接", footer: "先选择自己的设备。FFE0 也用于其他品牌，扫描出现不代表已支持；收到 CRC 校验正确的 ANT 实时帧后才确认数据连接。若无法连接，请先断开其他 BMS App。", [
+            guard self.bmsEnabledSwitch.isOn else {
+                sections.append(SettingsSection(footer: "开启读取后搜索并选择自己的 ANT BMS。", [
+                    .action("开启读取并查找设备", icon: ("antenna.radiowaves.left.and.right", .systemBlue)) { [unowned self] in
+                        self.bmsEnabledSwitch.setOn(true, animated: false)
+                        self.bmsSettingsChanged()
+                    }
+                ]))
+                return sections
+            }
+            sections.append(SettingsSection(footer: "选定后会记住并自动重连。连接不上时，先断开其他 BMS App。", [
                 .action("扫描附近 BMS", icon: ("antenna.radiowaves.left.and.right", .systemBlue)) { [unowned self] in self.bmsClient.scan() },
                 .action("忘记当前 BMS", destructive: true) { [unowned self] in
                     self.bmsClient.forget()
@@ -3179,21 +3206,31 @@ extension ReceiverViewController {
                 row.checked = { [weak self] in self?.bmsClient.selectedID == device.id }
                 return row
             }
-            if !devices.isEmpty { sections.append(SettingsSection("附近设备", devices)) }
-            sections.append(SettingsSection("实时数据", footer: "电流保留 ANT 原始符号，充放电状态按 BMS 状态码显示。超过 5 秒未更新会隐藏旧值；断线按已选设备重连。后台刷新取决于 iOS 调度。", [.note(self.bmsDetails)]))
+            sections.append(SettingsSection("附近设备", footer: "仅支持 ANT FFE0/FFE1 实时通道。扫描到 FFE0 不代表协议兼容，收到有效 ANT 数据后才确认连接。",
+                devices.isEmpty ? [.info("暂无设备", "点击上方扫描")] : devices))
             return sections
         }
     }
 
     private func bmsCardPage() -> SettingsPageController {
-        page("BMS 卡片显示") { [unowned self] in
+        bmsCardPreview.update(reading: bmsClient.freshReading, configuration: bmsCardConfiguration,
+                             aspectRatio: outputMode == .ninebotSeven ? 1024 / 600 : 848 / 480)
+        return page("BMS 卡片显示") { [unowned self] in
             var sections = [SettingsSection("布局", footer: "修改后立即同步到手机和九号五寸、七寸投屏，并自动保存。卡片最多两行；减少显示项可留出更多地图空间。", [
                 .control("字号", self.bmsCardSize),
-                .control("显示位置", self.bmsPosition)
+                .control("显示位置", self.bmsPosition),
+                .control("背景", self.bmsCardBackground),
+                .page("字段顺序", icon: ("arrow.up.arrow.down", .systemBlue)) { [unowned self] in
+                    BMSCardOrderViewController(fields: self.bmsCardConfiguration.fields) { [weak self] field, destination in
+                        guard let self else { return }
+                        self.bmsCardConfiguration.move(field, to: destination)
+                        self.saveBMSCardConfiguration()
+                    }
+                }
             ])]
-            if self.bmsEnabledSwitch.isOn {
-                sections.append(SettingsSection("实时预览", footer: "预览展示卡片内容；实际大小随字号和视频宽度变化。", [.view(self.bmsCardPreview)]))
-            }
+            sections.append(SettingsSection("布局预览", footer: "背景为布局示意，比例随所选仪表变化。没有实时读数时使用示例数据，示例不会写入电池记录或投屏画面。", [
+                .note(self.bmsCardPreviewStatus), .view(self.bmsCardPreview)
+            ]))
             sections.append(SettingsSection("快捷布局", [
                 .action("精简：电量、总压、压差", icon: ("minus.circle", .systemBlue)) { [unowned self] in
                     self.applyBMSCardPreset(ANTBMSCardConfiguration.compactFields)
@@ -3210,6 +3247,35 @@ extension ReceiverViewController {
             return sections
         }
     }
+
+    #if DEBUG
+    /// Deterministic simulator fixtures, isolated from BMS history and live data.
+    private func bmsTrendPreview(legacy: Bool) -> SettingsPageController {
+        var statistics = ANTBMSSessionStatistics()
+        for second in 0...370 {
+            let voltage = second == 0 ? 86.93 : second == 2 ? 83.67 :
+                86.0 + 0.5 * sin(Double(second) / 35)
+            let reading = ANTBMSReading(voltage: voltage, current: -12.3, power: -1018, stateOfCharge: 98,
+                stateOfHealth: nil, stateCode: 4, capacityAh: 170, remainingAh: 167,
+                cells: [4.1, 4.106], temperatures: [24], mosTemperature: 25,
+                protectionBits: 0, warningBits: 0)
+            statistics.append(ANTBMSSample(reading: reading, uptime: Double(second)), now: Double(second))
+        }
+        if legacy, let encoded = try? JSONEncoder().encode(statistics),
+           var values = (try? JSONSerialization.jsonObject(with: encoded)) as? [String: Any] {
+            values["points"] = stride(from: 0, through: 370, by: 5).map { second in
+                ["elapsed": Double(second), "voltage": second == 0 ? 86.93 : 86.0 + 0.5 * sin(Double(second) / 35)]
+            }
+            if let data = try? JSONSerialization.data(withJSONObject: values),
+               let restored = try? JSONDecoder().decode(ANTBMSSessionStatistics.self, from: data) { statistics = restored }
+        }
+        let label = StatusLabel(); label.text = bmsStatisticsText(statistics)
+        let trend = BMSVoltageTrendView(); trend.points = statistics.points
+        return page(legacy ? "旧记录预览" : "压降测试预览") {
+            [SettingsSection("模拟数据", footer: "仅供开发验证，不会保存到电池记录。", [.note(label), .view(trend)])]
+        }
+    }
+    #endif
 
     fileprivate func displayPage() -> SettingsPageController {
         page("画面") { [unowned self] in
@@ -3447,6 +3513,8 @@ extension ReceiverViewController {
             openNetworkSwitch.isOn = false; passwordLoadedForSSID = nil; passwordStatus.text = nil
         }
         activeWiFiForm = form
+        showWiFiPasswordSwitch.isOn = false
+        passwordField.isSecureTextEntry = true
         let title = isAdding ? "添加 Wi-Fi" : editable ? "编辑 Wi-Fi" : "Wi-Fi 与网络"
         let controller = page(title) { [unowned self] in
             var current: [SettingsRow] = []
@@ -3456,24 +3524,33 @@ extension ReceiverViewController {
                     self.detectNetwork()
                 })
             }
+            if editable {
+                current.append(.action("重新读取本 App 已存密码", icon: ("key.fill", .systemBlue)) { [unowned self] in
+                    let hadText = !(self.passwordField.text ?? "").isEmpty
+                    self.loadWiFiPassword()
+                    if hadText {
+                        self.passwordStatus.text = "密码框已有内容，已保留。可开启「显示密码」核对；重新读取不会覆盖当前输入。"
+                    }
+                    self.reloadVisibleSettings()
+                })
+            }
             var fields: [SettingsRow] = []
             if modeControl.selectedSegmentIndex == 0 {
                 fields.append(.field("本机 IP 地址", ipField))
             }
             fields += [
                 .field("Wi-Fi 名称", ssidField),
-                .field("密码", passwordField, placeholder: prefersCurrentWiFiStartup ? "复用当前连接可留空（实验）" : "开放网络留空"),
+                .field("密码", passwordField, placeholder: prefersCurrentWiFiStartup ? "复用当前连接可留空（实验）" : "首次填写，保存后自动读取"),
                 .control("开放网络（无密码）", openNetworkSwitch),
                 .field("兼容信道", channelField, placeholder: "36")
             ]
             var sections: [SettingsSection] = []
             if !current.isEmpty { sections.append(SettingsSection(current)) }
             sections.append(SettingsSection(footer: editingLockedFooter ?? "返回自动保存。同名网络会更新原预设，兼容信道通常保持 36。", fields))
-            if editable, supportsCurrentWiFiStartup {
-                sections.append(SettingsSection(footer: "此值为用户提供的九号仪表候选密码，适用型号尚未验证。仅填入空白字段，不覆盖已保存或已输入的密码；不是从 iPhone 系统读取的密码。", [
-                    .action("填入九号候选密码 72276986", icon: ("key.fill", .systemOrange)) { [unowned self] in
-                        self.fillNinebotPasswordCandidate()
-                    }
+            if editable {
+                sections.append(SettingsSection(footer: "读取当前 Wi-Fi 可获取名称，密码仅从本 App 已保存的配置读取，无法获取系统保存的 Wi-Fi 密码。首次可从系统设置复制后粘贴。", [
+                    .control("粘贴密码", self.pasteWiFiPassword),
+                    .control("显示密码", self.showWiFiPasswordSwitch)
                 ]))
             }
             if editable {
@@ -3490,6 +3567,8 @@ extension ReceiverViewController {
         }
         controller.onLeave = { [weak self] in
             guard let self, self.activeWiFiForm == form else { return }
+            self.showWiFiPasswordSwitch.isOn = false
+            self.passwordField.isSecureTextEntry = true
             self.activeWiFiForm = nil
             self.awaitingNetworkPermission = false
             guard editable, !self.running, !self.waitingForNetwork else { return }

@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4BAE9BD8B0499B80AB53221C /* App/BMSLiveSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEA5EA14F4F25876D95A1285; };
+		BF8116F0ECCF3A7B5A7C0913 /* App/BMSCardOrderViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C1AE09B96606444A46AA132; };
+		8ED8630B5F751E9E253B8A33 /* App/BMSCardPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B7CC79EFBED7594F84DBD37; };
 		E26C16854D5907BF95A82E43 /* Sources/TDSCarKitCore/ConnectionTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4459D2CAF8024F4246C19DD4; };
 		B82B6A511CB6BF69986E8CD7 /* Sources/TDSCarKitCore/ANTBMSSessionStatistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A0CC3E8F23C3EB816A0AB0; };
 		65631E3A1D532315BF74BA9C /* App/BMSVoltageTrendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10F20CB5269F7E50BBF0AE40; };
@@ -108,6 +111,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		EEA5EA14F4F25876D95A1285 /* App/BMSLiveSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/BMSLiveSummaryView.swift; sourceTree = "<group>"; };
+		4C1AE09B96606444A46AA132 /* App/BMSCardOrderViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/BMSCardOrderViewController.swift; sourceTree = "<group>"; };
+		1B7CC79EFBED7594F84DBD37 /* App/BMSCardPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/BMSCardPreviewView.swift; sourceTree = "<group>"; };
 		4459D2CAF8024F4246C19DD4 /* Sources/TDSCarKitCore/ConnectionTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TDSCarKitCore/ConnectionTimeline.swift; sourceTree = "<group>"; };
 		35A0CC3E8F23C3EB816A0AB0 /* Sources/TDSCarKitCore/ANTBMSSessionStatistics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TDSCarKitCore/ANTBMSSessionStatistics.swift; sourceTree = "<group>"; };
 		10F20CB5269F7E50BBF0AE40 /* App/BMSVoltageTrendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/BMSVoltageTrendView.swift; sourceTree = "<group>"; };
@@ -227,6 +233,9 @@
 				20713B3F12BAE41349E87E21 /* maibms-MIT.txt */,
 				1C1816364EE73AD87BF627E7 /* Sources/TDSCarKitCore/ANTBMSProtocol.swift */,
 				C73ED9EB7064ACDBB2EF3041 /* App/BMSOverlay.swift */,
+				EEA5EA14F4F25876D95A1285 /* App/BMSLiveSummaryView.swift */,
+				4C1AE09B96606444A46AA132 /* App/BMSCardOrderViewController.swift */,
+				1B7CC79EFBED7594F84DBD37 /* App/BMSCardPreviewView.swift */,
 				5AE3FD3B152F054D10D2D79D /* App/ANTBMSClient.swift */,
 				646EEDE7072FACC6BE3E2ABC /* Sources/TDSCarKitCore/CarPlayStartupDeadline.swift */,
 				A4571C4F22B7833F9971330A /* Sources/TDSCarKitCore/StartupNetworkMonitor.swift */,
@@ -403,6 +412,9 @@
 				1F4734136E969BDFC161129C /* Sources/TDSCarKitCore/MFiIdentityArchive.swift in Sources */,
 				5731981ECDAF108184A64D8B /* Sources/TDSCarKitCore/ANTBMSProtocol.swift in Sources */,
 				E930864F8105F55C8A988836 /* App/BMSOverlay.swift in Sources */,
+				4BAE9BD8B0499B80AB53221C /* App/BMSLiveSummaryView.swift in Sources */,
+				BF8116F0ECCF3A7B5A7C0913 /* App/BMSCardOrderViewController.swift in Sources */,
+				8ED8630B5F751E9E253B8A33 /* App/BMSCardPreviewView.swift in Sources */,
 				958FF5BA17BA9021F5076BFC /* App/ANTBMSClient.swift in Sources */,
 				2AF0A87E38083A38991DB4E0 /* Sources/TDSCarKitCore/CarPlayStartupDeadline.swift in Sources */,
 				0824E7E2162924F83ABA8566 /* Sources/TDSCarKitCore/StartupNetworkMonitor.swift in Sources */,

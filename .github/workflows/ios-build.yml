@@ -5,6 +5,11 @@ on:
     branches:
       - codex/ninebot-ant-bms
   workflow_dispatch:
+    inputs:
+      capture_ui:
+        description: Capture BMS settings and voltage trend previews in the iOS simulator
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,6 +41,12 @@ jobs:
         run: |
           set -o pipefail
           bash Tools/test.sh 2>&1 | tee artifacts/core-tests.log
+          swiftc -parse-as-library Sources/TDSCarKitCore/ANTBMSProtocol.swift \
+            Sources/TDSCarKitCore/ANTBMSSessionStatistics.swift \
+            Sources/TDSCarKitCore/ANTBMSCardConfiguration.swift \
+            App/VehicleProfileStore.swift Tools/ExperienceStoreSmoke.swift \
+            -o "$RUNNER_TEMP/CarWithinExperienceStoreSmoke"
+          "$RUNNER_TEMP/CarWithinExperienceStoreSmoke" | tee artifacts/profile-migration.log
 
       - name: Build iPhone and iPad app
         shell: bash
@@ -74,4 +85,62 @@ jobs:
           name: CarWithin-ninebot-ant-bms-${{ github.run_number }}
           path: artifacts/
           if-no-files-found: warn
+          retention-days: 14
+
+  ui-preview:
+    name: Capture iPhone UI previews
+    if: github.event_name == 'workflow_dispatch' && inputs.capture_ui
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate Xcode project
+        run: python3 Tools/generate_project.py
+      - name: Build simulator app
+        shell: bash
+        run: |
+          mkdir -p ui-artifacts
+          set -o pipefail
+          xcodebuild -project TDSCarKit.xcodeproj -scheme TDSCarKit \
+            -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/CarWithinSimulator" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
+            build 2>&1 | tee ui-artifacts/simulator-build.log
+      - name: Capture BMS previews
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, subprocess, time
+          def run(*args):
+              return subprocess.check_output(args, text=True)
+          data = json.loads(run('xcrun', 'simctl', 'list', 'devices', 'available', '--json'))
+          devices = [device for runtime, values in data['devices'].items() if 'iOS' in runtime
+                     for device in values if 'iPhone' in device['name']]
+          if not devices:
+              raise RuntimeError('No available iPhone simulator')
+          device = next((d for d in devices if 'iPhone 16 Pro' == d['name']), devices[0])
+          udid = device['udid']
+          if device['state'] != 'Booted':
+              run('xcrun', 'simctl', 'boot', udid)
+          run('xcrun', 'simctl', 'bootstatus', udid, '-b')
+          run('xcrun', 'simctl', 'status_bar', udid, 'override', '--time', '9:41', '--batteryState', 'charged', '--batteryLevel', '100')
+          app = pathlib.Path(os.environ['RUNNER_TEMP']) / 'CarWithinSimulator/Build/Products/Debug-iphonesimulator/TDSCarKit.app'
+          import plistlib
+          bundle = plistlib.loads((app / 'Info.plist').read_bytes())['CFBundleIdentifier']
+          run('xcrun', 'simctl', 'install', udid, str(app))
+          for page in ['bms', 'bms-devices', 'bms-trend', 'bms-old-trend', 'bms-card', 'bms-order', 'wifi']:
+              run('xcrun', 'simctl', 'launch', '--terminate-running-process', udid, bundle, '--open-settings', page)
+              time.sleep(3)
+              run('xcrun', 'simctl', 'io', udid, 'screenshot', f'ui-artifacts/{page}.png')
+          run('xcrun', 'simctl', 'ui', udid, 'appearance', 'dark')
+          run('xcrun', 'simctl', 'launch', '--terminate-running-process', udid, bundle, '--open-settings', 'bms-card')
+          time.sleep(3)
+          run('xcrun', 'simctl', 'io', udid, 'screenshot', 'ui-artifacts/bms-card-dark.png')
+          pathlib.Path('ui-artifacts/device.txt').write_text(device['name'] + '\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CarWithin-ui-previews-${{ github.run_number }}
+          path: ui-artifacts/
           retention-days: 14

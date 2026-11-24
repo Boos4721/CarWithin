@@ -78,8 +78,8 @@ final class NativeReceiver {
 
     /// BMS updates are serialized with output startup; CoreGraphics images are
     /// immutable and reused by the instrument encoder until the next update.
-    func setBMSOverlay(_ image: CGImage?, atTop: Bool, widthFraction: Double) {
-        queue.async { [weak self] in self?.ninebot.setBMSOverlay(image, atTop: atTop, widthFraction: widthFraction) }
+    func setBMSOverlay(_ image: CGImage?, configuration: ANTBMSCardConfiguration) {
+        queue.async { [weak self] in self?.ninebot.setBMSOverlay(image, configuration: configuration) }
     }
 
     func start(configuration: ReceiverConfiguration, identity: AccessoryIdentity, advertise: Bool = true,

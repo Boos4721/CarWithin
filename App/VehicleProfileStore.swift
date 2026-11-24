@@ -19,6 +19,8 @@ struct VehicleProfile: Codable, Identifiable {
     var currentWiFiExperiment: Bool
     var keepAlive: Bool
     var autoFullscreen: Bool
+    /// Absent in build 23 profiles; nil retains the original 86% background.
+    var cardBackground: Int? = nil
 }
 
 enum VehicleProfileStore {

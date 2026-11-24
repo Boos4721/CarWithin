@@ -47,9 +47,15 @@ Once a video picture is accepted, the home screen collapses setup instructions a
 
 Settings → 电池与 BMS → 卡片显示 provides small/medium/large text, top-right/bottom-right placement, and individual metric switches for SOC, voltage, maximum temperature, current, power and cell voltage spread. Compact and common presets select three or six fields, in at most two lines. At least one field remains selected. Settings apply immediately to the phone and Ninebot 5-inch/7-inch encoded video, persist across launches, and preserve the alarm indication. Existing users keep the medium six-field layout.
 
+## Battery interface and voltage history (build 24)
+
+The BMS page shows six fresh metrics, with device discovery, detailed parameters and history on separate pages. Card fields can be reordered by dragging; placement supports all four corners and three background opacity choices. A schematic preview labels example data explicitly when live data is unavailable. Example values never enter video output or battery history.
+
+Voltage history now retains the minimum, maximum and latest reading in each five-second interval, capped at 120 intervals. This preserves short sags missed by the old snapshot approach. The summary describes the whole session, while the plot describes its visible window. Older records remain readable and are marked as snapshots; lost historical extrema cannot be reconstructed. See [build 24 validation](docs/build24-validation.md).
+
 ## Ninebot current-network startup experiment
 
-Build 18 adds an explicit “填入九号候选密码 72276986” action to the 5-inch/7-inch Wi-Fi form. This user-suggested candidate is unverified across models and is not read from iOS. The action fills only an empty field for a named, non-open network with no existing Keychain entry; it preserves saved and edited passwords. Save once to reuse it on subsequent starts.
+Build 24 removes the password-candidate button. Reading the current network obtains its SSID and loads only credentials saved by this app. It cannot retrieve the system Wi-Fi password. A missing or inaccessible app Keychain entry is reported explicitly and remains retryable; the form supports pasting and temporarily revealing the password. Current input is preserved.
 
 For the 5-inch and 7-inch outputs, enable **无密码时尝试当前 Wi-Fi（实验）** (try the current network only without a password, experimental) under Output settings. Connect the iPhone to the instrument network first, then read or enter its exact SSID in the app. With the experiment enabled, the preset may be saved without a password. Do not mark an encrypted network as open just because its password is unknown.
 

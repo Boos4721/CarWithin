@@ -2,8 +2,18 @@ import Foundation
 
 public struct ANTBMSSessionStatistics: Codable, Equatable {
     public struct Point: Codable, Equatable {
+        /// First sample time in this five-second interval; voltage is the latest.
         public let elapsed: TimeInterval
         public let voltage: Double
+        /// Optional for compatibility with older records that retained only a snapshot.
+        public let minimumVoltage: Double?
+        public let maximumVoltage: Double?
+        public let lastElapsed: TimeInterval?
+        public let startsSegment: Bool?
+
+        public var lowerVoltage: Double { minimumVoltage ?? voltage }
+        public var upperVoltage: Double { maximumVoltage ?? voltage }
+        public var latestElapsed: TimeInterval { lastElapsed ?? elapsed }
     }
     public private(set) var sampleCount = 0
     public private(set) var firstCharge: Int?
@@ -25,7 +35,8 @@ public struct ANTBMSSessionStatistics: Codable, Equatable {
     @discardableResult
     public mutating func append(_ sample: ANTBMSSample, now: TimeInterval) -> Bool {
         guard sample.isFresh(at: now), lastUptime.map({ sample.uptime > $0 }) ?? true else { return false }
-        if let lastUptime, sample.uptime - lastUptime <= 5 { sampledSeconds += sample.uptime - lastUptime }
+        let followsPrevious = lastUptime.map { sample.uptime - $0 <= 5 } ?? false
+        if followsPrevious, let lastUptime { sampledSeconds += sample.uptime - lastUptime }
         if firstUptime == nil { firstUptime = sample.uptime }
         lastUptime = sample.uptime
         let reading = sample.reading
@@ -41,8 +52,17 @@ public struct ANTBMSSessionStatistics: Codable, Equatable {
         }
         if let delta = reading.cellDelta { maximumCellDelta = max(maximumCellDelta ?? delta, delta) }
         let elapsed = sample.uptime - (firstUptime ?? sample.uptime)
-        if points.last.map({ elapsed - $0.elapsed >= 5 }) ?? true {
-            points.append(Point(elapsed: elapsed, voltage: reading.voltage))
+        if let last = points.last, followsPrevious,
+           Int(elapsed / 5) == Int(last.elapsed / 5), last.minimumVoltage != nil {
+            // Keep short voltage sags and peaks even between the old snapshot times.
+            points[points.count - 1] = Point(elapsed: last.elapsed, voltage: reading.voltage,
+                minimumVoltage: min(last.lowerVoltage, reading.voltage),
+                maximumVoltage: max(last.upperVoltage, reading.voltage), lastElapsed: elapsed,
+                startsSegment: last.startsSegment)
+        } else {
+            points.append(Point(elapsed: elapsed, voltage: reading.voltage,
+                minimumVoltage: reading.voltage, maximumVoltage: reading.voltage,
+                lastElapsed: elapsed, startsSegment: !followsPrevious))
             if points.count > 120 { points.removeFirst(points.count - 120) }
         }
         return true
