@@ -92,6 +92,8 @@ Connect the iPhone to the instrument Wi-Fi, select its saved Wi-Fi preset, and c
 
 One instrument was tested with repeated backgrounding and screen locks. Perceived latency was approximately 500–600 ms. Other instrument versions need testing.
 
+**Startup order: start local CarPlay in CarWithin first, then enable navigation casting in the Ninebot app.** Starting Ninebot casting first can occupy the local casting port. If you see `bind …:5012 failed: Address already in use (errno 48)`, stop CarWithin, exit navigation casting in the Ninebot app and other casting apps, then retry in that order. This error means a local port is occupied; if Wi-Fi also disconnects, include the startup log so it can be investigated separately. Whether the Ninebot app must remain running for a 5-inch dashboard varies by model. For 7-inch and 4.3-inch dashboards, keep it in the background as described in their sections.
+
 ### Tailing 4.3-inch display
 
 This mode targets the **TL-DASH-V2** instrument display. Other models and firmware still need testing.
