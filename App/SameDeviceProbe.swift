@@ -20,6 +20,9 @@ final class SameDeviceProbe {
     private var controlConnected = false
     private var expectsLocalControl = true
     private var wiFiBootstrap: CarPlayWiFiBootstrap?
+    private var startupDeadline: CarPlayStartupDeadline?
+    private var startupTimer: DispatchSourceTimer?
+    private var lastStage = ""
     var onLog: ((String) -> Void)?
     var onFinished: ((String) -> Void)?
     var onStage: ((String) -> Void)?
@@ -38,6 +41,20 @@ final class SameDeviceProbe {
             }
             // Use transport type 2 for a Wi-Fi accessory connection.
             try transport.start(withIdentifier: configuration.deviceID, transportType: 2)
+            if expectsLocalControl {
+                startupDeadline = CarPlayStartupDeadline(startedAt: ProcessInfo.processInfo.systemUptime)
+                let timer = DispatchSource.makeTimerSource(queue: .main)
+                timer.schedule(deadline: .now() + 1, repeating: .seconds(1))
+                timer.setEventHandler { [weak self] in
+                    guard let self, self.active, self.generation == run else { return }
+                    self.checkStartupDeadline()
+                }
+                startupTimer = timer
+                timer.resume()
+            }
+            if wiFiBootstrap?.usesCurrentNetwork == false {
+                onLog?("使用已配置的 Wi-Fi 凭据启动 CarPlay（兼容信道 \(configuration.wifiChannel)）")
+            }
             stage("已创建本机配件端点（传输类型 2），正在建立 iAP2")
             try transport.send(IAP2Packet.presence)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
@@ -49,25 +66,44 @@ final class SameDeviceProbe {
                 } catch { self.finish("本机传输写入失败：\(error.localizedDescription)") }
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 20) { [weak self] in
-                guard let self, self.active, self.generation == run, !self.requested else { return }
+                guard let self, self.active, self.generation == run, !self.expectsLocalControl, !self.requested else { return }
                 self.finish("会话启动超时（链路=\(self.linked)，认证=\(self.authenticated)，识别=\(self.identified)）")
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 45) { [weak self] in
-                guard let self, self.active, self.generation == run, self.expectsLocalControl, !self.controlConnected else { return }
-                self.finish("未收到 CarPlay 控制连接，请检查 Wi-Fi 名称和密码后重试。兼容信道通常可保持默认值。")
             }
         } catch { finish("本机传输失败：\(error.localizedDescription)") }
     }
     func stop() {
         active = false; generation = UUID(); transport.stop(); transport.onData = nil; parser = IAP2Parser()
+        startupTimer?.cancel(); startupTimer = nil; startupDeadline = nil; lastStage = ""
         identity = nil; configuration = nil; messageBytes = Data(); sequence = 0x10; acknowledgement = 0
         wiFiBootstrap = nil
         session = 1; lastPayloadSequence = nil; linked = false; authenticated = false; identified = false; requested = false; controlConnected = false
     }
     func didConnectControl() {
-        guard active else { return }
+        guard active, !controlConnected else { return }
         controlConnected = true
+        startupDeadline?.didReceiveControlRequest(at: ProcessInfo.processInfo.systemUptime)
         stage("CarPlay 控制连接已建立，正在协商会话")
+    }
+    func didProgressControl(_ message: String) {
+        guard active, startupTimer != nil else { return }
+        stage(message)
+    }
+    func didReceiveVideo() {
+        guard active, startupTimer != nil else { return }
+        startupDeadline?.didReceiveVideo()
+        startupTimer?.cancel(); startupTimer = nil
+        onLog?("CarPlay 已收到首帧视频，启动完成")
+    }
+    private func checkStartupDeadline() {
+        guard let failure = startupDeadline?.failure(at: ProcessInfo.processInfo.systemUptime) else { return }
+        switch failure {
+        case .accessoryHandshake:
+            finish("本机配件握手超时（链路=\(linked)，认证=\(authenticated)，识别=\(identified)）。请在设置 → 日志复制记录。")
+        case .controlConnection:
+            finish("未收到 CarPlay 控制请求。请检查所选 Wi-Fi 与密码；如已填写密码，关闭免密码实验后重试。详见设置 → 日志。")
+        case .firstVideo:
+            finish("CarPlay 已建立控制连接，但 30 秒内未收到视频。最后阶段：\(lastStage)。请在设置 → 日志复制记录。")
+        }
     }
     private func requestSession(_ configuration: ReceiverConfiguration) throws {
         try send(AccessoryMessages.startSession(address: configuration.address, port: configuration.port,
@@ -96,7 +132,7 @@ final class SameDeviceProbe {
             }
         }
     }
-    private func stage(_ message: String) { onLog?(message); onStage?(message) }
+    private func stage(_ message: String) { lastStage = message; onLog?(message); onStage?(message) }
     private func finish(_ message: String) { onLog?(message); stop(); onFinished?(message) }
     private func ack() throws {
         try transport.send(IAP2Packet(control: 0x40, sequence: sequence, acknowledgement: acknowledgement, session: 0).encoded())
@@ -179,6 +215,7 @@ final class SameDeviceProbe {
                 }
             }
             requested = true
+            startupDeadline?.didRequestSession()
             stage(expectsLocalControl
                 ? "已请求在 \(configuration.address):\(configuration.port) 启动 CarPlay，会话正在等待 TCP 连接"
                 : "已向 \(configuration.name)（\(configuration.address):\(configuration.port)）请求 CarPlay。请保持此 App 运行并查看 iPad 画面。")

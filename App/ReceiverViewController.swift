@@ -583,6 +583,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         ])
         receiver.onLog = { [weak self] in self?.log($0) }; bluetooth.onLog = { [weak self] in self?.log($0) }
         receiver.onControlConnected = { [weak self] in self?.sameDevice.didConnectControl() }
+        receiver.onConnectionProgress = { [weak self] in self?.sameDevice.didProgressControl($0) }
+        receiver.onFirstVideo = { [weak self] in self?.sameDevice.didReceiveVideo() }
         receiver.onVideo = { [weak self] data, codec in
             guard let self, self.running else { return }
             // Nothing local is visible in the background without PiP: save the decoding work.
@@ -705,7 +707,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                 self.statusLabel.text = message.contains("已请求")
                     ? "已请求连接，请保持 App 运行" : "正在连接 iPad…"
             } else {
-                self.statusLabel.text = "正在连接 CarPlay…"
+                self.statusLabel.text = message
                 self.scheduleStartupHint()
             }
         }
@@ -1775,7 +1777,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             if !restartingAutomatically { autoRestarts = 0; lightLevel = 0; reportedScreen = nil; primaryViewer = nil }
             configureDisplay(&config)
             if startingWithCurrentWiFi {
-                config.wiFiBootstrap = CarPlayWiFiBootstrap(currentNetworkWithFallback: enteredWiFiCredentials)
+                config.wiFiBootstrap = CarPlayWiFiBootstrap.onConfirmedNetwork(credentials: enteredWiFiCredentials)
             }
             do { try config.validate(requiresWiFiCredentials: !startingWithCurrentWiFi) } catch {
                 log("无法启动本机 CarPlay：\(error.localizedDescription)")
@@ -1878,22 +1880,23 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
 
     private func watchStartupAddress(_ initialAddress: String) {
         networkStartupTask?.cancel()
+        let startupID = localStartupID
         networkStartupTask = Task { [weak self] in
-            var candidate: String?
-            var stableSamples = 0
-            var lostAddress = false
+            var monitor = StartupNetworkMonitor(address: initialAddress)
             for _ in 0..<90 {
                 try? await Task.sleep(nanoseconds: 500_000_000)
-                guard !Task.isCancelled, let self, self.running, !self.displayedVideo else { return }
+                guard !Task.isCancelled, let self, self.running, !self.displayedVideo,
+                      self.localStartupID == startupID else { return }
                 let address = self.localCarPlayAddress
                 self.refreshNetworkAddresses()
-                if address == nil { lostAddress = true }
-                if address != candidate { candidate = address; stableSamples = 0 }
-                stableSamples += 1
-                guard let address, address != initialAddress || lostAddress, stableSamples >= 3,
-                      self.networkRestartCount < 2, UIApplication.shared.applicationState == .active else { continue }
+                let update = monitor.observe(address: address, at: ProcessInfo.processInfo.systemUptime)
+                if update == .recovered {
+                    self.log("Wi-Fi 地址短暂中断后已恢复，保留当前 CarPlay 启动会话")
+                }
+                guard case .restart(let newAddress) = update, self.networkRestartCount < 2,
+                      UIApplication.shared.applicationState == .active else { continue }
                 self.networkRestartCount += 1
-                self.log("启动期间 Wi-Fi 已切换或恢复，使用当前地址重新连接 CarPlay")
+                self.log("启动期间 Wi-Fi 地址已变更或长时间中断（\(initialAddress) → \(newAddress)），重新连接 CarPlay")
                 self.stop()
                 self.restartingAutomatically = true
                 self.toggleReceiver()
@@ -1959,7 +1962,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         let task = DispatchWorkItem { [weak self] in
             guard let self, self.startupHintGeneration == generation, self.running,
                   !self.displayedVideo, self.modeControl.selectedSegmentIndex == 1 else { return }
-            self.startupHint.text = "连接较久时，可尝试在系统设置中关闭再打开 Wi-Fi。当前仍在继续连接。"
+            self.startupHint.text = "正在等待下一连接阶段。若超时，请到「设置 → 诊断与实验 → 日志」复制记录。已有 Wi-Fi 密码时会直接使用配置启动。"
             self.startupHint.isHidden = false
         }
         startupHintTask = task
@@ -2924,7 +2927,7 @@ extension ReceiverViewController {
             }
             if editable {
                 sections.append(SettingsSection(footer: prefersCurrentWiFiStartup
-                    ? "可只保存名称并复用已连接的仪表网络（实验）。填写密码后可主动加入，并用于实验失败时回退。"
+                    ? "有已保存密码时直接使用配置启动，避免先等待免密码实验。只有未填密码时才尝试复用当前网络。"
                     : "可先读取当前 Wi-Fi 名称。已连接所选网络时直接复用；未连接时申请加入。首次配置密码仍需填写，后续自动读取。", [
                     .action("保存并加入 Wi-Fi", icon: ("wifi", .systemBlue)) { [unowned self] in
                         self.joinSelectedWiFi(startCarPlay: false)
@@ -3024,8 +3027,8 @@ extension ReceiverViewController {
                     .note(ninebotStatus)
                 ])]
                 if supportsCurrentWiFiStartup {
-                    sections.append(SettingsSection(footer: "仅在手机已连接所选仪表 Wi-Fi 时尝试免密码启动。未建立 CarPlay 连接且有有效密码时会回退一次；没有密码时提示补全。此功能尚需真机验证。", [
-                        .control("使用当前 Wi-Fi 启动（实验）", ninebotCurrentWiFiSwitch)
+                    sections.append(SettingsSection(footer: "已有密码时始终优先发送已保存的 Wi-Fi 配置，不等待免密码实验。只有未填密码且已确认连上所选仪表网络时才尝试省略配置；12 秒未连接会提示补全密码。", [
+                        .control("无密码时尝试当前 Wi-Fi（实验）", ninebotCurrentWiFiSwitch)
                     ]))
                 }
                 return sections

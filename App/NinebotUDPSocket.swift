@@ -120,6 +120,13 @@ enum NinebotSocketError: LocalizedError {
         return code == EAGAIN || code == EWOULDBLOCK || code == ENOBUFS || code == EINTR || code == ECONNREFUSED
     }
 
+    /// The bound Wi-Fi interface may disappear briefly when iOS starts CarPlay.
+    /// These errors require a bounded wait and socket rebuild, not a dropped frame.
+    var isNetworkUnavailable: Bool {
+        guard case .operation(_, let code) = self else { return false }
+        return code == EADDRNOTAVAIL || code == ENETDOWN || code == ENETUNREACH || code == EHOSTUNREACH
+    }
+
     var errorDescription: String? {
         switch self {
         case .invalidAddress(let address):

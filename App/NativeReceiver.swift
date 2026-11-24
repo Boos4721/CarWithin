@@ -68,6 +68,9 @@ final class NativeReceiver {
     var onLog: ((String) -> Void)?
     var onListening: ((UInt16) -> Void)?
     var onControlConnected: (() -> Void)?
+    var onConnectionProgress: ((String) -> Void)?
+    var onFirstVideo: (() -> Void)?
+    private var receivedStartupVideo = false
     var onVideo: ((Data, VideoCodec) -> Void)?
     var onAirPlayReady: ((UUID) -> Void)?
     var onVideoOutputState: ((String) -> Void)?
@@ -232,11 +235,11 @@ final class NativeReceiver {
                 self.sessions[id] = state
                 if case .hostPort(let host, _) = connection.endpoint { state.peerAddress = "\(host)" }
                 connection.stateUpdateHandler = { [weak self, weak connection] update in
-                    guard let self, let connection else { return }
+                    guard let self, let connection, self.generation == generation,
+                          self.connections[id] === connection else { return }
                     switch update {
                     case .ready:
                         self.log("收到控制连接")
-                        DispatchQueue.main.async { [weak self] in self?.onControlConnected?() }
                         self.receive(connection, id: id, state: state, configuration: configuration, identity: identity)
                     case .failed, .cancelled:
                         state.media?.stop(); self.sessions.removeValue(forKey: id); self.connections.removeValue(forKey: id)
@@ -338,6 +341,7 @@ final class NativeReceiver {
         (try? AnnexB.units(in: accessUnit))?.contains { codec.isRandomAccess($0) } ?? false
     }
     private func stopOnQueue() {
+        receivedStartupVideo = false
         DispatchQueue.main.async { [weak self] in self?.discoveryService?.stop(); self?.discoveryService = nil }
         generation = UUID(); listener?.cancel(); listener = nil
         videoOutput.stop()
@@ -366,6 +370,7 @@ final class NativeReceiver {
         var cipher: ControlCipher?
         var media: CarPlayMediaSession?
         var peerAddress = ""
+        var receivedControlRequest = false
         init(credentials: AirPlayCredentials?) {
             if let credentials {
                 setup = PairSetup(identifier: credentials.identifier, signingKey: credentials.signingKey) {
@@ -379,14 +384,22 @@ final class NativeReceiver {
     }
     private func receive(_ connection: NWConnection, id: UUID, state: SessionState,
                          configuration: ReceiverConfiguration, identity: AccessoryIdentity) {
+        let generation = self.generation
         connection.receive(minimumIncompleteLength: 1, maximumLength: 32768) { [weak self] data, _, complete, error in
-            guard let self, self.connections[id] != nil else { return }
+            guard let self, self.generation == generation, self.connections[id] === connection else { return }
             do {
                 if let data, !data.isEmpty {
                     var input = data
                     while true {
                         let plaintext = try state.cipher?.receive(input) ?? input
                         guard let request = try state.parser.append(plaintext, maximumRequests: 1).first else { break }
+                        if !state.receivedControlRequest {
+                            state.receivedControlRequest = true
+                            DispatchQueue.main.async { [weak self] in
+                                guard let self, self.generation == generation else { return }
+                                self.onControlConnected?()
+                            }
+                        }
                         self.log("\(request.method) \(request.target.prefix(100)) [\(request.body.count) 字节]")
                         let response = try self.respond(request, state: state, configuration: configuration, identity: identity)
                         let encoded = response.encoded(for: request)
@@ -400,6 +413,7 @@ final class NativeReceiver {
                             state.cipher = ControlCipher(readKey: keys.read, writeKey: keys.write)
                             input = state.parser.takeBufferedData()
                             self.log("Pair-Verify 已通过，已启用加密控制")
+                            self.connectionProgress("CarPlay 控制验证已通过，正在协商媒体")
                         }
                     }
                 }
@@ -436,6 +450,14 @@ final class NativeReceiver {
                         work: ProcessInfo.processInfo.systemUptime - diagnosticArrival) }
                     #endif
                     let keyframe = Self.containsRandomAccess(data, codec: codec)
+                    if keyframe, !self.receivedStartupVideo {
+                        self.receivedStartupVideo = true
+                        let generation = self.generation
+                        DispatchQueue.main.async { [weak self] in
+                            guard let self, self.generation == generation else { return }
+                            self.onFirstVideo?()
+                        }
+                    }
                     if keyframe { self.keyframeArrived() }
                     self.videoOutput.append(data, codec: codec)
                     if configuration.zeehoAddress != nil { self.zeeho.append(data, codec: codec, keyframe: keyframe) }
@@ -473,10 +495,13 @@ final class NativeReceiver {
                 }
                 state.media = media
             }
-            return RTSPResponse(body: try state.media!.setup(request.body), contentType: "application/x-apple-binary-plist")
+            let body = try state.media!.setup(request.body)
+            connectionProgress("已响应 CarPlay 媒体协商，等待视频")
+            return RTSPResponse(body: body, contentType: "application/x-apple-binary-plist")
         case ("RECORD", _):
             guard state.media != nil else { throw ProtocolError.malformed("在 SETUP 前收到 RECORD") }
             log("已接受 CarPlay RECORD，正在等待视频")
+            connectionProgress("CarPlay 会话已开始，正在等待首帧视频")
             return RTSPResponse()
         case ("POST", "/pair-setup"):
             guard state.cipher == nil, let setup = state.setup else { throw ProtocolError.malformed("pair-setup 不可用") }
@@ -496,6 +521,7 @@ final class NativeReceiver {
             let body = try MFiSAP.respond(to: request.body, identity: identity)
             state.authenticated = true
             log("已生成 MFiSAP 响应，正在等待 iPhone 接受")
+            connectionProgress("已发送 CarPlay 认证响应，等待 iOS 确认")
             return RTSPResponse(body: body)
         case ("POST", "/feedback"):
             if let feedback = try state.media?.feedback() {
@@ -532,6 +558,13 @@ final class NativeReceiver {
         default:
             log("尚未实现：\(request.method) \(request.target.prefix(80))；未占用会话")
             return RTSPResponse(status: 501, reason: "Not Implemented")
+        }
+    }
+    private func connectionProgress(_ message: String) {
+        let generation = self.generation
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.generation == generation else { return }
+            self.onConnectionProgress?(message)
         }
     }
     private func log(_ message: String) { DispatchQueue.main.async { [weak self] in self?.onLog?(message) } }

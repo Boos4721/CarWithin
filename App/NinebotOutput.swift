@@ -74,6 +74,11 @@ final class NinebotOutput {
         private var timer: DispatchSourceTimer?
         private var video: NinebotUDPSocket?
         private var control: NinebotUDPSocket?
+        private var localAddress = ""
+        private var targetAddress = ""
+        private var networkRecoverySince: Double?
+        private var networkRecoveryError: Error?
+        private var nextNetworkRecoveryAttempt = 0.0
         private let packetizer = NinebotH264Packetizer()
         private lazy var jpegPacketizer = NinebotJPEGPacketizer()
         private var lastJPEG: Data?
@@ -121,6 +126,7 @@ final class NinebotOutput {
 
         func start(_ local: String, _ target: String, onPrepared: (Result<Void, Error>) -> Void) {
             guard active else { return }
+            localAddress = local; targetAddress = target
             do {
                 let videoPort = NinebotH264Packetizer.videoPort
                 let controlPort = NinebotH264Packetizer.controlPort
@@ -226,8 +232,10 @@ final class NinebotOutput {
         }
 
         private func tick() {
-            guard active, let video, let control else { return }
+            guard active else { return }
             let now = ProcessInfo.processInfo.systemUptime
+            if networkRecoverySince != nil { recoverNetwork(at: now); return }
+            guard let video, let control else { return }
             do {
                 if now >= nextHeartbeat {
                     nextHeartbeat = now + 1
@@ -304,6 +312,49 @@ final class NinebotOutput {
                 } catch let error as NinebotSocketError where error.isTransient {
                     lastKeyframe = -.infinity
                 }
+            } catch let error as NinebotSocketError where error.isNetworkUnavailable {
+                networkRecoverySince = now
+                networkRecoveryError = error
+                nextNetworkRecoveryAttempt = now + 0.5
+                control.close(); video.close()
+                self.control = nil; self.video = nil; kcp = nil
+                lastReply = nil; acknowledgedVideo = false; sentPicture = false
+                onLog("九号 Wi-Fi 暂不可用，最多等待 8 秒恢复投屏通道：\(error.localizedDescription)")
+                report("Wi-Fi 暂时中断，正在恢复投屏通道…")
+            } catch { fail(error) }
+        }
+
+        private func recoverNetwork(at now: Double) {
+            guard let since = networkRecoverySince else { return }
+            guard now - since < 8 else {
+                fail(networkRecoveryError ?? ConfigurationError("仪表 Wi-Fi 8 秒内未恢复，请重新连接"))
+                return
+            }
+            guard now >= nextNetworkRecoveryAttempt else { return }
+            nextNetworkRecoveryAttempt = now + 0.5
+            // A different address is handled by the controller's startup monitor.
+            guard ReceiverConfiguration.wifiIPv4Address() == localAddress else { return }
+            do {
+                let nextVideo = try NinebotUDPSocket(localIP: localAddress,
+                    localPort: NinebotH264Packetizer.videoPort, remoteIP: targetAddress,
+                    remotePort: NinebotH264Packetizer.videoPort)
+                let nextControl = try NinebotUDPSocket(localIP: localAddress,
+                    localPort: NinebotH264Packetizer.controlPort, remoteIP: targetAddress,
+                    remotePort: NinebotH264Packetizer.controlPort)
+                counter &+= 1
+                let heartbeat = usesJPEG ? NinebotJPEGPacketizer.heartbeat(counter: counter)
+                                         : NinebotH264Packetizer.heartbeat(counter: counter)
+                try nextControl.send(heartbeat)
+                guard active else { return }
+                video = nextVideo; control = nextControl
+                networkRecoverySince = nil; networkRecoveryError = nil
+                nextHeartbeat = now + 1
+                fresh = true; lastKeyframe = -.infinity
+                onLog("九号 Wi-Fi 已恢复，已重建 UDP 5012/5013 通道并重新发送握手")
+                report("投屏通道已恢复，等待仪表回应…")
+                requestKeyframe()
+            } catch let error as NinebotSocketError where error.isNetworkUnavailable || error.isTransient {
+                networkRecoveryError = error
             } catch { fail(error) }
         }
 

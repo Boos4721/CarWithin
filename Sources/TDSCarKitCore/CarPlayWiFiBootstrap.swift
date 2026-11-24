@@ -18,6 +18,13 @@ public struct CarPlayWiFiBootstrap {
         fallback = credentials
     }
 
+    /// Once the network is confirmed, use known credentials immediately. Omitting
+    /// them remains an experiment only for a network whose password is unknown.
+    public static func onConfirmedNetwork(credentials: AccessoryMessages.WiFi?) -> Self {
+        if let credentials { return Self(credentials: credentials) }
+        return Self(currentNetworkWithFallback: nil)
+    }
+
     /// A timeout may switch to genuine credentials once, without changing the
     /// current Wi-Fi association or inventing a password.
     @discardableResult
