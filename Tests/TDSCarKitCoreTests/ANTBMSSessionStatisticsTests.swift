@@ -102,5 +102,29 @@ final class ANTBMSSessionStatisticsTests: XCTestCase {
         XCTAssertEqual(old.points.last?.latestElapsed, 5)
         XCTAssertEqual(try JSONDecoder().decode(ANTBMSSessionStatistics.self,
             from: JSONEncoder().encode(old)), old)
+        XCTAssertTrue(old.voltageCSV.contains("0.000,0.000,,,86.930,,legacy_sample\r\n"))
+        XCTAssertFalse(old.voltageCSV.contains("83.670"), "Lost historical extrema cannot be assigned to a CSV interval")
+    }
+
+    func testCSVIncludesIntervalExtremaAndOutageBoundaries() {
+        var statistics = ANTBMSSessionStatistics()
+        statistics.append(sample(at: 100, voltage: 86.93), now: 100)
+        statistics.append(sample(at: 102, voltage: 83.67), now: 102)
+        statistics.append(sample(at: 104, voltage: 85.06), now: 104)
+        statistics.append(sample(at: 110, voltage: 86), now: 110)
+        let csv = statistics.voltageCSV
+        XCTAssertTrue(csv.contains("0.000,4.000,83.670,86.930,85.060,true,interval\r\n"))
+        XCTAssertTrue(csv.contains("10.000,10.000,86.000,86.000,86.000,true,interval\r\n"))
+        XCTAssertEqual(csv.components(separatedBy: "\r\n").filter { !$0.isEmpty }.count, 3)
+    }
+
+    func testEmptyCSVHasOnlyTheHeaderAndLongSessionsExportOnlyRetainedIntervals() {
+        var statistics = ANTBMSSessionStatistics()
+        XCTAssertEqual(statistics.voltageCSV.components(separatedBy: "\r\n").count, 2)
+        for index in 0..<1000 { statistics.append(sample(at: Double(index)), now: Double(index)) }
+        let rows = statistics.voltageCSV.components(separatedBy: "\r\n").filter { !$0.isEmpty }
+        XCTAssertEqual(rows.count, 121)
+        XCTAssertTrue(rows[1].hasPrefix("400.000,"))
+        XCTAssertFalse(rows[1].hasPrefix("0.000,"))
     }
 }

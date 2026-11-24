@@ -26,5 +26,49 @@ enum ExperienceStoreSmoke {
         let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
         precondition(json["password"] == nil)
         print("Vehicle profile migration: legacy schema and new card preferences passed")
+
+        let now = ISO8601DateFormatter().date(from: "2026-11-24T12:00:00Z")!
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
+        let vehicleID = UUID(), otherID = UUID(), activeID = UUID()
+        func record(_ name: String = "我的车", vehicle: UUID? = nil, offset: TimeInterval = 0,
+                    completed: Bool = true, id: UUID = UUID()) -> BMSRideRecord {
+            BMSRideRecord(id: id, startedAt: now.addingTimeInterval(offset), endedAt: now,
+                vehicleName: name, statistics: ANTBMSSessionStatistics(), completed: completed, vehicleID: vehicle)
+        }
+        var filter = BMSRecordFilter(vehicleID: vehicleID, vehicleName: "改名后的车")
+        precondition(filter.matches(record("原车名", vehicle: vehicleID), now: now, calendar: calendar))
+        precondition(!filter.matches(record("改名后的车", vehicle: otherID), now: now, calendar: calendar))
+        precondition(filter.matches(record("改名后的车"), now: now, calendar: calendar))
+        precondition(!filter.matches(record("其他旧车"), now: now, calendar: calendar))
+        filter = BMSRecordFilter(period: .today)
+        precondition(filter.matches(record(offset: -3600), now: now, calendar: calendar))
+        precondition(!filter.matches(record(offset: -24 * 3600), now: now, calendar: calendar))
+        precondition(!filter.matches(record(offset: 24 * 3600), now: now, calendar: calendar))
+        filter.period = .last7Days
+        precondition(filter.matches(record(offset: -6 * 86400), now: now, calendar: calendar))
+        precondition(!filter.matches(record(offset: -7 * 86400), now: now, calendar: calendar))
+        filter.period = .last30Days
+        precondition(filter.matches(record(offset: -29 * 86400), now: now, calendar: calendar))
+        precondition(!filter.matches(record(offset: -30 * 86400), now: now, calendar: calendar))
+        filter = BMSRecordFilter(completion: .fragments)
+        let active = record(completed: false, id: activeID)
+        precondition(!filter.matches(active, activeRecordID: activeID))
+        precondition(filter.matches(record(completed: false), activeRecordID: activeID))
+        filter.completion = .recording
+        precondition(filter.matches(active, activeRecordID: activeID))
+        precondition(!filter.matches(record(completed: false), activeRecordID: activeID))
+        filter.completion = .finished
+        precondition(filter.matches(record(), activeRecordID: activeID))
+        precondition(!filter.matches(active, activeRecordID: activeID))
+        var legacyRecord = try JSONSerialization.jsonObject(with: encoder.encode(record())) as! [String: Any]
+        legacyRecord.removeValue(forKey: "vehicleID"); legacyRecord.removeValue(forKey: "bmsID")
+        let restoredRecord = try decoder.decode(BMSRideRecord.self,
+            from: JSONSerialization.data(withJSONObject: legacyRecord))
+        precondition(restoredRecord.vehicleID == nil && restoredRecord.bmsID == nil)
+        let newRecord = record(vehicle: vehicleID)
+        let restoredNew = try decoder.decode(BMSRideRecord.self, from: encoder.encode(newRecord))
+        precondition(restoredNew.vehicleID == vehicleID)
+        print("BMS history: vehicle identity, legacy schema, local date boundaries and recording filters passed")
     }
 }

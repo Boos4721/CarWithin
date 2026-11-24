@@ -216,7 +216,12 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private var bmsSession = ANTBMSSessionStatistics()
     private var bmsSessionStartedAt: Date?
     private var bmsSessionVehicle = ""
+    private var bmsSessionVehicleID: UUID?
     private var bmsSessionDevice: UUID?
+    private var bmsRecordFilter = BMSRecordFilter()
+    private weak var liveBMSRecordSummary: StatusLabel?
+    private weak var liveBMSRecordTrend: BMSVoltageTrendView?
+    private var liveBMSRecordID: UUID?
     private var bmsSessionMinimumUptime = 0.0
     private var bmsSessionRecordID = UUID()
     private var lastBMSSaveUptime = 0.0
@@ -970,6 +975,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             }
         }
         bmsSessionStatus.text = bmsStatisticsText(bmsSession)
+        refreshLiveBMSRecord()
         bmsStatus.text = bmsEnabledSwitch.isOn ? bmsClient.status : "BMS 显示已关闭"
         bmsLiveSummary.update(reading)
         if let reading {
@@ -1021,7 +1027,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         do {
             // A remembered SSID without credentials must not overwrite an existing
             // Keychain password or be marked as an open network.
-            if credentials != nil { try WiFiCredentials.save(password, for: ssid) }
+            if credentials != nil {
+                try WiFiCredentials.save(password, for: ssid)
+                passwordLoadedForSSID = ssid
+            }
             WiFiPresetStore.upsert(ssid: ssid, channel: channel, isOpen: openNetworkSwitch.isOn)
             passwordStatus.text = credentials == nil
                 ? "已记住 Wi-Fi 名称“\(ssid)”，仅用于当前连接实验"
@@ -1566,7 +1575,16 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         let ssid = ssidField.text ?? ""
         guard !ssid.isEmpty else { return }
         // Merely revisiting the name field must not overwrite an edited password with Keychain.
-        guard (passwordField.text ?? "").isEmpty else { return }
+        guard (passwordField.text ?? "").isEmpty else {
+            passwordStatus.text = passwordLoadedForSSID == ssid
+                ? "已载入该网络在本 App 保存的密码。"
+                : "已保留你输入的密码，保存后可自动读取。"
+            return
+        }
+        if openNetworkSwitch.isOn {
+            passwordStatus.text = "开放网络，无需密码。"
+            return
+        }
         do {
             if let saved = try WiFiCredentials.password(for: ssid) {
                 passwordField.text = saved; openNetworkSwitch.isOn = saved.isEmpty
@@ -1574,7 +1592,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                 passwordStatus.text = saved.isEmpty ? "已读取本 App 保存的开放网络配置。" : "已读取本 App 保存的 Wi-Fi 密码。"
             } else {
                 passwordLoadedForSSID = nil
-                passwordStatus.text = "已读取 Wi-Fi 名称，但本 App 尚未保存该网络的密码。请在系统设置中查看并复制密码，粘贴到这里后保存。"
+                passwordStatus.text = "名称已读取 · 本 App 尚未保存密码。首次粘贴并保存后，下次一起读取。"
             }
         } catch {
             // A locked Keychain or changed signing access group must remain retryable.
@@ -1621,13 +1639,21 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             return
         }
         fetchingNetwork = true
+        if requestPermission {
+            passwordStatus.text = "正在读取 Wi-Fi 名称与本 App 已存密码…"
+            reloadVisibleSettings()
+        }
         let previousSSID = ssidField.text
         let form = activeWiFiForm
         NEHotspotNetwork.fetchCurrent { [weak self] network in
             DispatchQueue.main.async {
                 guard let self else { return }; self.fetchingNetwork = false
-                guard !self.running, !self.ssidField.isFirstResponder, !self.passwordField.isFirstResponder,
-                      self.ssidField.text == previousSSID, self.activeWiFiForm == form, !self.waitingForNetwork else { return }
+                guard !self.running, self.activeWiFiForm == form, !self.waitingForNetwork else { return }
+                guard !self.ssidField.isFirstResponder, !self.passwordField.isFirstResponder,
+                      self.ssidField.text == previousSSID else {
+                    if requestPermission { self.passwordStatus.text = "已保留当前输入。结束编辑后可重新读取。" }
+                    return
+                }
                 guard let network else {
                     if requestPermission {
                         self.passwordStatus.text = "无法读取 Wi-Fi 名称，请手动填写。"
@@ -1640,6 +1666,21 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                 }
                 // Also retry when the SSID is unchanged but the password is missing.
                 self.loadWiFiPassword()
+                if network.securityType == .open {
+                    self.passwordField.text = ""
+                    self.openNetworkSwitch.isOn = true
+                    self.passwordStatus.text = "已读取当前 Wi-Fi · 开放网络，无需密码。"
+                } else if network.securityType != .unknown, self.openNetworkSwitch.isOn {
+                    self.openNetworkSwitch.isOn = false
+                    self.passwordLoadedForSSID = nil
+                    self.loadWiFiPassword()
+                    // An old open-network entry must not override the current security type.
+                    if self.openNetworkSwitch.isOn {
+                        self.openNetworkSwitch.isOn = false
+                        self.passwordLoadedForSSID = nil
+                        self.passwordStatus.text = "当前网络需要密码；原来保存的开放网络配置已不适用，请重新粘贴密码。"
+                    }
+                }
                 self.refreshNetworkSummary()
                 if requestPermission { self.reloadVisibleSettings() }
             }
@@ -2474,6 +2515,14 @@ extension ReceiverViewController {
         httpsTokenField.text = (try? HTTPSConfiguration.secret("duckToken")).flatMap { String(data: $0, encoding: .utf8) }
         httpsDomainField.addTarget(self, action: #selector(saveHTTPSFields), for: .editingDidEnd)
         httpsTokenField.addTarget(self, action: #selector(saveHTTPSFields), for: .editingDidEnd)
+        passwordField.addAction(UIAction { [weak self] _ in
+            self?.passwordLoadedForSSID = nil
+        }, for: .editingChanged)
+        openNetworkSwitch.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            self.passwordStatus.text = self.openNetworkSwitch.isOn ? "开放网络，无需密码。" : "请填写此网络的密码。"
+            self.reloadVisibleSettings()
+        }, for: .valueChanged)
         passwordField.textContentType = .password
         ipField.keyboardType = .decimalPad
         let legacyPiPEnabled = defaults.object(forKey: "pictureInPictureEnabled") as? Bool ?? true
@@ -3114,16 +3163,17 @@ extension ReceiverViewController {
         }
     }
 
-    private func reportPreviewPage(title: String, name: String, data: () throws -> Data) -> SettingsPageController {
+    private func reportPreviewPage(title: String, name: String, format: String = "JSON",
+                                   footer: String = "以下为本次导出的完整内容。", data: () throws -> Data) -> SettingsPageController {
         do {
             let snapshot = try data()
             let text = UITextView(); text.isEditable = false; text.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
             text.text = String(data: snapshot, encoding: .utf8)
             text.heightAnchor.constraint(equalToConstant: 360).isActive = true
             return page(title) { [weak self] in
-                [SettingsSection(footer: "以下为本次导出的完整内容。", [.view(text)]), SettingsSection([
-                    .action("复制报告", icon: ("doc.on.doc", .systemBlue)) { UIPasteboard.general.string = text.text },
-                    .action("分享 JSON 文件", icon: ("square.and.arrow.up", .systemBlue)) {
+                [SettingsSection(footer: footer, [.view(text)]), SettingsSection([
+                    .action("复制内容", icon: ("doc.on.doc", .systemBlue)) { UIPasteboard.general.string = text.text },
+                    .action("分享 \(format) 文件", icon: ("square.and.arrow.up", .systemBlue)) {
                         self?.shareReport(snapshot, name: name)
                     }
                 ])]
@@ -3153,7 +3203,8 @@ extension ReceiverViewController {
         bmsSessionMinimumUptime = ProcessInfo.processInfo.systemUptime
         lastBMSSaveUptime = bmsSessionMinimumUptime
         bmsSessionRecordID = UUID()
-        bmsSessionStartedAt = Date(); bmsSessionVehicle = currentVehicleName; bmsSessionDevice = bmsClient.selectedID
+        bmsSessionStartedAt = Date(); bmsSessionVehicle = currentVehicleName
+        bmsSessionVehicleID = VehicleProfileStore.selectedID; bmsSessionDevice = bmsClient.selectedID
         bmsSessionStatus.text = "等待新的 BMS 实时数据"
     }
 
@@ -3165,12 +3216,48 @@ extension ReceiverViewController {
     }
 
     private func checkpointBMSSession(completed: Bool) {
-        guard let startedAt = bmsSessionStartedAt else { return }
-        guard bmsSession.sampleCount > 0 else { return }
-        let record = BMSRideRecord(id: bmsSessionRecordID, startedAt: startedAt, endedAt: Date(),
-            vehicleName: bmsSessionVehicle, statistics: bmsSession, completed: completed)
+        guard var record = currentBMSRecord else { return }
+        record = BMSRideRecord(id: record.id, startedAt: record.startedAt, endedAt: record.endedAt,
+            vehicleName: record.vehicleName, statistics: record.statistics, completed: completed,
+            vehicleID: record.vehicleID, bmsID: record.bmsID)
         do { try BMSRideRecordStore.save(record) }
         catch { log("BMS 记录保存失败，本次统计仍可导出：\(error.localizedDescription)") }
+    }
+
+    private var currentBMSRecord: BMSRideRecord? {
+        guard let startedAt = bmsSessionStartedAt, bmsSession.sampleCount > 0 else { return nil }
+        return BMSRideRecord(id: bmsSessionRecordID, startedAt: startedAt, endedAt: Date(),
+            vehicleName: bmsSessionVehicle, statistics: bmsSession, completed: false,
+            vehicleID: bmsSessionVehicleID, bmsID: bmsSessionDevice)
+    }
+
+    private func bmsHistoryRecords() -> [BMSRideRecord] {
+        var records = BMSRideRecordStore.records()
+        if let current = currentBMSRecord {
+            records.removeAll { $0.id == current.id }; records.insert(current, at: 0)
+        }
+        return records
+    }
+
+    private func resolvedBMSRecord(_ fallback: BMSRideRecord) -> BMSRideRecord {
+        bmsHistoryRecords().first { $0.id == fallback.id } ?? fallback
+    }
+
+    private func refreshLiveBMSRecord() {
+        guard liveBMSRecordID == bmsSessionRecordID else { return }
+        liveBMSRecordSummary?.text = bmsStatisticsText(bmsSession)
+        liveBMSRecordTrend?.points = bmsSession.points
+    }
+
+    private func bmsRecordSubtitle(_ record: BMSRideRecord, active: Bool) -> String {
+        let state = active ? "记录中" : record.completed ? "已结束" : "已保存片段"
+        let statistics = record.statistics
+        let charge = statistics.firstCharge.flatMap { first in statistics.lastCharge.map { " · \(first)% → \($0)%" } } ?? ""
+        let voltage = statistics.minimumVoltage.flatMap { low in statistics.maximumVoltage.map {
+            String(format: "\n全程 %.2f–%.2f V", low, $0)
+        } } ?? ""
+        let seconds = Int(statistics.sampledSeconds)
+        return "\(state) · 有效 \(seconds / 60) 分 \(seconds % 60) 秒\(charge)\(voltage)"
     }
 
     private func bmsStatisticsText(_ statistics: ANTBMSSessionStatistics) -> String {
@@ -3184,9 +3271,23 @@ extension ReceiverViewController {
     }
 
     private func bmsStatisticsPage() -> SettingsPageController {
-        page("BMS 统计与记录") { [unowned self] in
+        let period = ChoiceMenu(items: BMSRecordFilter.Period.allCases.map(\.title))
+        period.selectedSegmentIndex = bmsRecordFilter.period.rawValue
+        period.addAction(UIAction { [weak self, weak period] _ in
+            guard let self, let period else { return }
+            self.bmsRecordFilter.period = BMSRecordFilter.Period(rawValue: period.selectedSegmentIndex) ?? .all
+            self.reloadVisibleSettings()
+        }, for: .valueChanged)
+        let completion = ChoiceMenu(items: BMSRecordFilter.Completion.allCases.map(\.title))
+        completion.selectedSegmentIndex = bmsRecordFilter.completion.rawValue
+        completion.addAction(UIAction { [weak self, weak completion] _ in
+            guard let self, let completion else { return }
+            self.bmsRecordFilter.completion = BMSRecordFilter.Completion(rawValue: completion.selectedSegmentIndex) ?? .all
+            self.reloadVisibleSettings()
+        }, for: .valueChanged)
+        return page("BMS 统计与记录") { [unowned self] in
             var sections = [SettingsSection(self.bmsSessionStartedAt == nil ? "本次统计" : "正在记录", footer:
-                "有效采样时长不计入断线间隔；峰值取绝对值。记录电池读数，不计算里程、每公里耗电或预计续航。", [.note(self.bmsSessionStatus), .view(self.bmsTrend)])]
+                "有效采样时长不计入断线间隔；峰值取绝对值。记录电池读数，不计算里程或预计续航。", [.note(self.bmsSessionStatus), .view(self.bmsTrend)])]
             var controls: [SettingsRow] = []
             if self.bmsSessionStartedAt != nil {
                 controls.append(.action("结束并保存本次记录", icon: ("stop.circle", .systemBlue)) { [unowned self] in
@@ -3204,37 +3305,96 @@ extension ReceiverViewController {
                     return try encoder.encode(self.bmsSession)
                 })
             })
+            if !self.bmsSession.points.isEmpty { controls.append(self.bmsCSVRow { [unowned self] in self.bmsSession }) }
             sections.append(SettingsSection(controls))
-            let history = BMSRideRecordStore.records().map { record -> SettingsRow in
+            sections.append(SettingsSection("筛选历史", [
+                .page("车辆", detail: { [unowned self] in self.bmsRecordFilter.vehicleName ?? "全部车辆" }) { [unowned self] in self.bmsRecordVehiclePage() },
+                .control("时间", period), .control("状态", completion)
+            ]))
+            let all = self.bmsHistoryRecords()
+            let activeID = self.bmsSessionStartedAt == nil ? nil : self.bmsSessionRecordID
+            let now = Date()
+            let records = all.filter { self.bmsRecordFilter.matches($0, now: now, activeRecordID: activeID) }
+            var history = records.map { record -> SettingsRow in
                 let date = DateFormatter.localizedString(from: record.startedAt, dateStyle: .short, timeStyle: .short)
-                let activelyRecording = self.bmsSessionStartedAt != nil && record.id == self.bmsSessionRecordID
-                var row = SettingsRow.page("\(record.vehicleName) · \(date)", detail: {
-                    activelyRecording ? "记录中" : record.completed ? "已结束" : "已保存片段"
-                }) { [unowned self] in self.bmsRecordPage(record) }
-                if self.bmsSessionStartedAt == nil || record.id != self.bmsSessionRecordID {
+                let active = record.id == activeID
+                var row = SettingsRow.page("\(record.vehicleName) · \(date)") { [unowned self] in self.bmsRecordPage(record) }
+                row.subtitle = { [unowned self] in self.bmsRecordSubtitle(record, active: active) }
+                if !active {
                     row.onDelete = { [unowned self] in
                         do { try BMSRideRecordStore.remove(record.id) } catch { self.alert("删除失败", error.localizedDescription) }
                     }
                 }
                 return row
             }
-            sections.append(SettingsSection("最近记录", footer: "保存在本机，最多保留 20 次，每 15 秒保存片段。趋势保留最近 120 个五秒区间的最低、最高和最新电压；全程范围包含全部有效帧。断线不会用直线补齐。停止 CarPlay 或关闭 BMS 时完成记录。", history))
+            if history.isEmpty {
+                history.append(.info(all.isEmpty ? "还没有电池记录" : "没有符合条件的记录",
+                    all.isEmpty ? "连接 BMS 后开始记录" : "可调整上方筛选条件"))
+            }
+            sections.append(SettingsSection("最近记录 · \(records.count)/\(all.count)", footer:
+                "本机最多保存 20 次，每 15 秒保存片段。趋势保留最近 120 个五秒区间，全程范围包含全部有效帧。停止 CarPlay 或关闭 BMS 时完成记录。", history))
             return sections
         }
     }
 
+    private func bmsRecordVehiclePage() -> SettingsPageController {
+        page("按车辆筛选") { [unowned self] in
+            var choices: [(id: UUID?, name: String)] = VehicleProfileStore.profiles().map { ($0.id, $0.name) }
+            choices.append(contentsOf: self.bmsHistoryRecords().map { ($0.vehicleID, $0.vehicleName) })
+            var unique: [(id: UUID?, name: String)] = []
+            for choice in choices where !unique.contains(where: { $0.id != nil ? $0.id == choice.id : $0.id == choice.id && $0.name == choice.name }) {
+                unique.append(choice)
+            }
+            var all = SettingsRow.action("全部车辆") { [unowned self] in
+                self.bmsRecordFilter.vehicleID = nil; self.bmsRecordFilter.vehicleName = nil
+                self.settingsNavigation?.popViewController(animated: true)
+            }
+            all.checked = { [unowned self] in self.bmsRecordFilter.vehicleName == nil }
+            let rows = unique.map { choice -> SettingsRow in
+                var row = SettingsRow.action(choice.name) { [unowned self] in
+                    self.bmsRecordFilter.vehicleID = choice.id; self.bmsRecordFilter.vehicleName = choice.name
+                    self.settingsNavigation?.popViewController(animated: true)
+                }
+                row.checked = { [unowned self] in
+                    self.bmsRecordFilter.vehicleID == choice.id && self.bmsRecordFilter.vehicleName == choice.name
+                }
+                if choice.id == nil { row.subtitle = { "旧记录按保存时的车辆名称匹配" } }
+                return row
+            }
+            return [SettingsSection(footer: "新记录按车辆配置识别，改名后仍可查找；旧记录只保留名称，同名车辆无法进一步区分。", [all] + rows)]
+        }
+    }
+
+    private func bmsCSVRow(_ statistics: @escaping () -> ANTBMSSessionStatistics) -> SettingsRow {
+        .page("预览并导出电压 CSV", icon: ("tablecells", .systemGreen)) { [unowned self] in
+            self.reportPreviewPage(title: "电压 CSV 预览", name: "CarWithin-bms-voltage-\(UUID().uuidString).csv",
+                format: "CSV", footer: "仅导出曲线保留的最近 120 个区间，含最低、最高与最新电压，并非全程逐帧数据。旧版缺少的极值留空；时间单位为秒，电压单位为伏。") {
+                    Data(statistics().voltageCSV.utf8)
+                }
+        }
+    }
+
     private func bmsRecordPage(_ record: BMSRideRecord) -> SettingsPageController {
-        let summary = StatusLabel(); summary.text = bmsStatisticsText(record.statistics)
-        let trend = BMSVoltageTrendView(); trend.points = record.statistics.points
+        let summary = StatusLabel(), trend = BMSVoltageTrendView()
+        if record.id == bmsSessionRecordID {
+            liveBMSRecordID = record.id; liveBMSRecordSummary = summary; liveBMSRecordTrend = trend
+        }
         return page(record.vehicleName) { [unowned self] in
-            [SettingsSection("电池记录", footer: record.completed ? "已结束并保存。" : "这是最近保存的片段，可能尚未正常结束。", [.note(summary), .view(trend)]),
-             SettingsSection([.page("预览并导出记录", icon: ("square.and.arrow.up", .systemBlue)) { [unowned self] in
-                 self.reportPreviewPage(title: "记录预览", name: "CarWithin-bms-\(record.id.uuidString).json", data: {
-                     let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
-                     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-                     return try encoder.encode(record)
-                 })
-             }])]
+            let current = self.resolvedBMSRecord(record)
+            summary.text = self.bmsStatisticsText(current.statistics); trend.points = current.statistics.points
+            let active = self.bmsSessionStartedAt != nil && record.id == self.bmsSessionRecordID
+            let date = DateFormatter.localizedString(from: current.startedAt, dateStyle: .medium, timeStyle: .short)
+            return [SettingsSection("电池记录 · \(date)", footer: active ? "正在记录，读数与曲线持续更新。" : current.completed ? "已结束并保存。" : "这是最近保存的片段，可能尚未正常结束。", [.note(summary), .view(trend)]),
+             SettingsSection([
+                .page("预览并导出完整统计 JSON", icon: ("square.and.arrow.up", .systemBlue)) { [unowned self] in
+                    self.reportPreviewPage(title: "记录预览", name: "CarWithin-bms-\(record.id.uuidString).json", data: {
+                        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+                        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                        return try encoder.encode(self.resolvedBMSRecord(record))
+                    })
+                },
+                self.bmsCSVRow { [unowned self] in self.resolvedBMSRecord(record).statistics }
+             ])]
         }
     }
 
@@ -3631,54 +3791,63 @@ extension ReceiverViewController {
         activeWiFiForm = form
         showWiFiPasswordSwitch.isOn = false
         passwordField.isSecureTextEntry = true
+        var showsAdvanced = false
         let title = isAdding ? "添加 Wi-Fi" : editable ? "编辑 Wi-Fi" : "Wi-Fi 与网络"
         let controller = page(title) { [unowned self] in
-            var current: [SettingsRow] = []
-            if canDetectWiFiName && editable {
-                current.append(.action("读取当前 Wi-Fi", icon: ("antenna.radiowaves.left.and.right", .systemBlue)) { [unowned self] in
-                    guard !self.running else { return }
-                    self.detectNetwork()
-                })
-            }
+            var sections: [SettingsSection] = []
             if editable {
-                current.append(.action("重新读取本 App 已存密码", icon: ("key.fill", .systemBlue)) { [unowned self] in
-                    let hadText = !(self.passwordField.text ?? "").isEmpty
-                    self.loadWiFiPassword()
-                    if hadText {
-                        self.passwordStatus.text = "密码框已有内容，已保留。可开启「显示密码」核对；重新读取不会覆盖当前输入。"
-                    }
-                    self.reloadVisibleSettings()
-                })
+                var read = SettingsRow.action(canDetectWiFiName ? "读取当前 Wi-Fi" : "读取已保存的密码",
+                    icon: ("wifi", .systemBlue)) { [unowned self] in
+                    self.view.endEditing(true)
+                    self.settingsNavigation?.view.endEditing(true)
+                    if self.canDetectWiFiName { self.detectNetwork() }
+                    else { self.loadWiFiPassword(); self.reloadVisibleSettings() }
+                }
+                read.subtitle = { [unowned self] in self.fetchingNetwork
+                    ? "读取中…" : "一起读取网络名称和本 App 保存的对应密码" }
+                sections.append(SettingsSection([read]))
             }
             var fields: [SettingsRow] = []
-            if modeControl.selectedSegmentIndex == 0 {
-                fields.append(.field("本机 IP 地址", ipField))
+            if modeControl.selectedSegmentIndex == 0 { fields.append(.field("本机 IP 地址", ipField)) }
+            fields.append(.field("Wi-Fi 名称", ssidField, placeholder: "读取当前网络或手动填写"))
+            if !openNetworkSwitch.isOn {
+                fields.append(.field("密码", passwordField,
+                    placeholder: prefersCurrentWiFiStartup ? "复用当前连接可留空（实验）" : "首次粘贴，保存后自动读取"))
+                if editable {
+                    fields.append(.control("粘贴密码", self.pasteWiFiPassword))
+                    fields.append(.control("显示密码", self.showWiFiPasswordSwitch))
+                }
             }
-            fields += [
-                .field("Wi-Fi 名称", ssidField),
-                .field("密码", passwordField, placeholder: prefersCurrentWiFiStartup ? "复用当前连接可留空（实验）" : "首次填写，保存后自动读取"),
-                .control("开放网络（无密码）", openNetworkSwitch),
-                .field("兼容信道", channelField, placeholder: "36")
-            ]
-            var sections: [SettingsSection] = []
-            if !current.isEmpty { sections.append(SettingsSection(current)) }
-            sections.append(SettingsSection(footer: editingLockedFooter ?? "返回自动保存。同名网络会更新原预设，兼容信道通常保持 36。", fields))
+            if passwordStatus.text?.isEmpty == false { fields.append(.note(passwordStatus)) }
+            sections.append(SettingsSection("网络与密码", footer: editingLockedFooter ?? "返回自动保存；已保存密码留在本机 Keychain。", fields))
             if editable {
-                sections.append(SettingsSection(footer: "读取当前 Wi-Fi 可获取名称，密码仅从本 App 已保存的配置读取，无法获取系统保存的 Wi-Fi 密码。首次可从系统设置复制后粘贴。", [
-                    .control("粘贴密码", self.pasteWiFiPassword),
-                    .control("显示密码", self.showWiFiPasswordSwitch)
-                ]))
-            }
-            if editable {
-                sections.append(SettingsSection(footer: prefersCurrentWiFiStartup
-                    ? "有已保存密码时直接使用配置启动，避免先等待免密码实验。只有未填密码时才尝试复用当前网络。"
-                    : "可先读取当前 Wi-Fi 名称。已连接所选网络时直接复用；未连接时申请加入。首次配置密码仍需填写，后续自动读取。", [
-                    .action("保存并加入 Wi-Fi", icon: ("wifi", .systemBlue)) { [unowned self] in
+                sections.append(SettingsSection([
+                    .action("保存并加入 Wi-Fi", icon: ("checkmark.circle.fill", .systemBlue)) { [unowned self] in
                         self.joinSelectedWiFi(startCarPlay: false)
                     }
                 ]))
             }
-            if editable, passwordStatus.text?.isEmpty == false { sections.append(SettingsSection([.note(passwordStatus)])) }
+            var options: [SettingsRow] = []
+            if editable {
+                options.append(.action(showsAdvanced ? "收起网络选项" : "更多网络选项",
+                    icon: ("slider.horizontal.3", .systemGray)) { [unowned self] in
+                    showsAdvanced.toggle(); self.reloadVisibleSettings()
+                })
+            }
+            if showsAdvanced || !editable {
+                options += [.control("开放网络（无密码）", openNetworkSwitch),
+                            .field("兼容信道", channelField, placeholder: "36")]
+            }
+            if !options.isEmpty {
+                sections.append(SettingsSection(footer: showsAdvanced ? "加密网络请保持「开放网络」关闭。兼容信道通常使用 36。" : nil, options))
+            }
+            if editable {
+                sections.append(SettingsSection([
+                    .action("首次密码如何获取？", icon: ("questionmark.circle", .systemGray)) { [unowned self] in
+                        self.alert("首次保存 Wi-Fi 密码", "在 iPhone「设置 → Wi-Fi」中，点网络旁的 ⓘ，点「密码」并验证身份后复制，再回到这里点「粘贴密码」并保存。\n\n此 App 只能自动读取自己保存的密码，无法读取系统 Wi-Fi 密码。已有输入会保留，不会被覆盖。")
+                    }
+                ]))
+            }
             return sections
         }
         controller.onLeave = { [weak self] in

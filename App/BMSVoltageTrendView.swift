@@ -1,37 +1,89 @@
 import UIKit
 
-final class BMSVoltageTrendView: UIView {
+final class BMSVoltageTrendView: UIView, UIGestureRecognizerDelegate {
     private var selectedElapsed: TimeInterval?
     var points: [ANTBMSSessionStatistics.Point] = [] {
         didSet {
+            if !points.contains(where: { $0.elapsed == selectedElapsed }) { selectedElapsed = nil }
+            refreshAccessibilityValue()
+            setNeedsDisplay()
+        }
+    }
+    private func refreshAccessibilityValue() {
+        if let point = points.first(where: { $0.elapsed == selectedElapsed }) {
+            accessibilityValue = selectionDescription(point)
+        } else {
             if let low = points.map(\.lowerVoltage).min(), let high = points.map(\.upperVoltage).max() {
                 let source = points.allSatisfy { $0.minimumVoltage != nil } ? "包含区间极值" : "旧版抽样，可能遗漏瞬时压降"
                 accessibilityValue = String(format: "曲线范围 %.2f 至 %.2f 伏，%@", low, high, source)
             } else { accessibilityValue = "等待电压数据" }
-            setNeedsDisplay()
         }
     }
     override init(frame: CGRect) {
         super.init(frame: frame)
         isOpaque = false; isAccessibilityElement = true; accessibilityLabel = "本次电压趋势"
+        accessibilityTraits.insert(.adjustable)
+        accessibilityHint = "左右滑动查看区间；VoiceOver 下向上或向下轻扫切换区间。"
         heightAnchor.constraint(equalToConstant: 250).isActive = true
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(selectInterval(_:))))
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(scrubInterval(_:)))
+        pan.delegate = self
+        addGestureRecognizer(pan)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
     @objc private func selectInterval(_ recognizer: UITapGestureRecognizer) {
+        let position = recognizer.location(in: self)
+        guard bounds.inset(by: UIEdgeInsets(top: 30, left: 48, bottom: 100, right: 8)).contains(position) else { return }
+        selectInterval(at: position, announce: true)
+    }
+
+    @objc private func scrubInterval(_ recognizer: UIPanGestureRecognizer) {
+        selectInterval(at: recognizer.location(in: self), announce: recognizer.state == .ended)
+    }
+
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard let pan = gestureRecognizer as? UIPanGestureRecognizer else { return true }
+        let velocity = pan.velocity(in: self)
+        let area = bounds.inset(by: UIEdgeInsets(top: 30, left: 48, bottom: 100, right: 8))
+        return abs(velocity.x) > abs(velocity.y) && area.contains(pan.location(in: self))
+    }
+
+    private func selectInterval(at position: CGPoint, announce: Bool) {
         guard let first = points.first, let last = points.last else { return }
         let area = bounds.inset(by: UIEdgeInsets(top: 30, left: 48, bottom: 100, right: 8))
-        let position = recognizer.location(in: self)
-        guard area.width > 0, area.contains(position) else { return }
-        let fraction = Double((position.x - area.minX) / area.width)
+        guard area.width > 0 else { return }
+        let fraction = Double(min(1, max(0, (position.x - area.minX) / area.width)))
         let time = first.elapsed + fraction * max(1, last.latestElapsed - first.elapsed)
-        selectedElapsed = points.min { abs($0.latestElapsed - time) < abs($1.latestElapsed - time) }?.elapsed
+        let point = points.first { time >= $0.elapsed && time <= $0.latestElapsed }
+            ?? points.min { abs($0.latestElapsed - time) < abs($1.latestElapsed - time) }
+        select(point, announce: announce)
+    }
+
+    private func selectionDescription(_ point: ANTBMSSessionStatistics.Point) -> String {
+        if point.minimumVoltage == nil {
+            return String(format: "第 %.0f 秒，抽样 %.2f 伏，未保存区间极值", point.elapsed, point.voltage)
+        }
+        return String(format: "第 %.0f 至 %.0f 秒，最低 %.2f 伏，最高 %.2f 伏，最新 %.2f 伏",
+            point.elapsed, point.latestElapsed, point.lowerVoltage, point.upperVoltage, point.voltage)
+    }
+
+    private func select(_ point: ANTBMSSessionStatistics.Point?, announce: Bool) {
+        guard let point else { return }
+        selectedElapsed = point.elapsed
+        refreshAccessibilityValue()
         setNeedsDisplay()
-        if let point = points.first(where: { $0.elapsed == selectedElapsed }) {
-            let value = String(format: "第 %.0f 至 %.0f 秒，最低 %.2f 伏，最高 %.2f 伏，最新 %.2f 伏",
-                point.elapsed, point.latestElapsed, point.lowerVoltage, point.upperVoltage, point.voltage)
-            UIAccessibility.post(notification: .announcement, argument: value)
+        if announce { UIAccessibility.post(notification: .announcement, argument: selectionDescription(point)) }
+    }
+
+    override func accessibilityIncrement() { stepSelection(1) }
+    override func accessibilityDecrement() { stepSelection(-1) }
+    private func stepSelection(_ step: Int) {
+        guard !points.isEmpty else { return }
+        if let index = points.firstIndex(where: { $0.elapsed == selectedElapsed }) {
+            select(points[min(points.count - 1, max(0, index + step))], announce: false)
+        } else {
+            select(step > 0 ? points.first : points.last, announce: false)
         }
     }
 
@@ -98,7 +150,7 @@ final class BMSVoltageTrendView: UIView {
                     point.latestElapsed, point.lowerVoltage, point.upperVoltage, point.voltage)
             (detail as NSString).draw(in: CGRect(x: 4, y: bounds.height - 66, width: bounds.width - 8, height: 42), withAttributes: attributes)
         } else {
-            ("轻点曲线查看区间电压" as NSString).draw(at: CGPoint(x: 4, y: bounds.height - 58), withAttributes: attributes)
+            ("轻点或左右滑动查看区间电压" as NSString).draw(at: CGPoint(x: 4, y: bounds.height - 58), withAttributes: attributes)
         }
         func elapsedLabel(_ seconds: Double) -> NSString {
             String(format: "%02d:%02d", Int(seconds) / 60, Int(seconds) % 60) as NSString

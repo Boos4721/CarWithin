@@ -31,6 +31,22 @@ public struct ANTBMSSessionStatistics: Codable, Equatable {
 
     public init() {}
 
+    /// Exports the retained trend window, not the original per-frame history.
+    /// Missing legacy extrema remain empty rather than presenting a snapshot as an interval range.
+    public var voltageCSV: String {
+        let locale = Locale(identifier: "en_US_POSIX")
+        func number(_ value: Double) -> String { String(format: "%.3f", locale: locale, value) }
+        let header = "elapsed_start_s,elapsed_end_s,minimum_voltage_v,maximum_voltage_v,latest_voltage_v,starts_segment,sample_kind"
+        let rows = points.map { point in
+            [number(point.elapsed), number(point.latestElapsed),
+             point.minimumVoltage.map(number) ?? "", point.maximumVoltage.map(number) ?? "",
+             number(point.voltage), point.startsSegment.map { $0 ? "true" : "false" } ?? "",
+             point.minimumVoltage != nil && point.maximumVoltage != nil ? "interval" : "legacy_sample"]
+                .joined(separator: ",")
+        }
+        return ([header] + rows).joined(separator: "\r\n") + "\r\n"
+    }
+
     /// Duplicate callbacks, stale frames and clock reversal cannot add samples.
     @discardableResult
     public mutating func append(_ sample: ANTBMSSample, now: TimeInterval) -> Bool {
