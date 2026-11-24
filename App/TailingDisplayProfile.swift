@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 enum ZeehoFrameRate: Int, CaseIterable, Sendable {
     case fps25 = 25
