@@ -31,6 +31,12 @@ Settings → 电池与 BMS adds opt-in, read-only ANT BLE monitoring. Select you
 
 Framing and decoding reference [maibms](https://github.com/lswlc33/maibms), with its MIT license retained and bundled. Only the default FFE0/FFE1 realtime-query channel is included. Other remote outputs and PiP do not include the panel. Hardware verification is pending; see [the integration guide](docs/ant-bms.md). Run `bash Tools/test_bms.sh` with Swift 5.9+ for standalone protocol tests.
 
+## Home and BMS card (build 22)
+
+Once a video picture is accepted, the home screen collapses setup instructions and moves CarPlay and its controls directly below the status card. Connection details can be expanded, and stopping restores the setup layout. Instrument status remains visible below the video.
+
+Settings → 电池与 BMS → 卡片显示 provides small/medium/large text, top-right/bottom-right placement, and individual metric switches for SOC, voltage, maximum temperature, current, power and cell voltage spread. Compact and common presets select three or six fields, in at most two lines. At least one field remains selected. Settings apply immediately to the phone and Ninebot 5-inch/7-inch encoded video, persist across launches, and preserve the alarm indication. Existing users keep the medium six-field layout.
+
 ## Ninebot current-network startup experiment
 
 Build 18 adds an explicit “填入九号候选密码 72276986” action to the 5-inch/7-inch Wi-Fi form. This user-suggested candidate is unverified across models and is not read from iOS. The action fills only an empty field for a named, non-open network with no existing Keychain entry; it preserves saved and edited passwords. Save once to reuse it on subsequent starts.

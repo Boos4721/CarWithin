@@ -10,7 +10,9 @@ bms_test_dir="$(mktemp -d "${TMPDIR:-/tmp}/carwithin-bms-tests.XXXXXX")"
 trap 'rm -rf "$bms_test_dir"' EXIT
 mkdir -p "$bms_test_dir/Sources/TDSCarKitCore" "$bms_test_dir/Tests/TDSCarKitCoreTests"
 cp "$project_root/Sources/TDSCarKitCore/ANTBMSProtocol.swift" "$bms_test_dir/Sources/TDSCarKitCore/"
+cp "$project_root/Sources/TDSCarKitCore/ANTBMSCardConfiguration.swift" "$bms_test_dir/Sources/TDSCarKitCore/"
 cp "$project_root/Tests/TDSCarKitCoreTests/ANTBMSProtocolTests.swift" "$bms_test_dir/Tests/TDSCarKitCoreTests/"
+cp "$project_root/Tests/TDSCarKitCoreTests/ANTBMSCardConfigurationTests.swift" "$bms_test_dir/Tests/TDSCarKitCoreTests/"
 cat > "$bms_test_dir/Package.swift" <<'PACKAGE'
 // swift-tools-version: 5.9
 import PackageDescription

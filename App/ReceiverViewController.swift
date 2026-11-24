@@ -194,12 +194,22 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private var startupHintTask: DispatchWorkItem?
     private var startupHintGeneration = UUID()
     private let connectionHelp = UILabel()
+    private let homeStack = UIStackView()
+    private let homeScroll = UIScrollView()
+    private let heroStack = UIStackView()
+    private var heroTitleRow: UIStackView?
+    private let connectionDetailsButton = UIButton(type: .system)
+    private var showsConnectionDetails = false
     private let logView = UITextView()
     private let videoSurface = H264Surface()
     private let bmsClient = ANTBMSClient()
     private let bmsOverlay = BMSOverlayPresenter()
     private let bmsEnabledSwitch = UISwitch()
     private let bmsPosition = ChoiceMenu(items: ["右上角", "右下角"])
+    private let bmsCardSize = ChoiceMenu(items: ANTBMSCardConfiguration.Size.allCases.map(\.title))
+    private var bmsCardConfiguration = ANTBMSCardConfiguration()
+    private var bmsFieldSwitches: [ANTBMSCardConfiguration.Field: UISwitch] = [:]
+    private let bmsCardPreview = UIImageView()
     private let bmsStatus = StatusLabel()
     private let bmsDetails = StatusLabel()
     private var bmsDeviceList: [UUID] = []
@@ -368,6 +378,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         heroIcon.heightAnchor.constraint(equalToConstant: 48).isActive = true
         let titleStack = UIStackView(arrangedSubviews: [heroIcon, heading])
         titleStack.axis = .horizontal; titleStack.alignment = .center; titleStack.spacing = 14
+        heroTitleRow = titleStack
         let statusIcon = UIImageView(image: UIImage(systemName: "circle.fill"))
         statusIcon.tintColor = .systemBlue
         statusIcon.contentMode = .scaleAspectFit
@@ -389,13 +400,15 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         identitySetupButton.configuration?.image = UIImage(systemName: "key.fill")
         identitySetupButton.configuration?.imagePadding = 8
         identitySetupButton.addAction(UIAction { [weak self] _ in self?.revealSettings(showIdentity: true) }, for: .touchUpInside)
-        let heroStack = UIStackView(arrangedSubviews: [titleStack, explanation, statusRow, identitySetupButton, startupHint, connectionHelp, receiverPicker, networkSummary])
+        [titleStack, explanation, statusRow, identitySetupButton, startupHint, connectionHelp, receiverPicker, networkSummary]
+            .forEach { heroStack.addArrangedSubview($0) }
         heroStack.axis = .vertical; heroStack.spacing = 14
         heroStack.isLayoutMarginsRelativeArrangement = true
         heroStack.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 22, leading: 20, bottom: 22, trailing: 20)
         heroStack.backgroundColor = .secondarySystemGroupedBackground
         heroStack.layer.cornerRadius = 24; heroStack.layer.cornerCurve = .continuous
-        let stack = UIStackView(arrangedSubviews: [heroStack])
+        let stack = homeStack
+        stack.addArrangedSubview(heroStack)
         configureSettingsControls()
         if #available(iOS 17.0, *) {
             registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in self.applyAppearance() }
@@ -409,7 +422,16 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         startButton.configuration?.image = UIImage(systemName: "play.fill")
         startButton.configuration?.imagePadding = 8
         startButton.configuration?.contentInsets = NSDirectionalEdgeInsets(top: 18, leading: 24, bottom: 18, trailing: 24)
-        heroStack.addArrangedSubview(startButton)
+        connectionDetailsButton.configuration = .bordered()
+        connectionDetailsButton.setTitle("连接详情", for: .normal)
+        connectionDetailsButton.isHidden = true
+        connectionDetailsButton.addTarget(self, action: #selector(toggleConnectionDetails), for: .touchUpInside)
+        let startupActions = UIStackView(arrangedSubviews: [startButton, connectionDetailsButton])
+        startupActions.axis = .horizontal; startupActions.spacing = 10; startupActions.alignment = .fill
+        startupActions.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        connectionDetailsButton.setContentHuggingPriority(.required, for: .horizontal)
+        connectionDetailsButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+        heroStack.addArrangedSubview(startupActions)
 
         let browserIcon = UIImageView(image: UIImage(systemName: "globe"))
         browserIcon.tintColor = .systemGreen; browserIcon.contentMode = .scaleAspectFit
@@ -566,19 +588,19 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         logView.heightAnchor.constraint(equalToConstant: 220).isActive = true
         transportProbeButton.addTarget(self, action: #selector(testSameDeviceTransport), for: .touchUpInside)
         stack.axis = .vertical; stack.spacing = 16; stack.translatesAutoresizingMaskIntoConstraints = false
-        let scroll = UIScrollView(); scroll.translatesAutoresizingMaskIntoConstraints = false
+        let scroll = homeScroll; scroll.translatesAutoresizingMaskIntoConstraints = false
         scroll.keyboardDismissMode = .interactive
         scroll.panGestureRecognizer.require(toFail: videoSurface.touchOwnershipGestureRecognizer)
         view.addSubview(scroll); scroll.addSubview(stack)
-        let preferredWidth = stack.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor, constant: -48)
+        let preferredWidth = stack.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor, constant: -32)
         preferredWidth.priority = UILayoutPriority(999)
         NSLayoutConstraint.activate([
             scroll.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor), scroll.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             scroll.leadingAnchor.constraint(equalTo: view.leadingAnchor), scroll.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            stack.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor, constant: 24),
-            stack.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor, constant: -24),
+            stack.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor, constant: 16),
+            stack.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor, constant: -16),
             stack.centerXAnchor.constraint(equalTo: scroll.frameLayoutGuide.centerXAnchor),
-            preferredWidth, stack.widthAnchor.constraint(lessThanOrEqualTo: scroll.frameLayoutGuide.widthAnchor, constant: -48),
+            preferredWidth, stack.widthAnchor.constraint(lessThanOrEqualTo: scroll.frameLayoutGuide.widthAnchor, constant: -32),
             stack.widthAnchor.constraint(lessThanOrEqualToConstant: 720)
         ])
         receiver.onLog = { [weak self] in self?.log($0) }; bluetooth.onLog = { [weak self] in self?.log($0) }
@@ -593,14 +615,17 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                 self.skippedLocalVideo = true; return
             }
             do {
-                try self.videoSurface.enqueue(accessUnit: data, codec: codec)
-                if !self.displayedVideo {
+                let acceptedPicture = try self.videoSurface.enqueue(accessUnit: data, codec: codec)
+                if acceptedPicture, !self.displayedVideo {
                     self.inlineVideoContainer.isHidden = false
                     self.displayedVideo = true; self.statusLabel.text = "正在显示 CarPlay"
                     self.clearStartupHint()
                     self.networkStartupTask?.cancel()
                     self.networkStartupTask = nil
                     self.videoActions.isHidden = false; self.controlBar.isHidden = false
+                    self.refreshHomePresentation()
+                    self.view.layoutIfNeeded()
+                    self.homeScroll.setContentOffset(CGPoint(x: 0, y: -self.homeScroll.adjustedContentInset.top), animated: false)
                     self.log("视频已送入本机显示层")
                     if UIDevice.current.userInterfaceIdiom == .pad { self.showFullscreen() }
                     self.updatePictureInPicturePolicy()
@@ -767,10 +792,36 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         bmsPosition.selectedSegmentIndex = UserDefaults.standard.integer(forKey: "antBMSPosition") == 1 ? 1 : 0
         bmsEnabledSwitch.addTarget(self, action: #selector(bmsSettingsChanged), for: .valueChanged)
         bmsPosition.addTarget(self, action: #selector(bmsSettingsChanged), for: .valueChanged)
+        bmsCardConfiguration = ANTBMSCardConfiguration(
+            savedFields: UserDefaults.standard.stringArray(forKey: "antBMSCardFields"),
+            sizeRawValue: UserDefaults.standard.object(forKey: "antBMSCardSize") as? Int)
+        bmsCardSize.selectedSegmentIndex = bmsCardConfiguration.size.rawValue
+        bmsCardSize.addTarget(self, action: #selector(bmsCardSizeChanged), for: .valueChanged)
+        for field in ANTBMSCardConfiguration.Field.allCases {
+            let control = UISwitch()
+            control.isOn = bmsCardConfiguration.fields.contains(field)
+            control.addAction(UIAction { [weak self, weak control] _ in
+                guard let self, let control else { return }
+                guard self.bmsCardConfiguration.set(field, visible: control.isOn) else {
+                    control.setOn(true, animated: true)
+                    self.alert("至少显示一项", "如需隐藏整张卡片，请关闭「读取并显示 BMS」。")
+                    return
+                }
+                self.saveBMSCardConfiguration()
+            }, for: .valueChanged)
+            bmsFieldSwitches[field] = control
+        }
         bmsDetails.numberOfLines = 0
         bmsDetails.font = .monospacedDigitSystemFont(ofSize: 14, weight: .regular)
         bmsOverlay.attach(to: videoSurface)
-        bmsOverlay.onImage = { [weak self] image, atTop in self?.receiver.setBMSOverlay(image, atTop: atTop) }
+        bmsCardPreview.contentMode = .scaleAspectFit
+        bmsCardPreview.heightAnchor.constraint(equalToConstant: 100).isActive = true
+        bmsCardPreview.isAccessibilityElement = true
+        bmsCardPreview.accessibilityLabel = "BMS 卡片预览"
+        bmsOverlay.onImage = { [weak self] image, atTop, widthFraction in
+            self?.receiver.setBMSOverlay(image, atTop: atTop, widthFraction: widthFraction)
+            self?.bmsCardPreview.image = image.map { UIImage(cgImage: $0) }
+        }
         bmsClient.onLog = { [weak self] message in self?.log("BMS：" + message) }
         bmsClient.onChange = { [weak self] in self?.refreshBMS() }
         if bmsEnabledSwitch.isOn { bmsClient.start() }
@@ -783,6 +834,25 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         if bmsEnabledSwitch.isOn { bmsClient.start() } else { bmsClient.stop() }
         refreshBMS()
         reloadVisibleSettings()
+    }
+
+    @objc private func bmsCardSizeChanged() {
+        bmsCardConfiguration.size = ANTBMSCardConfiguration.Size(rawValue: bmsCardSize.selectedSegmentIndex) ?? .medium
+        saveBMSCardConfiguration()
+    }
+
+    private func saveBMSCardConfiguration() {
+        UserDefaults.standard.set(bmsCardConfiguration.fields.map(\.rawValue), forKey: "antBMSCardFields")
+        UserDefaults.standard.set(bmsCardConfiguration.size.rawValue, forKey: "antBMSCardSize")
+        refreshBMS()
+        reloadVisibleSettings()
+    }
+
+    private func applyBMSCardPreset(_ fields: [ANTBMSCardConfiguration.Field]) {
+        bmsCardConfiguration = ANTBMSCardConfiguration(savedFields: fields.map(\.rawValue),
+            sizeRawValue: bmsCardConfiguration.size.rawValue)
+        for (field, control) in bmsFieldSwitches { control.isOn = bmsCardConfiguration.fields.contains(field) }
+        saveBMSCardConfiguration()
     }
 
     private func refreshBMS() {
@@ -801,7 +871,9 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             bmsDetails.text = "电量 -- · 电压 -- · 电流 -- · 功率 --\n等待校验有效的 ANT 实时数据。"
         }
         bmsOverlay.update(enabled: bmsEnabledSwitch.isOn, reading: reading, status: bmsClient.status,
-                          atTop: bmsPosition.selectedSegmentIndex == 0)
+                          atTop: bmsPosition.selectedSegmentIndex == 0, configuration: bmsCardConfiguration)
+        bmsCardPreview.accessibilityValue = reading.map { bmsCardConfiguration.lines(for: $0).joined(separator: "，") }
+            ?? "等待实时数据"
         let ids = bmsClient.devices.map(\.id)
         if ids != bmsDeviceList {
             bmsDeviceList = ids
@@ -1124,6 +1196,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         carLifeCard.isHidden = !showsLocalOutput || outputMode != .carLife
         airPlayCard.isHidden = !showsLocalOutput || outputMode != .airPlay
         browserCard.isHidden = outputMode != .browser || !videoOutputSwitch.isOn
+        refreshHomePresentation()
         guard outputMode == .browser, videoOutputSwitch.isOn else { return }
         refreshBrowserAddressLabels()
         secureBrowserDisclosure.configuration?.image = UIImage(systemName: httpsExpanded ? "chevron.up" : "chevron.down")
@@ -1131,6 +1204,45 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         secureBrowserRow.isHidden = !httpsExpanded
         if !running {
             browserViewersLabel.text = "启动后最多 \(VideoOutputServer.maximumViewers) 台同时观看。"
+        }
+    }
+
+    @objc private func toggleConnectionDetails() {
+        showsConnectionDetails.toggle()
+        refreshHomePresentation()
+    }
+
+    private func refreshHomePresentation() {
+        let compact = displayedVideo && !showsConnectionDetails
+        heroTitleRow?.isHidden = compact
+        explanation.isHidden = compact
+        connectionHelp.isHidden = compact
+        networkSummary.isHidden = compact
+        heroStack.spacing = compact ? 10 : 14
+        heroStack.directionalLayoutMargins = compact
+            ? NSDirectionalEdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)
+            : NSDirectionalEdgeInsets(top: 22, leading: 20, bottom: 22, trailing: 20)
+        connectionDetailsButton.isHidden = !displayedVideo
+        connectionDetailsButton.setTitle(showsConnectionDetails ? "收起详情" : "连接详情", for: .normal)
+        connectionDetailsButton.accessibilityValue = showsConnectionDetails ? "已展开" : "已收起"
+        startButton.configuration?.contentInsets = compact
+            ? NSDirectionalEdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
+            : NSDirectionalEdgeInsets(top: 18, leading: 24, bottom: 18, trailing: 24)
+        let cards: [(UIStackView, UILabel)] = [(carLifeCard, carLifeCardStatus), (zeehoCard, zeehoCardStatus),
+            (ninebotCard, ninebotCardStatus), (tailingCard, tailingCardStatus)]
+        for (card, status) in cards {
+            for child in card.arrangedSubviews { child.isHidden = compact && child !== status }
+            card.directionalLayoutMargins = compact
+                ? NSDirectionalEdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
+                : NSDirectionalEdgeInsets(top: 16, leading: 18, bottom: 16, trailing: 18)
+        }
+        guard displayedVideo, homeStack.arrangedSubviews.contains(inlineVideoContainer) else { return }
+        let focus: [UIView] = [inlineVideoContainer, videoActions, controlBar]
+        for (index, child) in focus.enumerated() {
+            if homeStack.arrangedSubviews[index + 1] !== child {
+                homeStack.removeArrangedSubview(child)
+                homeStack.insertArrangedSubview(child, at: index + 1)
+            }
         }
     }
     @objc private func toggleHTTPSAddress() {
@@ -1938,6 +2050,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         pictureInPicture.stop(); keepAlive.stop(); skippedLocalVideo = false
         hideFullscreen(); videoActions.isHidden = true; controlBar.isHidden = true
         displayedVideo = false; didRequestImmediatePiP = false
+        showsConnectionDetails = false
         videoSurface.reset(); inlineVideoContainer.isHidden = true
         receiver.onListening = nil; bluetooth.stop(); sameDevice.stop(); controlBrowser.stop(); receiver.stop()
         receiverBrowser.stop()
@@ -2632,7 +2745,9 @@ extension ReceiverViewController {
         page("电池与 BMS") { [unowned self] in
             var sections = [SettingsSection("蚂蚁 ANT BMS", footer: "通过蓝牙读取默认 FFE0/FFE1 通道。只查询实时信息。显示在手机 CarPlay 画面，以及九号五寸、七寸投屏；浏览器、其他输出和画中画暂不叠加。", [
                 .control("读取并显示 BMS", self.bmsEnabledSwitch),
-                .control("显示位置", self.bmsPosition),
+                .page("卡片显示", icon: ("rectangle.topthird.inset.filled", .systemBlue), detail: { [unowned self] in
+                    "\(self.bmsCardConfiguration.fields.count) 项 · \(self.bmsCardConfiguration.size.title)号"
+                }) { [unowned self] in self.bmsCardPage() },
                 .info("已记住的设备", self.bmsClient.selectedName),
                 .note(self.bmsStatus)
             ])]
@@ -2653,6 +2768,32 @@ extension ReceiverViewController {
             }
             if !devices.isEmpty { sections.append(SettingsSection("附近设备", devices)) }
             sections.append(SettingsSection("实时数据", footer: "电流保留 ANT 原始符号，充放电状态按 BMS 状态码显示。超过 5 秒未更新会隐藏旧值；断线按已选设备重连。后台刷新取决于 iOS 调度。", [.note(self.bmsDetails)]))
+            return sections
+        }
+    }
+
+    private func bmsCardPage() -> SettingsPageController {
+        page("BMS 卡片显示") { [unowned self] in
+            var sections = [SettingsSection("布局", footer: "修改后立即同步到手机和九号五寸、七寸投屏，并自动保存。卡片最多两行；减少显示项可留出更多地图空间。", [
+                .control("字号", self.bmsCardSize),
+                .control("显示位置", self.bmsPosition)
+            ])]
+            if self.bmsEnabledSwitch.isOn {
+                sections.append(SettingsSection("实时预览", footer: "预览展示卡片内容；实际大小随字号和视频宽度变化。", [.view(self.bmsCardPreview)]))
+            }
+            sections.append(SettingsSection("快捷布局", [
+                .action("精简：电量、总压、压差", icon: ("minus.circle", .systemBlue)) { [unowned self] in
+                    self.applyBMSCardPreset(ANTBMSCardConfiguration.compactFields)
+                },
+                .action("常用：显示全部六项", icon: ("square.grid.2x2", .systemBlue)) { [unowned self] in
+                    self.applyBMSCardPreset(ANTBMSCardConfiguration.Field.allCases)
+                }
+            ]))
+            let fields = ANTBMSCardConfiguration.Field.allCases.compactMap { field -> SettingsRow? in
+                guard let control = self.bmsFieldSwitches[field] else { return nil }
+                return .control(field.title, control)
+            }
+            sections.append(SettingsSection("显示内容", footer: "至少保留一项。单体压差以 mV 显示；未知读数显示 --，BMS 告警会保留提示。", fields))
             return sections
         }
     }

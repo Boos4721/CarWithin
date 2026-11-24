@@ -19,11 +19,12 @@ final class NinebotOutput {
     private var session: Session?
     private var bmsImage: CGImage?
     private var bmsAtTop = true
+    private var bmsWidthFraction = 0.46
 
-    func setBMSOverlay(_ image: CGImage?, atTop: Bool) {
-        bmsImage = image; bmsAtTop = atTop
+    func setBMSOverlay(_ image: CGImage?, atTop: Bool, widthFraction: Double) {
+        bmsImage = image; bmsAtTop = atTop; bmsWidthFraction = widthFraction
         let current = session
-        queue.async { current?.setBMSOverlay(image, atTop: atTop) }
+        queue.async { current?.setBMSOverlay(image, atTop: atTop, widthFraction: widthFraction) }
     }
 
     deinit { stop() }
@@ -34,9 +35,9 @@ final class NinebotOutput {
         stop()
         let next = Session(queue: queue, mode: mode, onState: onState, onLog: onLog, requestKeyframe: requestKeyframe)
         session = next
-        let overlay = bmsImage, atTop = bmsAtTop
+        let overlay = bmsImage, atTop = bmsAtTop, widthFraction = bmsWidthFraction
         queue.async {
-            next.setBMSOverlay(overlay, atTop: atTop)
+            next.setBMSOverlay(overlay, atTop: atTop, widthFraction: widthFraction)
             next.start(localAddress, targetAddress, onPrepared: onPrepared)
         }
     }
@@ -106,11 +107,13 @@ final class NinebotOutput {
         private var status = ""
         private var bmsOverlay: CIImage?
         private var bmsAtTop = true
+        private var bmsWidthFraction = 0.46
 
-        func setBMSOverlay(_ image: CGImage?, atTop: Bool) {
+        func setBMSOverlay(_ image: CGImage?, atTop: Bool, widthFraction: Double) {
             // Only 5/7-inch H.264 outputs are included in the first BMS integration.
             bmsOverlay = usesJPEG ? nil : image.map { CIImage(cgImage: $0) }
             bmsAtTop = atTop
+            bmsWidthFraction = widthFraction
             fresh = true
         }
 
@@ -448,7 +451,7 @@ final class NinebotOutput {
                 y: (bounds.height - scaled.extent.height) / 2))
             let canvas = positioned.composited(over: CIImage(color: .black)).cropped(to: bounds)
             guard let bmsOverlay else { return canvas }
-            let overlayWidth = bounds.width * 0.46
+            let overlayWidth = bounds.width * CGFloat(bmsWidthFraction)
             let factor = overlayWidth / bmsOverlay.extent.width
             let scaledOverlay = bmsOverlay.transformed(by: CGAffineTransform(scaleX: factor, y: factor))
             let margin = max(6, bounds.width * 0.007)

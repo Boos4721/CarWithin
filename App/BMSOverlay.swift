@@ -9,7 +9,9 @@ final class BMSOverlayPresenter {
     private var cachedImage: CGImage?
     private var constraints: [NSLayoutConstraint] = []
     private var positionAtTop: Bool?
-    var onImage: ((CGImage?, Bool) -> Void)?
+    private var widthFraction = 0.46
+    private var renderedLineCount = 2
+    var onImage: ((CGImage?, Bool, Double) -> Void)?
 
     func attach(to surface: UIView) {
         imageView.isUserInteractionEnabled = false
@@ -21,26 +23,27 @@ final class BMSOverlayPresenter {
         layout(on: surface, atTop: true)
     }
 
-    func update(enabled: Bool, reading: ANTBMSReading?, status: String, atTop: Bool) {
+    func update(enabled: Bool, reading: ANTBMSReading?, status: String, atTop: Bool,
+                configuration: ANTBMSCardConfiguration) {
         guard enabled else {
             let wasVisible = !imageView.isHidden
             imageView.isHidden = true
             cachedText = nil; cachedImage = nil
-            if wasVisible { onImage?(nil, atTop) }
+            if wasVisible { onImage?(nil, atTop, configuration.size.widthFraction) }
             return
         }
         let text: String
         if let reading {
-            let temperature = reading.maximumTemperature.map { String(format: "%.0f°C", $0) } ?? "--°C"
-            let delta = reading.cellDelta.map { String(format: "%.0fmV", $0 * 1000) } ?? "--mV"
-            let alarm = reading.hasAlarm ? " · 告警" : ""
-            text = String(format: "ANT  %d%%  %.2fV  %@%@\n%+.1fA  %dW  压差 %@",
-                reading.stateOfCharge, reading.voltage, temperature, alarm, reading.current, reading.power, delta)
+            text = configuration.lines(for: reading).joined(separator: "\n")
         } else {
             text = "ANT BMS · 无实时数据\n" + (status.contains("过期") || status.contains("断开") || status.contains("重连")
                 ? "连接失联，等待恢复" : "等待电池数据")
         }
-        let changed = text != cachedText || positionAtTop != atTop || imageView.isHidden
+        let nextWidth = configuration.size.widthFraction
+        let changed = text != cachedText || positionAtTop != atTop || widthFraction != nextWidth || imageView.isHidden
+        let needsLayout = renderedLineCount != text.components(separatedBy: "\n").count
+            || positionAtTop != atTop || widthFraction != nextWidth
+        widthFraction = nextWidth
         if text != cachedText {
             cachedText = text
             cachedImage = render(text, alarm: reading?.hasAlarm == true)
@@ -48,8 +51,8 @@ final class BMSOverlayPresenter {
             imageView.accessibilityValue = text.replacingOccurrences(of: "\n", with: "，")
         }
         imageView.isHidden = false
-        if let surface = imageView.superview, positionAtTop != atTop { layout(on: surface, atTop: atTop) }
-        if changed { onImage?(cachedImage, atTop) }
+        if let surface = imageView.superview, needsLayout { layout(on: surface, atTop: atTop) }
+        if changed { onImage?(cachedImage, atTop, widthFraction) }
     }
 
     private func layout(on surface: UIView, atTop: Bool) {
@@ -57,8 +60,9 @@ final class BMSOverlayPresenter {
         NSLayoutConstraint.deactivate(constraints)
         constraints = [
             imageView.trailingAnchor.constraint(equalTo: surface.trailingAnchor, constant: -6),
-            imageView.widthAnchor.constraint(equalTo: surface.widthAnchor, multiplier: 0.46),
-            imageView.heightAnchor.constraint(equalTo: imageView.widthAnchor, multiplier: 122 / 640),
+            imageView.widthAnchor.constraint(equalTo: surface.widthAnchor, multiplier: CGFloat(widthFraction)),
+            imageView.heightAnchor.constraint(equalTo: imageView.widthAnchor,
+                multiplier: CGFloat(renderedLineCount == 1 ? 72 : 122) / 640),
             atTop ? imageView.topAnchor.constraint(equalTo: surface.topAnchor, constant: 6)
                   : imageView.bottomAnchor.constraint(equalTo: surface.bottomAnchor, constant: -6)
         ]
@@ -66,7 +70,8 @@ final class BMSOverlayPresenter {
     }
 
     private func render(_ text: String, alarm: Bool) -> CGImage? {
-        let size = CGSize(width: 640, height: 122)
+        renderedLineCount = min(2, text.components(separatedBy: "\n").count)
+        let size = CGSize(width: 640, height: renderedLineCount == 1 ? 72 : 122)
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         return UIGraphicsImageRenderer(size: size, format: format).image { _ in

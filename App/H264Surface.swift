@@ -128,7 +128,8 @@ final class H264Surface: UIView {
         return description
     }
 
-    func enqueue(accessUnit: Data, codec: VideoCodec) throws {
+    @discardableResult
+    func enqueue(accessUnit: Data, codec: VideoCodec) throws -> Bool {
         dispatchPrecondition(condition: .onQueue(.main))
         let units = try AnnexB.units(in: accessUnit)
         if parameters?.codec != codec { parameters = VideoParameterSets(codec: codec); format = nil }
@@ -145,19 +146,19 @@ final class H264Surface: UIView {
             display.flush(); format = newFormat
             onLog?("本机显示层使用 \(codec.displayName)")
         }
-        guard !picture.isEmpty else { return }
+        guard !picture.isEmpty else { return false }
         guard let format else {
             // Parameter sets were lost (e.g. after a reset); only a new IDR carries them again.
             if !awaitingKeyframe { awaitingKeyframe = true; onKeyframeNeeded?("缺少参数集") }
-            return
+            return false
         }
         let keyframe = picture.contains { codec.isRandomAccess($0) }
         let now = ProcessInfo.processInfo.systemUptime
         if rendererNeedsRecovery {
             // During lock transitions the decoder may stay unavailable for a short time.
-            guard now - lastRecovery >= 0.5 else { return }
+            guard now - lastRecovery >= 0.5 else { return false }
             recover(reason: "显示层需要恢复：\(display.error?.localizedDescription ?? "系统状态变化")")
-            guard !rendererNeedsRecovery else { return }
+            guard !rendererNeedsRecovery else { return false }
         } else if pending.count >= 30 || pendingBytes > 16 * 1024 * 1024 {
             recover(reason: "显示积压 \(pending.count) 帧")
         } else if #available(iOS 17.4, *) {
@@ -172,7 +173,7 @@ final class H264Surface: UIView {
             }
         }
         if awaitingKeyframe {
-            guard keyframe else { return }
+            guard keyframe else { return false }
             awaitingKeyframe = false
         }
         let bytes = try AnnexB.lengthPrefixed(picture)
@@ -201,6 +202,7 @@ final class H264Surface: UIView {
             requesting = true
             display.requestMediaDataWhenReady(on: .main) { [weak self] in self?.drain() }
         }
+        return true
     }
 
     private func drain() {
