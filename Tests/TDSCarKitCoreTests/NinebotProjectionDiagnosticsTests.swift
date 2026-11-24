@@ -28,6 +28,40 @@ final class NinebotProjectionDiagnosticsTests: XCTestCase {
         })
         XCTAssertTrue(report.summary.contains("本次尚未观察到"))
         XCTAssertTrue(report.summary.contains("已挂钩 0 项"))
+        XCTAssertNil(report.counters)
+        XCTAssertNil(report.observations)
+        XCTAssertNil(report.pluginVersion)
+    }
+
+    func testNewPathsCanBeObservedEvenWhenOrdinaryConversionStaysAtZero() throws {
+        let report = try NinebotProjectionDiagnostics.decode(fixture {
+            $0["pluginVersion"] = "0.2"; $0["frameCount"] = 0; $0["events"] = []
+            $0["counters"] = ["recordCalls": 1, "pixelCalls": 0, "mjpegCalls": 0, "encodedCallbacks": 25]
+            $0["observations"] = ["pixelBufferClass": ["status": "methodMissing", "encoding": ""],
+                                  "encodedCallback": ["status": "hooked", "encoding": "v32@0:8@16@24"]]
+            $0["methodInventory"] = ["NBVideoManager -imageVideoEncoder:didEncodedImage: | v32@0:8@16@24"]
+        })
+        XCTAssertTrue(report.summary.contains("已观察到调用"))
+        XCTAssertTrue(report.summary.contains("普通转换 0 次"))
+        XCTAssertTrue(report.summary.contains("编码回调 25 次"))
+        XCTAssertTrue(report.summary.contains("不能证明仪表已激活"))
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+        XCTAssertEqual(try NinebotProjectionDiagnostics.decode(encoder.encode(report)), report)
+    }
+
+    func testRejectsMalformedOptionalObservationFields() throws {
+        for counters in [["pixelCalls": -1], ["unknown": 1], ["recordCalls": Int(Int32.max) + 1]] {
+            XCTAssertThrowsError(try NinebotProjectionDiagnostics.decode(fixture { $0["counters"] = counters }))
+        }
+        XCTAssertThrowsError(try NinebotProjectionDiagnostics.decode(fixture {
+            $0["observations"] = ["encodedCallback": ["status": "instrumentActivated", "encoding": ""]]
+        }))
+        XCTAssertThrowsError(try NinebotProjectionDiagnostics.decode(fixture {
+            $0["methodInventory"] = Array(repeating: "method", count: 33)
+        }))
+        XCTAssertThrowsError(try NinebotProjectionDiagnostics.decode(fixture {
+            $0["observations"] = ["encodedCallback": ["status": "hooked", "encoding": String(repeating: "x", count: 513)]]
+        }))
     }
 
     func testRejectsOversizedUnknownSchemaAndUnknownProducer() throws {

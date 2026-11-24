@@ -4,6 +4,7 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <objc/runtime.h>
 #import <limits.h>
+#import "ProbeRuntime.h"
 
 static NSLock *CWLock;
 static NSMutableArray<NSDictionary *> *CWEvents;
@@ -11,10 +12,15 @@ static NSMutableDictionary<NSString *, NSNumber *> *CWHooks;
 static NSUUID *CWSession;
 static double CWStart;
 static NSInteger CWFrames;
+static NSMutableDictionary<NSString *, NSNumber *> *CWCounters;
+static NSMutableDictionary<NSString *, NSDictionary *> *CWObservations;
 static void (*CWOriginalRecord)(id, SEL, id, BOOL);
 static void (*CWOriginalStop)(id, SEL);
 static CVPixelBufferRef (*CWOriginalPixelClass)(id, SEL, CGImageRef);
 static CVPixelBufferRef (*CWOriginalPixelInstance)(id, SEL, CGImageRef);
+static CVPixelBufferRef (*CWOriginalMjpegClass)(id, SEL, CGImageRef);
+static CVPixelBufferRef (*CWOriginalMjpegInstance)(id, SEL, CGImageRef);
+static void (*CWOriginalEncoded)(id, SEL, id, id);
 static void (*CWOriginalAction)(id, SEL, SEL, id, UIEvent *);
 
 static void CWEvent(NSString *kind, NSString *detail) {
@@ -34,51 +40,63 @@ static BOOL CWHooked(NSString *key) {
 static void CWSetHook(NSString *key, BOOL value) {
     [CWLock lock]; CWHooks[key] = @(value); [CWLock unlock];
 }
-static BOOL CWType(Method method, unsigned index, const char *type) {
-    char *actual = method_copyArgumentType(method, index);
-    BOOL matches = actual && strcmp(actual, type) == 0;
-    free(actual); return matches;
+static BOOL CWIncrement(NSString *key) {
+    [CWLock lock];
+    NSInteger previous = [CWCounters[key] integerValue];
+    CWCounters[key] = @(MIN(INT_MAX, previous + 1));
+    [CWLock unlock];
+    return previous == 0;
 }
-static BOOL CWReturns(Method method, char first) {
-    char *type = method_copyReturnType(method);
-    BOOL matches = type && type[0] == first;
-    free(type); return matches;
+static void CWObservation(NSString *key, Class owner, SEL selector, BOOL installed) {
+    Method method = owner ? class_getInstanceMethod(owner, selector) : NULL;
+    const char *encoding = method ? method_getTypeEncoding(method) : NULL;
+    NSString *status = installed ? @"hooked" : !owner ? @"classMissing" : !method ? @"methodMissing" : @"signatureMismatch";
+    NSString *type = encoding ? [NSString stringWithUTF8String:encoding] : @"";
+    if (type.length > 120) type = [type substringToIndex:120];
+    [CWLock lock]; CWObservations[key] = @{@"status": status, @"encoding": type}; [CWLock unlock];
 }
-static IMP CWReplace(Class cls, SEL selector, IMP replacement, IMP *saved) {
-    Method method = class_getInstanceMethod(cls, selector);
-    if (!method) return NULL;
-    IMP original = method_getImplementation(method);
-    *saved = original; // Publish the forwarding target before another thread can enter the hook.
-    // Add an override when inherited; never overwrite a superclass implementation accidentally.
-    if (!class_addMethod(cls, selector, replacement, method_getTypeEncoding(method))) {
-        method_setImplementation(class_getInstanceMethod(cls, selector), replacement);
-    }
-    return original;
-}
-
 static void CWRecord(id object, SEL selector, id target, BOOL stopAfter) {
+    CWIncrement(@"recordCalls");
     CWEvent(@"recordingStarted", @"NBVideoManager recordVideo:stopAfter: (observed)");
     CWOriginalRecord(object, selector, target, stopAfter);
 }
 static void CWStop(id object, SEL selector) {
+    CWIncrement(@"stopCalls");
     CWEvent(@"recordingStopped", @"NBVideoManager stop (observed)");
     CWOriginalStop(object, selector);
 }
-static void CWCountFrame(CVPixelBufferRef frame) {
-    if (!frame) return;
+static void CWCountFrame(CVPixelBufferRef frame, BOOL mjpeg) {
+    if (!frame) { CWIncrement(mjpeg ? @"mjpegNilOutputs" : @"pixelNilOutputs"); return; }
     [CWLock lock];
     BOOL first = CWFrames == 0;
     if (CWFrames < INT_MAX) CWFrames++;
     [CWLock unlock];
-    if (first) CWEvent(@"firstFrame", @"Non-null official image conversion output; not instrument display confirmation");
+    if (first) CWEvent(@"firstFrame", mjpeg ? @"Non-null MJPEG image conversion; not instrument display confirmation"
+        : @"Non-null image conversion; not instrument display confirmation");
 }
 static CVPixelBufferRef CWPixelClass(id object, SEL selector, CGImageRef image) {
+    CWIncrement(@"pixelCalls");
     CVPixelBufferRef result = CWOriginalPixelClass(object, selector, image);
-    CWCountFrame(result); return result;
+    CWCountFrame(result, NO); return result;
 }
 static CVPixelBufferRef CWPixelInstance(id object, SEL selector, CGImageRef image) {
+    CWIncrement(@"pixelCalls");
     CVPixelBufferRef result = CWOriginalPixelInstance(object, selector, image);
-    CWCountFrame(result); return result;
+    CWCountFrame(result, NO); return result;
+}
+static CVPixelBufferRef CWMjpegClass(id object, SEL selector, CGImageRef image) {
+    CWIncrement(@"mjpegCalls");
+    CVPixelBufferRef result = CWOriginalMjpegClass(object, selector, image);
+    CWCountFrame(result, YES); return result;
+}
+static CVPixelBufferRef CWMjpegInstance(id object, SEL selector, CGImageRef image) {
+    CWIncrement(@"mjpegCalls");
+    CVPixelBufferRef result = CWOriginalMjpegInstance(object, selector, image);
+    CWCountFrame(result, YES); return result;
+}
+static void CWEncoded(id object, SEL selector, id encoder, id image) {
+    if (CWIncrement(@"encodedCallbacks")) CWEvent(@"firstFrame", @"Official encoded callback observed; payload not inspected");
+    CWOriginalEncoded(object, selector, encoder, image);
 }
 static BOOL CWRelevant(NSString *name) {
     NSString *lower = name.lowercaseString;
@@ -122,24 +140,46 @@ static void CWInstallHooks(void) {
         CWOriginalStop = (void (*)(id, SEL))CWReplace(manager, stop, (IMP)CWStop, (IMP *)&CWOriginalStop);
         CWSetHook(@"stop", CWOriginalStop != NULL); CWEvent(@"hook", @"stop signature matched");
     }
+    CWObservation(@"recordVideo", manager, record, CWHooked(@"recordVideo"));
+    CWObservation(@"stop", manager, stop, CWHooked(@"stop"));
     Class converter = NSClassFromString(@"NBPixelBufferConverter");
-    SEL pixel = NSSelectorFromString(@"pixelBufferFromCGImage:");
-    for (NSNumber *isClass in @[@YES, @NO]) {
-        Class owner = isClass.boolValue ? object_getClass(converter) : converter;
-        NSString *key = isClass.boolValue ? @"pixelBufferClass" : @"pixelBufferInstance";
-        method = class_getInstanceMethod(owner, pixel);
-        if (CWHooked(key) || !method || method_getNumberOfArguments(method) != 3
-            || !CWType(method, 2, @encode(CGImageRef))) continue;
-        char *returnType = method_copyReturnType(method);
-        BOOL returnsPixel = returnType && strcmp(returnType, @encode(CVPixelBufferRef)) == 0;
-        free(returnType);
-        if (!returnsPixel) continue;
-        IMP previous = CWReplace(owner, pixel, isClass.boolValue ? (IMP)CWPixelClass : (IMP)CWPixelInstance,
-            isClass.boolValue ? (IMP *)&CWOriginalPixelClass : (IMP *)&CWOriginalPixelInstance);
-        if (isClass.boolValue) CWOriginalPixelClass = (CVPixelBufferRef (*)(id, SEL, CGImageRef))previous;
-        else CWOriginalPixelInstance = (CVPixelBufferRef (*)(id, SEL, CGImageRef))previous;
-        CWSetHook(key, previous != NULL); CWEvent(@"hook", [key stringByAppendingString:@" signature matched"]);
+    for (NSNumber *mjpeg in @[@NO, @YES]) {
+        SEL pixel = NSSelectorFromString(mjpeg.boolValue ? @"pixelBufferFromCGImage_Mjpeg:" : @"pixelBufferFromCGImage:");
+        for (NSNumber *isClass in @[@YES, @NO]) {
+            Class owner = isClass.boolValue ? object_getClass(converter) : converter;
+            NSString *key = mjpeg.boolValue
+                ? (isClass.boolValue ? @"mjpegClass" : @"mjpegInstance")
+                : (isClass.boolValue ? @"pixelBufferClass" : @"pixelBufferInstance");
+            IMP *saved = mjpeg.boolValue
+                ? (isClass.boolValue ? (IMP *)&CWOriginalMjpegClass : (IMP *)&CWOriginalMjpegInstance)
+                : (isClass.boolValue ? (IMP *)&CWOriginalPixelClass : (IMP *)&CWOriginalPixelInstance);
+            BOOL installed = *saved != NULL;
+            method = owner ? class_getInstanceMethod(owner, pixel) : NULL;
+            char *returnType = method ? method_copyReturnType(method) : NULL;
+            BOOL signatureMatches = method && method_getNumberOfArguments(method) == 3
+                && CWType(method, 2, @encode(CGImageRef)) && returnType
+                && strcmp(returnType, @encode(CVPixelBufferRef)) == 0;
+            free(returnType);
+            if (!installed && signatureMatches) {
+                IMP replacement = mjpeg.boolValue
+                    ? (isClass.boolValue ? (IMP)CWMjpegClass : (IMP)CWMjpegInstance)
+                    : (isClass.boolValue ? (IMP)CWPixelClass : (IMP)CWPixelInstance);
+                installed = CWReplace(owner, pixel, replacement, saved) != NULL;
+                CWEvent(@"hook", [key stringByAppendingString:@" signature matched"]);
+            }
+            // Keep original five keys so old CarWithin builds can still read schema 1.
+            if (!mjpeg.boolValue) CWSetHook(key, installed);
+            CWObservation(key, owner, pixel, installed);
+        }
     }
+    SEL encoded = NSSelectorFromString(@"imageVideoEncoder:didEncodedImage:");
+    method = manager ? class_getInstanceMethod(manager, encoded) : NULL;
+    if (!CWOriginalEncoded && method && method_getNumberOfArguments(method) == 4
+        && CWReturns(method, 'v') && CWType(method, 2, "@") && CWType(method, 3, "@")) {
+        CWReplace(manager, encoded, (IMP)CWEncoded, (IMP *)&CWOriginalEncoded);
+        CWEvent(@"hook", @"encoded callback signature matched");
+    }
+    CWObservation(@"encodedCallback", manager, encoded, CWOriginalEncoded != NULL);
     if (!CWHooked(@"controlAction")) {
         SEL action = @selector(sendAction:to:forEvent:);
         method = class_getInstanceMethod(UIControl.class, action);
@@ -149,11 +189,40 @@ static void CWInstallHooks(void) {
             CWSetHook(@"controlAction", CWOriginalAction != NULL);
         }
     }
+    CWObservation(@"controlAction", UIControl.class, @selector(sendAction:to:forEvent:), CWHooked(@"controlAction"));
 }
 
-static NSDictionary *CWSnapshot(void) {
+static NSArray<NSString *> *CWInventory(void) {
+    NSMutableArray<NSString *> *result = [NSMutableArray new];
+    for (NSString *name in @[@"NBVideoManager", @"NBPixelBufferConverter"]) {
+        Class cls = NSClassFromString(name);
+        for (NSNumber *isClass in @[@NO, @YES]) {
+            Class owner = isClass.boolValue ? object_getClass(cls) : cls;
+            if (!owner) continue;
+            unsigned count = 0; Method *methods = class_copyMethodList(owner, &count);
+            for (unsigned index = 0; index < count && result.count < 32; index++) {
+                NSString *selector = NSStringFromSelector(method_getName(methods[index]));
+                NSString *lower = selector.lowercaseString;
+                BOOL relevant = NO;
+                for (NSString *term in @[@"pixel", @"image", @"encod", @"record", @"stop", @"suspend"]) {
+                    if ([lower containsString:term]) { relevant = YES; break; }
+                }
+                if (!relevant) continue;
+                const char *type = method_getTypeEncoding(methods[index]);
+                NSString *entry = [NSString stringWithFormat:@"%@ %@%@ | %s", name, isClass.boolValue ? @"+" : @"-", selector, type ?: ""];
+                if (entry.length > 120) entry = [entry substringToIndex:120];
+                [result addObject:entry];
+            }
+            free(methods);
+        }
+    }
+    return [result sortedArrayUsingSelector:@selector(compare:)];
+}
+
+static NSDictionary *CWSnapshot(BOOL includeInventory) {
     [CWLock lock];
     NSDictionary *hooks = [CWHooks copy]; NSArray *events = [CWEvents copy];
+    NSDictionary *counters = [CWCounters copy], *observations = [CWObservations copy];
     NSInteger frames = CWFrames; NSString *session = CWSession.UUIDString;
     [CWLock unlock];
     NSBundle *bundle = NSBundle.mainBundle;
@@ -163,11 +232,28 @@ static NSDictionary *CWSnapshot(void) {
         @"appVersion": [bundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"unknown",
         @"appBuild": [bundle objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"unknown",
         @"systemVersion": UIDevice.currentDevice.systemVersion,
-        @"hooks": hooks, @"frameCount": @(frames), @"events": events};
+        @"hooks": hooks, @"frameCount": @(frames), @"events": events,
+        @"pluginVersion": @"0.2", @"counters": counters, @"observations": observations, @"methodInventory": includeInventory ? CWInventory() : @[]};
+}
+
+static NSString *CWPanelMessage(void) {
+    NSDictionary *snapshot = CWSnapshot(NO); NSDictionary *hooks = snapshot[@"hooks"];
+    NSDictionary *counters = snapshot[@"counters"], *observations = snapshot[@"observations"];
+    BOOL pixel = [hooks[@"pixelBufferClass"] boolValue] || [hooks[@"pixelBufferInstance"] boolValue];
+    BOOL mjpeg = [observations[@"mjpegClass"][@"status"] isEqual:@"hooked"] || [observations[@"mjpegInstance"][@"status"] isEqual:@"hooked"];
+    BOOL encoded = [observations[@"encodedCallback"][@"status"] isEqual:@"hooked"];
+    return [NSString stringWithFormat:@"插件 0.2 · 九号 %@（%@）\niOS %@\n录制：%@ · %@ 次\n停止：%@ · %@ 次\n普通转换：%@ · %@ 次\nMJPEG 转换：%@ · %@ 次\n编码回调：%@ · %@ 次\n非空转换输出：%@ 次\n\n已挂钩表示方法匹配，不代表被调用。按钮只标记时刻，不开启投屏。详细匹配原因和方法签名在 JSON 中。",
+        snapshot[@"appVersion"], snapshot[@"appBuild"], snapshot[@"systemVersion"],
+        [hooks[@"recordVideo"] boolValue] ? @"已挂钩" : @"未匹配", counters[@"recordCalls"] ?: @0,
+        [hooks[@"stop"] boolValue] ? @"已挂钩" : @"未匹配", counters[@"stopCalls"] ?: @0,
+        pixel ? @"已挂钩" : @"未匹配", counters[@"pixelCalls"] ?: @0,
+        mjpeg ? @"已挂钩" : @"未匹配", counters[@"mjpegCalls"] ?: @0,
+        encoded ? @"已挂钩" : @"未匹配", counters[@"encodedCallbacks"] ?: @0, snapshot[@"frameCount"]];
 }
 
 @interface CWProjectionProbe : NSObject
 @property(nonatomic, strong) UIButton *button;
+@property(nonatomic, strong) NSTimer *panelTimer;
 + (instancetype)shared;
 - (void)foreground;
 - (void)showPanel;
@@ -211,7 +297,7 @@ static NSDictionary *CWSnapshot(void) {
 }
 - (void)share {
     NSError *error = nil;
-    NSData *data = [NSJSONSerialization dataWithJSONObject:CWSnapshot() options:NSJSONWritingPrettyPrinted | NSJSONWritingSortedKeys error:&error];
+    NSData *data = [NSJSONSerialization dataWithJSONObject:CWSnapshot(YES) options:NSJSONWritingPrettyPrinted | NSJSONWritingSortedKeys error:&error];
     NSURL *directory = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"CarWithinProbe"] isDirectory:YES];
     [[NSFileManager defaultManager] createDirectoryAtURL:directory withIntermediateDirectories:YES attributes:nil error:&error];
     NSURL *file = [directory URLByAppendingPathComponent:@"CarWithin-ninebot-probe.json"];
@@ -230,13 +316,8 @@ static NSDictionary *CWSnapshot(void) {
     CWInstallHooks(); // Recheck modules loaded after the app first became active.
     UIViewController *presenter = self.presenter;
     if (!presenter || [presenter isKindOfClass:UIAlertController.class]) return;
-    NSDictionary *snapshot = CWSnapshot(); NSDictionary *hooks = snapshot[@"hooks"];
-    NSString *message = [NSString stringWithFormat:@"九号出行 %@（%@）\niOS %@\n录制入口：%@ · 停止入口：%@\n图像转换计数：%@\n\n观察模式，不会自动点击、调用车辆指令或切断官方视频。计数不代表仪表已出画。",
-        snapshot[@"appVersion"], snapshot[@"appBuild"], snapshot[@"systemVersion"],
-        [hooks[@"recordVideo"] boolValue] ? @"已挂钩" : @"未匹配",
-        [hooks[@"stop"] boolValue] ? @"已挂钩" : @"未匹配", snapshot[@"frameCount"]];
-    UIAlertController *panel = [UIAlertController alertControllerWithTitle:@"CarWithin 投屏诊断" message:message preferredStyle:UIAlertControllerStyleAlert];
-    for (NSString *mark in @[@"准备开启官方投屏", @"仪表已出画（人工确认）", @"准备关闭官方投屏"]) {
+    UIAlertController *panel = [UIAlertController alertControllerWithTitle:@"CarWithin 投屏诊断" message:CWPanelMessage() preferredStyle:UIAlertControllerStyleAlert];
+    for (NSString *mark in @[@"标记：准备开启官方投屏", @"标记：仪表已出画（人工确认）", @"标记：准备关闭官方投屏"]) {
         [panel addAction:[UIAlertAction actionWithTitle:mark style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
             CWEvent(@"mark", action.title);
         }]];
@@ -245,11 +326,22 @@ static NSDictionary *CWSnapshot(void) {
         dispatch_async(dispatch_get_main_queue(), ^{ [self share]; });
     }]];
     [panel addAction:[UIAlertAction actionWithTitle:@"开始新的采集" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
-        [CWLock lock]; [CWEvents removeAllObjects]; CWFrames = 0; CWSession = NSUUID.UUID;
+        [CWLock lock]; [CWEvents removeAllObjects]; [CWCounters removeAllObjects]; CWFrames = 0; CWSession = NSUUID.UUID;
         CWStart = NSProcessInfo.processInfo.systemUptime; [CWLock unlock];
         CWEvent(@"loaded", @"New manual capture; hooks remain installed");
     }]];
     [panel addAction:[UIAlertAction actionWithTitle:@"关闭" style:UIAlertActionStyleCancel handler:nil]];
+    [self.panelTimer invalidate];
+    __weak UIAlertController *weakPanel = panel;
+    __weak CWProjectionProbe *weakSelf = self;
+    self.panelTimer = [NSTimer scheduledTimerWithTimeInterval:0.5 repeats:YES block:^(NSTimer *timer) {
+        UIAlertController *visible = weakPanel;
+        if (!visible || !visible.viewIfLoaded.window || visible.isBeingDismissed) {
+            [timer invalidate]; weakSelf.panelTimer = nil; return;
+        }
+        NSString *message = CWPanelMessage();
+        if (![visible.message isEqualToString:message]) visible.message = message;
+    }];
     [presenter presentViewController:panel animated:YES completion:nil];
 }
 @end
@@ -257,10 +349,11 @@ static NSDictionary *CWSnapshot(void) {
 __attribute__((constructor)) static void CWProjectionProbeLoad(void) {
     @autoreleasepool {
         CWLock = [NSLock new]; CWEvents = [NSMutableArray new];
+        CWCounters = [NSMutableDictionary new]; CWObservations = [NSMutableDictionary new];
         CWHooks = [@{@"recordVideo": @NO, @"stop": @NO, @"pixelBufferClass": @NO,
                      @"pixelBufferInstance": @NO, @"controlAction": @NO} mutableCopy];
         CWSession = NSUUID.UUID; CWStart = NSProcessInfo.processInfo.systemUptime;
-        CWEvent(@"loaded", @"CarWithinNinebotProbe 0.1; observation only");
+        CWEvent(@"loaded", @"CarWithinNinebotProbe 0.2; observation only");
         [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
             [[CWProjectionProbe shared] foreground];
         }];

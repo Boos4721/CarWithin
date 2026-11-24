@@ -45,6 +45,10 @@ jobs:
           set -o pipefail
           bash Tools/test.sh 2>&1 | tee artifacts/core-tests.log
           python3 Tools/test_prepare_ninebot_probe.py 2>&1 | tee artifacts/probe-package-tests.log
+          xcrun --sdk macosx clang -fobjc-arc -Wall -Wextra -Werror \
+            -framework Foundation -framework CoreGraphics -framework CoreVideo \
+            Tools/NinebotProbeRuntimeSmoke.m -o "$RUNNER_TEMP/NinebotProbeRuntimeSmoke"
+          "$RUNNER_TEMP/NinebotProbeRuntimeSmoke" | tee artifacts/probe-runtime-tests.log
           swiftc -parse-as-library Sources/TDSCarKitCore/ANTBMSProtocol.swift \
             Sources/TDSCarKitCore/ANTBMSSessionStatistics.swift \
             Sources/TDSCarKitCore/ANTBMSCardConfiguration.swift \
