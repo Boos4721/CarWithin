@@ -375,7 +375,9 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         heroIcon.tintColor = .systemBlue
         heroIcon.contentMode = .scaleAspectFit
         heroIcon.widthAnchor.constraint(equalToConstant: 48).isActive = true
-        heroIcon.heightAnchor.constraint(equalToConstant: 48).isActive = true
+        let heroIconHeight = heroIcon.heightAnchor.constraint(equalToConstant: 48)
+        heroIconHeight.priority = UILayoutPriority(999)
+        heroIconHeight.isActive = true
         let titleStack = UIStackView(arrangedSubviews: [heroIcon, heading])
         titleStack.axis = .horizontal; titleStack.alignment = .center; titleStack.spacing = 14
         heroTitleRow = titleStack
