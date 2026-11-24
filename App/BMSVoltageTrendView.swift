@@ -1,6 +1,7 @@
 import UIKit
 
 final class BMSVoltageTrendView: UIView {
+    private var selectedElapsed: TimeInterval?
     var points: [ANTBMSSessionStatistics.Point] = [] {
         didSet {
             if let low = points.map(\.lowerVoltage).min(), let high = points.map(\.upperVoltage).max() {
@@ -13,9 +14,26 @@ final class BMSVoltageTrendView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         isOpaque = false; isAccessibilityElement = true; accessibilityLabel = "本次电压趋势"
-        heightAnchor.constraint(equalToConstant: 210).isActive = true
+        heightAnchor.constraint(equalToConstant: 250).isActive = true
+        addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(selectInterval(_:))))
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    @objc private func selectInterval(_ recognizer: UITapGestureRecognizer) {
+        guard let first = points.first, let last = points.last else { return }
+        let area = bounds.inset(by: UIEdgeInsets(top: 30, left: 48, bottom: 100, right: 8))
+        let position = recognizer.location(in: self)
+        guard area.width > 0, area.contains(position) else { return }
+        let fraction = Double((position.x - area.minX) / area.width)
+        let time = first.elapsed + fraction * max(1, last.latestElapsed - first.elapsed)
+        selectedElapsed = points.min { abs($0.latestElapsed - time) < abs($1.latestElapsed - time) }?.elapsed
+        setNeedsDisplay()
+        if let point = points.first(where: { $0.elapsed == selectedElapsed }) {
+            let value = String(format: "第 %.0f 至 %.0f 秒，最低 %.2f 伏，最高 %.2f 伏，最新 %.2f 伏",
+                point.elapsed, point.latestElapsed, point.lowerVoltage, point.upperVoltage, point.voltage)
+            UIAccessibility.post(notification: .announcement, argument: value)
+        }
+    }
 
     override func draw(_ rect: CGRect) {
         let attributes: [NSAttributedString.Key: Any] = [
@@ -31,7 +49,7 @@ final class BMSVoltageTrendView: UIView {
         (title as NSString).draw(at: CGPoint(x: 4, y: 4), withAttributes: attributes)
         let padding = max(0.05, (maximum - minimum) * 0.08)
         let low = minimum - padding, high = maximum + padding
-        let area = bounds.inset(by: UIEdgeInsets(top: 30, left: 48, bottom: 60, right: 8))
+        let area = bounds.inset(by: UIEdgeInsets(top: 30, left: 48, bottom: 100, right: 8))
         guard area.width > 0, area.height > 0 else { return }
         let duration = max(last.latestElapsed - first.elapsed, 1)
         func x(_ elapsed: Double) -> CGFloat {
@@ -69,6 +87,19 @@ final class BMSVoltageTrendView: UIView {
         UIColor.systemBlue.setStroke(); path.lineWidth = 2; path.stroke()
         UIColor.systemBlue.setFill()
         UIBezierPath(ovalIn: CGRect(x: x(last.latestElapsed) - 2.5, y: y(last.voltage) - 2.5, width: 5, height: 5)).fill()
+        if let point = points.first(where: { $0.elapsed == selectedElapsed }) {
+            let cursor = UIBezierPath()
+            cursor.move(to: CGPoint(x: x(point.latestElapsed), y: area.minY))
+            cursor.addLine(to: CGPoint(x: x(point.latestElapsed), y: area.maxY))
+            UIColor.label.withAlphaComponent(0.5).setStroke(); cursor.lineWidth = 1; cursor.stroke()
+            let detail = point.minimumVoltage == nil
+                ? String(format: "第 %.0f 秒 · 抽样 %.2f V", point.elapsed, point.voltage)
+                : String(format: "%.0f–%.0f 秒 · 最低 %.2f V · 最高 %.2f V\n最新 %.2f V", point.elapsed,
+                    point.latestElapsed, point.lowerVoltage, point.upperVoltage, point.voltage)
+            (detail as NSString).draw(in: CGRect(x: 4, y: bounds.height - 66, width: bounds.width - 8, height: 42), withAttributes: attributes)
+        } else {
+            ("轻点曲线查看区间电压" as NSString).draw(at: CGPoint(x: 4, y: bounds.height - 58), withAttributes: attributes)
+        }
         func elapsedLabel(_ seconds: Double) -> NSString {
             String(format: "%02d:%02d", Int(seconds) / 60, Int(seconds) % 60) as NSString
         }

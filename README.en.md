@@ -47,6 +47,10 @@ Once a video picture is accepted, the home screen collapses setup instructions a
 
 Settings → 电池与 BMS → 卡片显示 provides small/medium/large text, top-right/bottom-right placement, and individual metric switches for SOC, voltage, maximum temperature, current, power and cell voltage spread. Compact and common presets select three or six fields, in at most two lines. At least one field remains selected. Settings apply immediately to the phone and Ninebot 5-inch/7-inch encoded video, persist across launches, and preserve the alarm indication. Existing users keep the medium six-field layout.
 
+## Setup and daily use (build 24)
+
+An unconfigured iPhone opens a setup checklist for output selection, Wi-Fi, optional BMS and a startup test. Existing valid configurations skip onboarding. Settings group connection, display, battery, and audio/background preferences. Failed connections offer an explicit retry, configuration check and diagnostic report. Tapping the voltage plot shows the selected interval's extrema and latest reading.
+
 ## Battery interface and voltage history (build 24)
 
 The BMS page shows six fresh metrics, with device discovery, detailed parameters and history on separate pages. Card fields can be reordered by dragging; placement supports all four corners and three background opacity choices. A schematic preview labels example data explicitly when live data is unavailable. Example values never enter video output or battery history.

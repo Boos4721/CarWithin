@@ -201,6 +201,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let heroStack = UIStackView()
     private var heroTitleRow: UIStackView?
     private let connectionDetailsButton = UIButton(type: .system)
+    private let setupGuideButton = UIButton(type: .system)
+    private let recoveryActions = UIStackView()
+    private var connectionFailure: String?
+    private var completingSetupGuide = false
     private var showsConnectionDetails = false
     private let vehicleProfileButton = UIButton(type: .system)
     private let autoFullscreenSwitch = UISwitch()
@@ -317,6 +321,12 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         if !running { modeChanged() }
+        if UIDevice.current.userInterfaceIdiom == .phone,
+           (ssidField.text ?? "").isEmpty, !UserDefaults.standard.bool(forKey: "setupGuidePresented.v1"),
+           !running, !waitingForNetwork, presentedViewController == nil,
+           !ProcessInfo.processInfo.arguments.contains("--open-settings") {
+            openSetupGuide()
+        }
         attemptNinebotAutoConnect()
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
             self?.checkForUpdates(manual: false)
@@ -340,12 +350,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                 "tailing": { [unowned self] in self.headUnitOutput.selectedSegmentIndex = HeadUnitOutput.tailing.rawValue; self.refreshVideoOutputSummary(); return self.headUnitPage() },
                 "web": headUnitPage, "log": logPage, "lab": diagnosticsPage, "about": aboutPage,
                 "usage": usagePage, "updates": aboutPage, "https": httpsSettingsPage,
-                "bms": bmsPage, "bms-devices": bmsDevicesPage, "bms-card": bmsCardPage,
-                "bms-order": { [unowned self] in
-                    BMSCardOrderViewController(fields: self.bmsCardConfiguration.fields) { _, _ in }
-                },
-                "bms-trend": { [unowned self] in self.bmsTrendPreview(legacy: false) },
-                "bms-old-trend": { [unowned self] in self.bmsTrendPreview(legacy: true) }]
+                "bms": bmsPage, "bms-devices": bmsDevicesPage, "bms-card": bmsCardPage]
             if arguments.indices.contains(index + 1), let make = pages[arguments[index + 1]] {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
                     self?.settingsNavigation?.pushViewController(make(), animated: false)
@@ -468,6 +473,30 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         connectionDetailsButton.setContentHuggingPriority(.required, for: .horizontal)
         connectionDetailsButton.setContentCompressionResistancePriority(.required, for: .horizontal)
         heroStack.addArrangedSubview(startupActions)
+        setupGuideButton.configuration = .plain()
+        setupGuideButton.setTitle("首次配置与连接检查", for: .normal)
+        setupGuideButton.addAction(UIAction { [weak self] _ in self?.openSetupGuide() }, for: .touchUpInside)
+        heroStack.addArrangedSubview(setupGuideButton)
+        recoveryActions.axis = .horizontal; recoveryActions.spacing = 8; recoveryActions.distribution = .fillEqually
+        for (title, action) in [
+            ("检查连接设置", UIAction { [weak self] _ in
+                guard let self else { return }
+                if self.identity == nil { self.revealSettings(showIdentity: true) }
+                else { self.revealSettings(wifi: true) }
+            }),
+            ("查看连接报告", UIAction { [weak self] _ in
+                guard let self else { return }
+                self.revealSettings()
+                self.settingsNavigation?.pushViewController(self.connectionReportPage(), animated: true)
+            })
+        ] {
+            let button = UIButton(type: .system); button.configuration = .tinted()
+            button.setTitle(title, for: .normal); button.addAction(action, for: .touchUpInside)
+            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+            recoveryActions.addArrangedSubview(button)
+        }
+        recoveryActions.isHidden = true
+        heroStack.addArrangedSubview(recoveryActions)
 
         let browserIcon = UIImageView(image: UIImage(systemName: "globe"))
         browserIcon.tintColor = .systemGreen; browserIcon.contentMode = .scaleAspectFit
@@ -747,12 +776,15 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             self?.hideFullscreen()
         }
         receiver.onFailure = { [weak self] in
-            self?.recordConnection(.failed, self?.lastReceiverMessage ?? "接收服务失败，具体错误见运行日志")
-            self?.stop()
+            guard let self else { return }
+            let message = self.lastReceiverMessage ?? "接收服务失败，具体错误见运行日志"
+            self.recordConnection(.failed, message)
+            self.stop(); self.showConnectionFailure(message)
         }
         bluetooth.onFailure = { [weak self] message in
+            self?.recordConnection(.failed, message)
             self?.stop()
-            self?.statusLabel.text = message
+            self?.showConnectionFailure(message)
         }
         bluetooth.onAdvertising = { [weak self] in
             guard let self, self.running else { return }
@@ -790,7 +822,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         sameDevice.onFinished = { [weak self] message in
             self?.recordConnection(.failed, message)
             self?.stop()
-            self?.statusLabel.text = message
+            self?.showConnectionFailure(message)
         }
         #if DEBUG
         // Clears screens recorded by automated tests with a simulated browser.
@@ -808,9 +840,9 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         ninebotCurrentWiFiSwitch.isOn = UserDefaults.standard.bool(forKey: "ninebotCurrentWiFi")
         ninebotCurrentWiFiSwitch.addTarget(self, action: #selector(ninebotCurrentWiFiChanged), for: .valueChanged)
         configureBMS()
-        configureExperience()
         loadIdentity()
         loadWiFiPassword()
+        configureExperience()
         modeChanged()
         #if targetEnvironment(macCatalyst)
         log("正在 Mac Catalyst 上运行原生 UIKit 接收端")
@@ -1300,6 +1332,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         heroTitleRow?.isHidden = compact
         vehicleProfileButton.isHidden = compact
         vehicleProfileButton.isEnabled = !running && !waitingForNetwork
+        setupGuideButton.isHidden = displayedVideo || running || waitingForNetwork
+            || UserDefaults.standard.bool(forKey: "setupGuideCompleted.v1")
+        recoveryActions.isHidden = running || waitingForNetwork || connectionFailure == nil
+        statusLabel.textColor = connectionFailure == nil ? .systemBlue : .systemOrange
         explanation.isHidden = compact
         connectionHelp.isHidden = compact
         networkSummary.isHidden = compact
@@ -1313,6 +1349,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         startButton.configuration?.contentInsets = compact
             ? NSDirectionalEdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
             : NSDirectionalEdgeInsets(top: 18, leading: 24, bottom: 18, trailing: 24)
+        if !running, !waitingForNetwork, connectionFailure != nil {
+            startButton.setTitle("重试连接", for: .normal)
+            startButton.configuration?.image = UIImage(systemName: "arrow.clockwise")
+        }
         let cards: [(UIStackView, UILabel)] = [(carLifeCard, carLifeCardStatus), (zeehoCard, zeehoCardStatus),
             (ninebotCard, ninebotCardStatus), (tailingCard, tailingCardStatus)]
         for (card, status) in cards {
@@ -1748,8 +1788,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         if startCarPlay, !restartingAutomatically { beginConnectionTimeline() }
         view.endEditing(true)
         guard saveCurrentWiFiPreset() else {
-            statusLabel.text = passwordStatus.text
             recordConnection(.failed, passwordStatus.text ?? "Wi-Fi 配置未通过检查")
+            showConnectionFailure(passwordStatus.text ?? "Wi-Fi 配置未通过检查")
             reloadVisibleSettings()
             return
         }
@@ -1876,6 +1916,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         if outputMode.ninebotMode != nil { updateNinebotStatus(message) }
         refreshNetworkAddresses()
         reloadVisibleSettings()
+        if !message.hasPrefix("已连接 Wi-Fi") { showConnectionFailure(message) }
     }
 
     @objc private func toggleReceiver() {
@@ -2088,6 +2129,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     }
 
     private func stop(preserveDiagnostics: Bool = false) {
+        connectionFailure = nil
         if !preserveDiagnostics { recordConnection(.stopped, "连接已停止") }
         finishBMSSession()
         wiFiJoinID = nil
@@ -2177,7 +2219,9 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             : local ? "无需外接盒子，直接在这台 iPhone 上启动并显示 CarPlay。" : "接收另一台 iPhone 的导航、音乐和触控画面。"
         connectionHelp.text = remote
             ? "让 iPhone 和 iPad 连接同一个 Wi-Fi。"
-            : local ? "先在系统设置连接 Wi-Fi，再在 CarWithin 选择对应预设。"
+            : local ? (outputMode.ninebotMode != nil
+                ? "使用已保存的仪表 Wi-Fi 配置连接，网络就绪后启动 CarPlay。"
+                : "先连接 Wi-Fi，再在 CarWithin 选择对应预设。")
             : "先启动此接收屏，再从另一台 iPhone 发起连接。"
         refreshNetworkSummary()
         refreshVideoOutputSummary()
@@ -2187,6 +2231,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         startButton.configuration?.image = UIImage(systemName: "play.fill")
         startButton.setTitle(remote ? "连接到 iPad" : local ? "启动本机 CarPlay" : "启动 CarPlay 接收屏", for: .normal)
         statusLabel.text = identity == nil ? "需要导入 MFi 身份" : remote ? "请选择接收端" : "准备就绪"
+        if !running, !waitingForNetwork, let connectionFailure { statusLabel.text = connectionFailure }
         refreshCurrentNetwork(requestPermission: false)
     }
     private func setEditing(_ value: Bool) {
@@ -2528,6 +2573,10 @@ extension ReceiverViewController {
                 navigation.popToRootViewController(animated: false)
                 navigation.pushViewController(wifiPage(), animated: true)
             }
+            if output {
+                navigation.popToRootViewController(animated: false)
+                navigation.pushViewController(headUnitPage(), animated: true)
+            }
             return
         }
         let root = rootSettingsPage()
@@ -2704,57 +2753,134 @@ extension ReceiverViewController {
 
     fileprivate func rootSettingsPage() -> SettingsPageController {
         page("设置") { [unowned self] in
-            var connection: [SettingsRow] = [
+            [SettingsSection("日常使用", [
+                .page("车辆与连接", icon: ("scooter", .systemBlue), detail: { [unowned self] in self.currentVehicleName }) { [unowned self] in self.connectionSettingsPage() },
+                .page("画面与显示", icon: ("rectangle.on.rectangle", .systemIndigo)) { [unowned self] in self.visualSettingsPage() },
+                .page("电池与 BMS", icon: ("battery.100", .systemGreen), detail: { [unowned self] in
+                    self.bmsEnabledSwitch.isOn ? self.bmsClient.selectedName : "关闭"
+                }) { [unowned self] in self.bmsPage() },
+                .page("声音与后台", icon: ("speaker.wave.2.fill", .systemOrange)) { [unowned self] in self.audioBackgroundPage() }
+            ]),
+            SettingsSection("帮助与诊断", [
+                .page("首次配置与连接检查", icon: ("checklist", .systemBlue)) { [unowned self] in self.setupGuidePage() },
+                .page("连接诊断报告", icon: ("doc.text.magnifyingglass", .systemBlue)) { [unowned self] in self.connectionReportPage() },
                 .page("使用说明", icon: ("book.fill", .systemOrange)) { [unowned self] in self.usagePage() },
-                .page("车辆配置", icon: ("scooter", .systemBlue), detail: { [unowned self] in self.currentVehicleName }) { [unowned self] in self.vehicleProfilesPage() }
+                .page("高级设置与诊断", icon: ("stethoscope", .systemTeal)) { [unowned self] in self.diagnosticsPage() },
+                .page("关于", icon: ("info.circle.fill", .systemGray)) { [unowned self] in self.aboutPage() }
+            ]),
+            SettingsSection("支持", [
+                .externalLink("关注作者", icon: ("heart.fill", .systemRed), detail: "抖音") { UIApplication.shared.open(Self.authorURL) },
+                .externalLink("请我喝杯咖啡", icon: ("cup.and.saucer.fill", .systemOrange), detail: "支付宝") { UIApplication.shared.open(Self.supportURL) }
+            ])]
+        }
+    }
+
+    private func connectionSettingsPage() -> SettingsPageController {
+        page("车辆与连接") { [unowned self] in
+            var rows: [SettingsRow] = [
+                .page("车辆配置", icon: ("scooter", .systemBlue), detail: { [unowned self] in self.currentVehicleName }) { [unowned self] in self.vehicleProfilesPage() },
+                .control("当前输出", icon: ("point.3.connected.trianglepath.dotted", .systemIndigo), self.headUnitOutput)
             ]
-            if needsNetworkDetails {
-                connection.append(.page("Wi-Fi 与网络", icon: ("wifi", .systemBlue), detail: { [unowned self] in
-                    self.running || self.waitingForNetwork ? nil : "添加"
-                }) { [unowned self] in self.wifiForm(adding: true) })
+            if self.needsNetworkDetails {
+                rows.append(.page("Wi-Fi 与网络", icon: ("wifi", .systemBlue), detail: { [unowned self] in self.ssidField.text }) { [unowned self] in self.wifiPage() })
             }
-            connection.append(.page("Wi-Fi 预设", icon: ("list.bullet", .systemBlue), detail: { WiFiPresetStore.selected()?.ssid ?? "未选择" }) { [unowned self] in self.presetsPage() })
-            connection.append(.control("当前输出", icon: ("point.3.connected.trianglepath.dotted", .systemIndigo), headUnitOutput))
-            connection.append(.page("输出设置", icon: ("slider.horizontal.3", .systemGray)) { [unowned self] in self.headUnitPage() })
-            if outputMode == .browser {
-                connection.append(.page("HTTPS 设置", icon: ("lock.shield", .systemBlue)) { [unowned self] in self.httpsSettingsPage() })
+            rows.append(.page("Wi-Fi 预设", icon: ("list.bullet", .systemBlue), detail: { WiFiPresetStore.selected()?.ssid ?? "未选择" }) { [unowned self] in self.presetsPage() })
+            rows.append(.page("输出设置", icon: ("slider.horizontal.3", .systemGray)) { [unowned self] in self.headUnitPage() })
+            if self.outputMode == .browser {
+                rows.append(.page("HTTPS 设置", icon: ("lock.shield", .systemBlue)) { [unowned self] in self.httpsSettingsPage() })
             }
+            return [SettingsSection("车辆与网络", rows)]
+        }
+    }
+
+    private func visualSettingsPage() -> SettingsPageController {
+        page("画面与显示") { [unowned self] in
+            [SettingsSection([
+                .control("出画后自动全屏", icon: ("arrow.up.left.and.arrow.down.right", .systemBlue), self.autoFullscreenSwitch),
+                .page("画面规格与图标", icon: ("rectangle.on.rectangle", .systemGreen)) { [unowned self] in self.displayPage() },
+                .control("CarPlay 外观", icon: ("circle.lefthalf.filled", .systemBlue), self.appearanceControl),
+                .control("驾驶位", icon: ("steeringwheel", .systemTeal), self.driveControl),
+                .page("车辆按钮", icon: ("car.fill", .systemTeal)) { [unowned self] in self.vehiclePage() },
+                .page("BMS 卡片显示", icon: ("rectangle.topthird.inset.filled", .systemGreen)) { [unowned self] in self.bmsCardPage() }
+            ])]
+        }
+    }
+
+    private func audioBackgroundPage() -> SettingsPageController {
+        page("声音与后台") { [unowned self] in
+            [SettingsSection([
+                .page("声音输出", icon: ("speaker.wave.2.fill", .systemOrange), detail: { [unowned self] in self.soundOutput.title }) { [unowned self] in self.soundPage() }
+            ]),
+            SettingsSection("后台与画中画", footer: "锁屏前，请在 iPhone「设置 › 通用 › CarPlay › CarWithin」中打开「锁定时允许 CarPlay」。后台运行会增加耗电。画中画只显示实时画面。", [
+                .control("锁屏与后台继续运行", icon: ("lock.fill", .systemPurple), self.keepAliveSwitch),
+                .control("画中画开启时机", icon: ("pip.fill", .systemIndigo), self.pictureInPictureTiming)
+            ])]
+        }
+    }
+
+    @objc private func openSetupGuide() {
+        guard !running, !waitingForNetwork else { return }
+        UserDefaults.standard.set(true, forKey: "setupGuidePresented.v1")
+        revealSettings()
+        settingsNavigation?.pushViewController(setupGuidePage(), animated: true)
+    }
+
+    private func setupGuidePage() -> SettingsPageController {
+        page("首次配置与连接检查") { [unowned self] in
+            if self.running || self.waitingForNetwork {
+                return [SettingsSection(footer: "连接进行中，请先在主页停止连接后修改首次配置。", [
+                    .info("当前状态", self.statusLabel.text ?? "正在连接"),
+                    .page("查看连接报告", icon: ("doc.text.magnifyingglass", .systemBlue)) { [unowned self] in self.connectionReportPage() }
+                ])]
+            }
+            let hasSSID = !(self.ssidField.text ?? "").isEmpty
+            let wifiSummary = !hasSSID ? "待配置" : self.enteredWiFiCredentials == nil ? "名称已填，尚无本 App 密码" : "已填写配置"
+            let hasVideo = self.connectionTimeline?.firstVideoSeconds != nil
             return [
-                SettingsSection("连接与输出", connection),
-                SettingsSection("CarPlay", [
-                    .control("出画后自动全屏", icon: ("arrow.up.left.and.arrow.down.right", .systemBlue), autoFullscreenSwitch),
-                    .page("画面", icon: ("rectangle.on.rectangle", .systemGreen), detail: { [unowned self] in
-                        self.outputMode.usesInstrumentWiFi ? "仪表固定尺寸" : self.followsCarScreen ? "跟随车机" : self.resolutionControl.selectedTitle.components(separatedBy: "（").first
-                    }) { [unowned self] in self.displayPage() },
-                    .control("CarPlay 外观", icon: ("circle.lefthalf.filled", .systemBlue), appearanceControl),
-                    .page("声音", icon: ("speaker.wave.2.fill", .systemOrange), detail: { [unowned self] in
-                        switch self.soundOutput {
-                        case .carWithin: return "接收设备播放"
-                        case .phone: return "iPhone 输出"
-                        case .browser: return "Wi-Fi 伴音"
+                SettingsSection("1 · 选择仪表或接收方式", [
+                    .page("选择输出", icon: ("display", .systemBlue), detail: { [unowned self] in self.headUnitOutput.selectedTitle }) { [unowned self] in
+                        self.page("选择输出") { [unowned self] in
+                            [SettingsSection(footer: "五寸和七寸使用不同视频协议，请按实际仪表选择。", [.control("输出方式", self.headUnitOutput)])]
                         }
-                    }) { [unowned self] in self.soundPage() },
-                    .control("驾驶位", icon: ("steeringwheel", .systemTeal), driveControl),
+                    }
+                ]),
+                SettingsSection("2 · 保存自己的 Wi-Fi", footer: "可读取当前 SSID。密码仅从本 App 已保存配置读取，首次缺失时从系统设置复制粘贴。", [
+                    .page("Wi-Fi 与网络", icon: ("wifi", .systemBlue), detail: { wifiSummary }) { [unowned self] in self.wifiPage() }
+                ]),
+                SettingsSection("3 · 连接电池（可跳过）", [
                     .page("电池与 BMS", icon: ("battery.100", .systemGreen), detail: { [unowned self] in
-                        self.bmsEnabledSwitch.isOn ? self.bmsClient.selectedName : "关闭"
-                    }) { [unowned self] in self.bmsPage() },
-                    .page("车辆", icon: ("car.fill", .systemTeal)) { [unowned self] in self.vehiclePage() }
+                        self.bmsEnabledSwitch.isOn ? self.bmsClient.selectedName : "已跳过，未开启读取"
+                    }) { [unowned self] in self.bmsPage() }
                 ]),
-                SettingsSection("后台与画中画", footer: "锁屏前，请在 iPhone「设置 › 通用 › CarPlay › CarWithin」中打开「锁定时允许 CarPlay」。后台运行会增加耗电。画中画仅显示实时画面。离开 App 时自动开启需打开 iPhone「设置 › 通用 › 画中画」中的自动选项。", [
-                    .control("锁屏与后台继续运行", icon: ("lock.fill", .systemPurple), keepAliveSwitch),
-                    .control("画中画开启时机", icon: ("pip.fill", .systemIndigo), pictureInPictureTiming)
-                ]),
-                SettingsSection("支持", [
-                    .externalLink("关注作者", icon: ("heart.fill", .systemRed), detail: "抖音") {
-                        UIApplication.shared.open(Self.authorURL)
-                    },
-                    .externalLink("请我喝杯咖啡", icon: ("cup.and.saucer.fill", .systemOrange), detail: "支付宝") {
-                        UIApplication.shared.open(Self.supportURL)
-                    },
-                    .page("诊断与实验", icon: ("stethoscope", .systemTeal)) { [unowned self] in self.diagnosticsPage() },
-                    .page("关于", icon: ("info.circle.fill", .systemGray)) { [unowned self] in self.aboutPage() }
+                SettingsSection("4 · 保存与启动测试", footer: "本机出画会记录启动结果。仪表端仍需按当前型号在九号出行开启投屏；本版本尚未实现独立激活。", [
+                    .info("上次本机视频", hasVideo ? "已收到关键帧" : "尚未完成"),
+                    .action("保存为车辆配置", icon: ("scooter", .systemBlue)) { [unowned self] in self.promptVehicleName() },
+                    .action("完成配置并启动", icon: ("play.fill", .systemBlue)) { [unowned self] in self.completeSetupGuide(start: true) },
+                    .action("完成配置，稍后连接", icon: ("checkmark.circle", .systemGray)) { [unowned self] in self.completeSetupGuide(start: false) }
                 ])
             ]
+        }
+    }
+
+    private func completeSetupGuide(start: Bool) {
+        guard !running, !waitingForNetwork, !completingSetupGuide, settingsNavigation != nil else { return }
+        view.endEditing(true)
+        guard saveCurrentWiFiPreset() else {
+            alert("Wi-Fi 还未配置完成", passwordStatus.text ?? "请填写自己的网络配置。")
+            return
+        }
+        guard identity != nil else {
+            alert("未载入 CarPlay 身份", "请使用内置身份安装包，或从主界面的身份配置入口导入已有材料。")
+            return
+        }
+        UserDefaults.standard.set(true, forKey: "setupGuideCompleted.v1")
+        saveActiveVehicleProfile()
+        completingSetupGuide = true
+        settingsNavigation?.dismiss(animated: true) { [weak self] in
+            guard let self else { return }
+            self.completingSetupGuide = false
+            self.settingsDismissed()
+            if start { self.toggleReceiver() }
         }
     }
 
@@ -2765,6 +2891,13 @@ extension ReceiverViewController {
     }
 
     private func configureExperience() {
+        let defaults = UserDefaults.standard
+        if defaults.object(forKey: "setupGuideCompleted.v1") == nil,
+           WiFiPresetStore.selected() != nil, enteredWiFiCredentials != nil {
+            // Preserve an existing setup rather than forcing an upgrade through onboarding.
+            defaults.set(true, forKey: "setupGuideCompleted.v1")
+            defaults.set(true, forKey: "setupGuidePresented.v1")
+        }
         autoFullscreenSwitch.isOn = UserDefaults.standard.bool(forKey: "autoFullscreen")
         autoFullscreenSwitch.addAction(UIAction { [weak self] _ in
             guard let self else { return }
@@ -2923,11 +3056,22 @@ extension ReceiverViewController {
     }
 
     private func beginConnectionTimeline() {
+        connectionFailure = nil
+        recoveryActions.isHidden = true
+        statusLabel.textColor = .systemBlue
         lastReceiverMessage = nil
         connectionTimeline = ConnectionTimeline(output: headUnitOutput.selectedTitle,
             uptime: ProcessInfo.processInfo.systemUptime)
         recordConnection(.preparing, outputMode.ninebotMode != nil
             ? "开始连接；仪表自动激活仍需官方投屏流程" : "开始 CarPlay 连接")
+    }
+
+    private func showConnectionFailure(_ message: String) {
+        connectionFailure = message
+        statusLabel.text = message
+        startButton.setTitle("重试连接", for: .normal)
+        startButton.configuration?.image = UIImage(systemName: "arrow.clockwise")
+        refreshHomePresentation()
     }
 
     private func recordConnection(_ stage: ConnectionTimeline.Stage, _ detail: String) {
@@ -3248,37 +3392,6 @@ extension ReceiverViewController {
         }
     }
 
-    #if DEBUG
-    /// Deterministic simulator fixtures, isolated from BMS history and live data.
-    private func bmsTrendPreview(legacy: Bool) -> SettingsPageController {
-        var statistics = ANTBMSSessionStatistics()
-        for second in 0...370 {
-            let voltage = second == 0 ? 86.93 : second == 2 ? 83.67 :
-                86.0 + 0.5 * sin(Double(second) / 35)
-            let reading = ANTBMSReading(voltage: voltage, current: -12.3, power: -1018, stateOfCharge: 98,
-                stateOfHealth: nil, stateCode: 4, capacityAh: 170, remainingAh: 167,
-                cells: [4.1, 4.106], temperatures: [24], mosTemperature: 25,
-                protectionBits: 0, warningBits: 0)
-            statistics.append(ANTBMSSample(reading: reading, uptime: Double(second)), now: Double(second))
-        }
-        if legacy, let encoded = try? JSONEncoder().encode(statistics),
-           var values = (try? JSONSerialization.jsonObject(with: encoded)) as? [String: Any] {
-            let oldPoints: [[String: Double]] = stride(from: 0, through: 370, by: 5).map { second in
-                let elapsed = Double(second)
-                let voltage: Double = second == 0 ? 86.93 : 86.0 + 0.5 * sin(elapsed / 35)
-                return ["elapsed": elapsed, "voltage": voltage]
-            }
-            values["points"] = oldPoints
-            if let data = try? JSONSerialization.data(withJSONObject: values),
-               let restored = try? JSONDecoder().decode(ANTBMSSessionStatistics.self, from: data) { statistics = restored }
-        }
-        let label = StatusLabel(); label.text = bmsStatisticsText(statistics)
-        let trend = BMSVoltageTrendView(); trend.points = statistics.points
-        return page(legacy ? "旧记录预览" : "压降测试预览") {
-            [SettingsSection("模拟数据", footer: "仅供开发验证，不会保存到电池记录。", [.note(label), .view(trend)])]
-        }
-    }
-    #endif
 
     fileprivate func displayPage() -> SettingsPageController {
         page("画面") { [unowned self] in
