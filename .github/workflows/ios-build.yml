@@ -44,6 +44,7 @@ jobs:
         run: |
           set -o pipefail
           bash Tools/test.sh 2>&1 | tee artifacts/core-tests.log
+          python3 Tools/test_prepare_ninebot_probe.py 2>&1 | tee artifacts/probe-package-tests.log
           swiftc -parse-as-library Sources/TDSCarKitCore/ANTBMSProtocol.swift \
             Sources/TDSCarKitCore/ANTBMSSessionStatistics.swift \
             Sources/TDSCarKitCore/ANTBMSCardConfiguration.swift \
@@ -60,6 +61,14 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/CarWithinBuild" \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
             build 2>&1 | tee artifacts/ios-build.log
+
+      - name: Build observation companion
+        shell: bash
+        run: |
+          set -o pipefail
+          bash Companion/NinebotProjectionProbe/build.sh "$GITHUB_WORKSPACE/artifacts" 2>&1 | tee artifacts/ninebot-probe-build.log
+          cp Companion/NinebotProjectionProbe/README.md artifacts/NINEBOT-PROBE.md
+          cp Tools/prepare_ninebot_probe.py artifacts/
 
       - name: Package unsigned IPA
         shell: bash

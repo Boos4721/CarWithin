@@ -108,6 +108,7 @@
 		FD04C6B75D83204140C4DEEA /* App/DirectAccessoryTransport.m in Sources */ = {isa = PBXBuildFile; fileRef = 43A08A842E89C864862B3AB0 /* App/DirectAccessoryTransport.m */; };
 		5622E6B0FD20B264F6535DB5 /* App/AppReleaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7363CE38FC2E2B8EC79091DD /* App/AppReleaseService.swift */; };
 		55285D4FEF6F81A4317B6BCF /* App/AppReleaseViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF380427ACDEC6B0D0675D84 /* App/AppReleaseViews.swift */; };
+		1D2E11B5513BA3D6482F7528 /* Sources/TDSCarKitCore/NinebotProjectionDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EF8A98A0A99149F2D595EFD; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -213,6 +214,7 @@
 		FD01B522CF927B62CC738785 /* Sources/TDSCarKitCore/AudioStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TDSCarKitCore/AudioStream.swift; sourceTree = "<group>"; };
 		7363CE38FC2E2B8EC79091DD /* App/AppReleaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppReleaseService.swift; sourceTree = "<group>"; };
 		EF380427ACDEC6B0D0675D84 /* App/AppReleaseViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppReleaseViews.swift; sourceTree = "<group>"; };
+		6EF8A98A0A99149F2D595EFD /* Sources/TDSCarKitCore/NinebotProjectionDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TDSCarKitCore/NinebotProjectionDiagnostics.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -243,6 +245,7 @@
 				8D7C5E41EC13C67B6A3CBB2D /* App/VehicleProfileStore.swift */,
 				10F20CB5269F7E50BBF0AE40 /* App/BMSVoltageTrendView.swift */,
 				35A0CC3E8F23C3EB816A0AB0 /* Sources/TDSCarKitCore/ANTBMSSessionStatistics.swift */,
+				6EF8A98A0A99149F2D595EFD /* Sources/TDSCarKitCore/NinebotProjectionDiagnostics.swift */,
 				4459D2CAF8024F4246C19DD4 /* Sources/TDSCarKitCore/ConnectionTimeline.swift */,
 				CCED75C259FA04696F817035 /* Sources/TDSCarKitCore/CarPlayWiFiBootstrap.swift */,
 				7BAEDF1212F9D1065D1112FF /* App/TailingConnection.swift */,
@@ -422,6 +425,7 @@
 				8CBED6DDD6C12867EBE877F4 /* App/VehicleProfileStore.swift in Sources */,
 				65631E3A1D532315BF74BA9C /* App/BMSVoltageTrendView.swift in Sources */,
 				B82B6A511CB6BF69986E8CD7 /* Sources/TDSCarKitCore/ANTBMSSessionStatistics.swift in Sources */,
+				1D2E11B5513BA3D6482F7528 /* Sources/TDSCarKitCore/NinebotProjectionDiagnostics.swift in Sources */,
 				E26C16854D5907BF95A82E43 /* Sources/TDSCarKitCore/ConnectionTimeline.swift in Sources */,
 				10109BA21419978567A750F6 /* Sources/TDSCarKitCore/CarPlayWiFiBootstrap.swift in Sources */,
 				F981D54C81AFEB10623F8DF2 /* App/TailingConnection.swift in Sources */,
