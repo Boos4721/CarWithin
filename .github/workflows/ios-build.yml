@@ -6,6 +6,13 @@ on:
       - codex/ninebot-ant-bms
   workflow_dispatch:
     inputs:
+      macos_runner:
+        description: Standard macOS runner to use
+        type: choice
+        options:
+          - macos-15
+          - macos-15-intel
+        default: macos-15
       capture_ui:
         description: Capture BMS settings and voltage trend previews in the iOS simulator
         type: boolean
@@ -21,7 +28,7 @@ concurrency:
 jobs:
   build:
     name: Test and build unsigned iOS app
-    runs-on: macos-15
+    runs-on: ${{ inputs.macos_runner || 'macos-15' }}
     timeout-minutes: 45
     steps:
       - name: Check out source
@@ -90,7 +97,7 @@ jobs:
   ui-preview:
     name: Capture iPhone UI previews
     if: github.event_name == 'workflow_dispatch' && inputs.capture_ui
-    runs-on: macos-15
+    runs-on: ${{ inputs.macos_runner || 'macos-15' }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
