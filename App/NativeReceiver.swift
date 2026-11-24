@@ -235,8 +235,7 @@ final class NativeReceiver {
                 self.sessions[id] = state
                 if case .hostPort(let host, _) = connection.endpoint { state.peerAddress = "\(host)" }
                 connection.stateUpdateHandler = { [weak self, weak connection] update in
-                    guard let self, let connection, self.generation == generation,
-                          self.connections[id] === connection else { return }
+                    guard let self, let connection, self.generation == generation else { return }
                     switch update {
                     case .ready:
                         self.log("收到控制连接")
