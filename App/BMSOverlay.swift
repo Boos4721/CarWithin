@@ -32,9 +32,10 @@ final class BMSOverlayPresenter {
         let text: String
         if let reading {
             let temperature = reading.maximumTemperature.map { String(format: "%.0f°C", $0) } ?? "--°C"
+            let delta = reading.cellDelta.map { String(format: "%.0fmV", $0 * 1000) } ?? "--mV"
             let alarm = reading.hasAlarm ? " · 告警" : ""
-            text = String(format: "ANT  %d%%   %.2fV%@\n%+.1fA   %dW   %@",
-                reading.stateOfCharge, reading.voltage, alarm, reading.current, reading.power, temperature)
+            text = String(format: "ANT  %d%%  %.2fV  %@%@\n%+.1fA  %dW  压差 %@",
+                reading.stateOfCharge, reading.voltage, temperature, alarm, reading.current, reading.power, delta)
         } else {
             text = "ANT BMS · 无实时数据\n" + (status.contains("过期") || status.contains("断开") || status.contains("重连")
                 ? "连接失联，等待恢复" : "等待电池数据")

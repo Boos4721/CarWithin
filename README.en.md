@@ -27,7 +27,7 @@ If the original CarWithin starts but this source build reports a missing MFi ide
 
 ## ANT BMS telemetry
 
-Settings → 电池与 BMS adds opt-in, read-only ANT BLE monitoring. Select your own device; the saved CoreBluetooth UUID is used for reconnection. SOC, voltage, current, reported power and temperature are displayed on the local CarPlay view and composited into Ninebot 5-inch/7-inch video. Capacity, MOS temperature and cell spread are available in settings. Stale values are hidden after five seconds.
+Settings → 电池与 BMS adds opt-in, read-only ANT BLE monitoring. Select your own device; the saved CoreBluetooth UUID is used for reconnection. SOC, voltage, current, reported power, temperature and cell voltage spread (mV) are displayed on the local CarPlay view and composited into Ninebot 5-inch/7-inch video. Capacity, MOS temperature and cell spread are available in settings. Stale values are hidden after five seconds.
 
 Framing and decoding reference [maibms](https://github.com/lswlc33/maibms), with its MIT license retained and bundled. Only the default FFE0/FFE1 realtime-query channel is included. Other remote outputs and PiP do not include the panel. Hardware verification is pending; see [the integration guide](docs/ant-bms.md). Run `bash Tools/test_bms.sh` with Swift 5.9+ for standalone protocol tests.
 
