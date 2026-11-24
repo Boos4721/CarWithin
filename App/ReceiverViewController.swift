@@ -3263,9 +3263,12 @@ extension ReceiverViewController {
         }
         if legacy, let encoded = try? JSONEncoder().encode(statistics),
            var values = (try? JSONSerialization.jsonObject(with: encoded)) as? [String: Any] {
-            values["points"] = stride(from: 0, through: 370, by: 5).map { second in
-                ["elapsed": Double(second), "voltage": second == 0 ? 86.93 : 86.0 + 0.5 * sin(Double(second) / 35)]
+            let oldPoints: [[String: Double]] = stride(from: 0, through: 370, by: 5).map { second in
+                let elapsed = Double(second)
+                let voltage: Double = second == 0 ? 86.93 : 86.0 + 0.5 * sin(elapsed / 35)
+                return ["elapsed": elapsed, "voltage": voltage]
             }
+            values["points"] = oldPoints
             if let data = try? JSONSerialization.data(withJSONObject: values),
                let restored = try? JSONDecoder().decode(ANTBMSSessionStatistics.self, from: data) { statistics = restored }
         }
