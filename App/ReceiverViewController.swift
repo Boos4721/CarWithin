@@ -913,6 +913,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             if sample.uptime - lastBMSSaveUptime >= 15 {
                 checkpointBMSSession(completed: false)
                 lastBMSSaveUptime = sample.uptime
+                reloadVisibleSettings()
             }
         }
         bmsSessionStatus.text = bmsStatisticsText(bmsSession)
@@ -3012,8 +3013,10 @@ extension ReceiverViewController {
     }
 
     private func finishBMSSession() {
+        guard bmsSessionStartedAt != nil else { return }
         checkpointBMSSession(completed: true)
         bmsSessionStartedAt = nil
+        reloadVisibleSettings()
     }
 
     private func checkpointBMSSession(completed: Bool) {
@@ -3059,9 +3062,9 @@ extension ReceiverViewController {
             sections.append(SettingsSection(controls))
             let history = BMSRideRecordStore.records().map { record -> SettingsRow in
                 let date = DateFormatter.localizedString(from: record.startedAt, dateStyle: .short, timeStyle: .short)
+                let activelyRecording = self.bmsSessionStartedAt != nil && record.id == self.bmsSessionRecordID
                 var row = SettingsRow.page("\(record.vehicleName) · \(date)", detail: {
-                    self.bmsSessionStartedAt != nil && record.id == self.bmsSessionRecordID
-                        ? "记录中" : record.completed ? "已结束" : "已保存片段"
+                    activelyRecording ? "记录中" : record.completed ? "已结束" : "已保存片段"
                 }) { [unowned self] in self.bmsRecordPage(record) }
                 if self.bmsSessionStartedAt == nil || record.id != self.bmsSessionRecordID {
                     row.onDelete = { [unowned self] in
