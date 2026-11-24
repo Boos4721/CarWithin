@@ -33,6 +33,8 @@ Framing and decoding reference [maibms](https://github.com/lswlc33/maibms), with
 
 ## Ninebot current-network startup experiment
 
+Build 18 adds an explicit “填入九号候选密码 72276986” action to the 5-inch/7-inch Wi-Fi form. This user-suggested candidate is unverified across models and is not read from iOS. The action fills only an empty field for a named, non-open network with no existing Keychain entry; it preserves saved and edited passwords. Save once to reuse it on subsequent starts.
+
 For the 5-inch and 7-inch outputs, enable **使用当前 Wi-Fi 启动（实验）** (use current Wi-Fi, experimental) under Output settings. Connect the iPhone to the instrument network first, then read or enter its exact SSID in the app. With the experiment enabled, the preset may be saved without a password. Do not mark an encrypted network as open just because its password is unknown.
 
 After confirming the current SSID and a stable Wi-Fi IPv4 address, the app prepares UDP 5012/5013 and requests local CarPlay without the wireless configuration group. If no CarPlay control connection is established within 12 seconds of the first request, valid entered/saved credentials are used as a single fallback; without credentials the attempt stops with a message. Stopping or establishing the control connection suppresses that fallback. This is unverified on hardware.

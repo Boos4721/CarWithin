@@ -1335,6 +1335,50 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             }
         } catch { passwordStatus.text = "无法读取已保存的密码，请重新输入。" }
     }
+
+    /// User-supplied candidate, not a password read from iOS or a confirmed
+    /// universal factory password. Fill only on an explicit tap for 5/7-inch output.
+    private func fillNinebotPasswordCandidate() {
+        guard supportsCurrentWiFiStartup, !running, !waitingForNetwork else { return }
+        view.endEditing(true)
+        let ssid = ssidField.text ?? ""
+        guard !ssid.isEmpty, ssid.utf8.count <= 32, !ssid.contains("\0") else {
+            passwordStatus.text = "请先读取或填写自己的仪表 Wi-Fi 名称。"
+            reloadVisibleSettings()
+            return
+        }
+        guard !openNetworkSwitch.isOn else {
+            passwordStatus.text = "当前标为开放网络，无需填写密码。"
+            reloadVisibleSettings()
+            return
+        }
+        // Check Keychain even if the field was cleared or a prior read failed.
+        do {
+            if let saved = try WiFiCredentials.password(for: ssid) {
+                if (passwordField.text ?? "").isEmpty {
+                    passwordField.text = saved
+                    openNetworkSwitch.isOn = saved.isEmpty
+                    passwordLoadedForSSID = ssid
+                }
+                passwordStatus.text = "此网络已有保存的配置，已保留；如需更改请手动编辑密码。"
+                reloadVisibleSettings()
+                return
+            }
+        } catch {
+            passwordStatus.text = "无法读取已保存的配置，未填入候选密码。请稍后重试或手动填写。"
+            reloadVisibleSettings()
+            return
+        }
+        guard (passwordField.text ?? "").isEmpty else {
+            passwordStatus.text = "已保留当前输入的密码；需要更改时可手动编辑。"
+            reloadVisibleSettings()
+            return
+        }
+        passwordField.text = "72276986"
+        passwordLoadedForSSID = ssid
+        passwordStatus.text = "已填入候选密码，尚未验证。可修改；返回会保存，或点「保存并加入 Wi-Fi」尝试连接。"
+        reloadVisibleSettings()
+    }
     private func refreshNetworkSummary() {
         let name = ssidField.text ?? ""
         if needsNetworkDetails, !name.isEmpty {
@@ -2871,6 +2915,13 @@ extension ReceiverViewController {
             var sections: [SettingsSection] = []
             if !current.isEmpty { sections.append(SettingsSection(current)) }
             sections.append(SettingsSection(footer: editingLockedFooter ?? "返回自动保存。同名网络会更新原预设，兼容信道通常保持 36。", fields))
+            if editable, supportsCurrentWiFiStartup {
+                sections.append(SettingsSection(footer: "此值为用户提供的九号仪表候选密码，适用型号尚未验证。仅填入空白字段，不覆盖已保存或已输入的密码；不是从 iPhone 系统读取的密码。", [
+                    .action("填入九号候选密码 72276986", icon: ("key.fill", .systemOrange)) { [unowned self] in
+                        self.fillNinebotPasswordCandidate()
+                    }
+                ]))
+            }
             if editable {
                 sections.append(SettingsSection(footer: prefersCurrentWiFiStartup
                     ? "可只保存名称并复用已连接的仪表网络（实验）。填写密码后可主动加入，并用于实验失败时回退。"
