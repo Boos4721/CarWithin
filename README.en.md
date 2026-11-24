@@ -8,6 +8,10 @@ CarWithin runs CarPlay on the same iPhone that generates its interface. Use CarP
 
 ![CarWithin connection diagram showing playback on iPhone and output to a browser, wireless CarLife, compatible dashboards, or experimental AirPlay.](docs/images/carwithin-connections-en.png)
 
+## Import an existing CarPlay identity (build 17)
+
+If the original CarWithin starts but this source build reports a missing MFi identity, use the home-screen identity button or Settings → CarPlay 身份. Choose the original working IPA, or select all three existing files (`certificate.p7b`, `leaf.cer`, `private.x963`). The app extracts only those resources, checks the certificate/key match, and saves them in this app's local Keychain. The original files are not modified or uploaded. Invalid, incomplete or ambiguous archives are rejected. Local matching does not guarantee acceptance by iOS; start CarPlay to verify the actual authentication.
+
 ## Download and install
 
 - [Download from GitHub Releases](https://github.com/xmz28/CarWithin/releases/latest). The current version is **1.0.4 (build 16)**.

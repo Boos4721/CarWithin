@@ -34,28 +34,60 @@ enum AccessoryIdentityStore {
 
     static func importFromDocuments() throws -> AccessoryIdentity {
         let directory = try stagingDirectory()
-        let chainURL = directory.appendingPathComponent("certificate.p7b")
-        let leafURL = directory.appendingPathComponent("leaf.cer")
-        let keyURL = directory.appendingPathComponent("private.x963")
-        defer { try? FileManager.default.removeItem(at: keyURL) }
+        let urls = MFiIdentityFiles.names.map { directory.appendingPathComponent($0) }
+        let identity = try importSelectedFiles(urls)
+        for url in urls { try? FileManager.default.removeItem(at: url) }
+        try? FileManager.default.removeItem(at: directory)
+        return identity
+    }
 
-        let chain = try readBounded(chainURL)
-        let leaf = try readBounded(leafURL)
-        var keyData = try readBounded(keyURL)
-        defer { keyData.resetBytes(in: 0..<keyData.count) }
+    static func importSelectedFiles(_ urls: [URL]) throws -> AccessoryIdentity {
+        var files: [String: Data] = [:]
+        for url in urls {
+            let name = url.lastPathComponent
+            guard MFiIdentityFiles.names.contains(name), files[name] == nil else {
+                throw MFiIdentityArchive.Failure.missingFiles
+            }
+            files[name] = try readBounded(url)
+        }
+        var material = try MFiIdentityFiles(files: files)
+        defer { material.privateKey.resetBytes(in: 0..<material.privateKey.count) }
+        return try storeValidated(material)
+    }
 
-        _ = try AccessoryIdentity(certificateChain: chain, leafCertificate: leaf, privateKeyX963: keyData)
+    static func importFromIPA(_ url: URL) throws -> AccessoryIdentity {
+        let values = try url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
+        guard values.isRegularFile == true, let size = values.fileSize,
+              size > 0, size <= MFiIdentityArchive.maximumArchiveSize else {
+            throw MFiIdentityArchive.Failure.invalidArchive
+        }
+        let archive = try Data(contentsOf: url, options: [.mappedIfSafe])
+        var material = try MFiIdentityArchive.extract(from: archive)
+        defer { material.privateKey.resetBytes(in: 0..<material.privateKey.count) }
+        return try storeValidated(material)
+    }
+
+    private static func storeValidated(_ material: MFiIdentityFiles) throws -> AccessoryIdentity {
+        // Validate matching certificate/key before touching an existing identity.
+        // This is a local self-test, not proof that iOS will accept an MFi chain.
+        _ = try AccessoryIdentity(certificateChain: material.certificateChain,
+            leafCertificate: material.leafCertificate, privateKeyX963: material.privateKey)
+        let oldChain = try? readData(account: chainAccount)
+        let oldLeaf = try? readData(account: leafAccount)
+        let oldKey = try? readPrivateKey()
         do {
-            try replacePrivateKey(keyData)
-            try replaceData(chain, account: chainAccount)
-            try replaceData(leaf, account: leafAccount)
-            let identity = try load()
-            try? FileManager.default.removeItem(at: chainURL)
-            try? FileManager.default.removeItem(at: leafURL)
-            try? FileManager.default.removeItem(at: directory)
-            return identity
+            try replacePrivateKey(material.privateKey)
+            try replaceData(material.certificateChain, account: chainAccount)
+            try replaceData(material.leafCertificate, account: leafAccount)
+            return try load()
         } catch {
+            // Keep previously working credentials if replacing any Keychain item fails.
             deleteStoredIdentity()
+            if let oldChain, let oldLeaf, let oldKey {
+                try? replacePrivateKey(oldKey)
+                try? replaceData(oldChain, account: chainAccount)
+                try? replaceData(oldLeaf, account: leafAccount)
+            }
             throw error
         }
     }
@@ -98,6 +130,10 @@ enum AccessoryIdentityStore {
             if let error { throw error.takeRetainedValue() }
             throw StoreError.invalidPrivateKey
         }
+        try replacePrivateKey(key)
+    }
+
+    private static func replacePrivateKey(_ key: SecKey) throws {
         SecItemDelete(privateKeyQuery() as CFDictionary)
         var query = privateKeyQuery()
         query[kSecAttrAccessible] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly

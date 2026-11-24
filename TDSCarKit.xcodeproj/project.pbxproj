@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1F4734136E969BDFC161129C /* Sources/TDSCarKitCore/MFiIdentityArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC00429E874A32E7B49FC280; };
 		888D6F672462898E1F5643A1 /* maibms-MIT.txt in Resources */ = {isa = PBXBuildFile; fileRef = 20713B3F12BAE41349E87E21; };
 		5731981ECDAF108184A64D8B /* Sources/TDSCarKitCore/ANTBMSProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C1816364EE73AD87BF627E7 /* Sources/TDSCarKitCore/ANTBMSProtocol.swift */; };
 		E930864F8105F55C8A988836 /* App/BMSOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = C73ED9EB7064ACDBB2EF3041 /* App/BMSOverlay.swift */; };
@@ -100,6 +101,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		FC00429E874A32E7B49FC280 /* Sources/TDSCarKitCore/MFiIdentityArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TDSCarKitCore/MFiIdentityArchive.swift; sourceTree = "<group>"; };
 		20713B3F12BAE41349E87E21 /* maibms-MIT.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = App/maibms-MIT.txt; sourceTree = "<group>"; };
 		1C1816364EE73AD87BF627E7 /* Sources/TDSCarKitCore/ANTBMSProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TDSCarKitCore/ANTBMSProtocol.swift; sourceTree = "<group>"; };
 		C73ED9EB7064ACDBB2EF3041 /* App/BMSOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/BMSOverlay.swift; sourceTree = "<group>"; };
@@ -207,6 +209,7 @@
 		64292B1C2B2E13EAD8788FC8 = {
 			isa = PBXGroup;
 			children = (
+				FC00429E874A32E7B49FC280 /* Sources/TDSCarKitCore/MFiIdentityArchive.swift */,
 				20713B3F12BAE41349E87E21 /* maibms-MIT.txt */,
 				1C1816364EE73AD87BF627E7 /* Sources/TDSCarKitCore/ANTBMSProtocol.swift */,
 				C73ED9EB7064ACDBB2EF3041 /* App/BMSOverlay.swift */,
@@ -376,6 +379,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1F4734136E969BDFC161129C /* Sources/TDSCarKitCore/MFiIdentityArchive.swift in Sources */,
 				5731981ECDAF108184A64D8B /* Sources/TDSCarKitCore/ANTBMSProtocol.swift in Sources */,
 				E930864F8105F55C8A988836 /* App/BMSOverlay.swift in Sources */,
 				958FF5BA17BA9021F5076BFC /* App/ANTBMSClient.swift in Sources */,

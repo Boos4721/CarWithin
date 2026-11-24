@@ -187,6 +187,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let explanation = UILabel()
     private let statusLabel = UILabel()
     private let startupHint = UILabel()
+    private let identitySetupButton = UIButton(type: .system)
+    private let identityImportStatus = StatusLabel()
+    private enum DocumentImportPurpose { case https, identityIPA, identityFiles }
+    private var documentImportPurpose: DocumentImportPurpose = .https
     private var startupHintTask: DispatchWorkItem?
     private var startupHintGeneration = UUID()
     private let connectionHelp = UILabel()
@@ -380,7 +384,12 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         startupHint.numberOfLines = 0
         startupHint.adjustsFontForContentSizeCategory = true
         startupHint.isHidden = true
-        let heroStack = UIStackView(arrangedSubviews: [titleStack, explanation, statusRow, startupHint, connectionHelp, receiverPicker, networkSummary])
+        identitySetupButton.configuration = .tinted()
+        identitySetupButton.configuration?.title = "配置身份 / 从原版 IPA 导入"
+        identitySetupButton.configuration?.image = UIImage(systemName: "key.fill")
+        identitySetupButton.configuration?.imagePadding = 8
+        identitySetupButton.addAction(UIAction { [weak self] _ in self?.revealSettings(showIdentity: true) }, for: .touchUpInside)
+        let heroStack = UIStackView(arrangedSubviews: [titleStack, explanation, statusRow, identitySetupButton, startupHint, connectionHelp, receiverPicker, networkSummary])
         heroStack.axis = .vertical; heroStack.spacing = 14
         heroStack.isLayoutMarginsRelativeArrangement = true
         heroStack.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 22, leading: 20, bottom: 22, trailing: 20)
@@ -1464,9 +1473,13 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                 log("已从内置资源载入 MFi 身份，ECDSA 自检通过")
             }
             startButton.isEnabled = true
+            identitySetupButton.isHidden = true
+            identityImportStatus.text = "已载入身份，本地证书与私钥匹配校验通过。"
             statusLabel.text = "可以开始连接"
         } catch {
             identity = nil
+            identitySetupButton.isHidden = false
+            identityImportStatus.text = "此安装包未载入身份。若原版可以启动，请从原版 IPA 导入；仅重新签名不能补齐身份。"
             statusLabel.text = "尚未导入有效的 MFi 身份"; startButton.isEnabled = false
             log("请通过 Documents/IdentityImport 导入 certificate.p7b、leaf.cer 和 private.x963。错误：\(error.localizedDescription)")
             if importing { saveIdentityImportResult("failure: \(error.localizedDescription)") }
@@ -1504,9 +1517,16 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
 
     private func joinSelectedWiFi(startCarPlay: Bool) {
         guard !running, !waitingForNetwork, UIApplication.shared.applicationState == .active else { return }
-        guard !startCarPlay || (identity != nil && modeControl.selectedSegmentIndex == 1) else {
-            statusLabel.text = "请先配置有效身份并选择本机 CarPlay。"
-            return
+        if startCarPlay {
+            guard identity != nil else {
+                statusLabel.text = "尚未载入身份，请点「配置身份」从原版 IPA 导入。"
+                revealSettings(showIdentity: true)
+                return
+            }
+            guard modeControl.selectedSegmentIndex == 1 else {
+                statusLabel.text = "请先选择本机 CarPlay 模式。"
+                return
+            }
         }
         if startCarPlay { attemptedNinebotAutoConnect = true }
         view.endEditing(true)
@@ -1931,6 +1951,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         refreshNetworkSummary()
         refreshVideoOutputSummary()
         startButton.isEnabled = identity != nil
+        identitySetupButton.isHidden = identity != nil
         startButton.configuration?.image = UIImage(systemName: "play.fill")
         startButton.setTitle(remote ? "连接到 iPad" : local ? "启动本机 CarPlay" : "启动 CarPlay 接收屏", for: .normal)
         statusLabel.text = identity == nil ? "需要导入 MFi 身份" : remote ? "请选择接收端" : "准备就绪"
@@ -2260,9 +2281,14 @@ extension ReceiverViewController {
     }
 
     /// Shows settings and, when needed, takes the user to the relevant connection settings.
-    func revealSettings(wifi: Bool = false, output: Bool = false) {
+    func revealSettings(wifi: Bool = false, output: Bool = false, showIdentity: Bool = false) {
         view.endEditing(true)
         if let navigation = settingsNavigation {
+            if showIdentity {
+                navigation.popToRootViewController(animated: false)
+                navigation.pushViewController(identityPage(), animated: true)
+                return
+            }
             if wifi, activeWiFiForm == nil {
                 navigation.popToRootViewController(animated: false)
                 navigation.pushViewController(wifiPage(), animated: true)
@@ -2279,6 +2305,7 @@ extension ReceiverViewController {
         navigation.presentationController?.delegate = self
         if wifi { navigation.pushViewController(wifiPage(), animated: false) }
         if output { navigation.pushViewController(headUnitPage(), animated: false) }
+        if showIdentity { navigation.pushViewController(identityPage(), animated: false) }
         settingsNavigation = navigation
         present(navigation, animated: true)
     }
@@ -2442,7 +2469,10 @@ extension ReceiverViewController {
     fileprivate func rootSettingsPage() -> SettingsPageController {
         page("设置") { [unowned self] in
             var connection: [SettingsRow] = [
-                .page("使用说明", icon: ("book.fill", .systemOrange)) { [unowned self] in self.usagePage() }
+                .page("使用说明", icon: ("book.fill", .systemOrange)) { [unowned self] in self.usagePage() },
+                .page("CarPlay 身份", icon: ("key.fill", .systemOrange), detail: { [unowned self] in
+                    self.identity == nil ? "待配置" : "已载入"
+                }) { [unowned self] in self.identityPage() }
             ]
             if needsNetworkDetails {
                 connection.append(.page("Wi-Fi 与网络", icon: ("wifi", .systemBlue), detail: { [unowned self] in
@@ -2494,6 +2524,65 @@ extension ReceiverViewController {
     }
 
     // MARK: CarPlay 画面
+
+    private func identityPage() -> SettingsPageController {
+        page("CarPlay 身份") { [unowned self] in
+            [
+                SettingsSection("当前状态", footer: "身份用于本机 CarPlay 配件认证，与 IPA 安装签名不同。BMS 蓝牙读取不需要此身份。", [
+                    .info("身份", self.identity == nil ? "未载入" : "已载入"),
+                    .note(self.identityImportStatus)
+                ]),
+                SettingsSection("从已有材料导入", footer: "选择你原来可用的 CarWithin IPA。只在本机读取证书与对应私钥，校验匹配后存入此 App 的 Keychain，不上传、不修改原文件。安装包不含材料时会提示。", [
+                    .action("从原版 IPA 导入", icon: ("square.and.arrow.down", .systemBlue)) { [unowned self] in self.chooseIdentityFiles(ipa: true) },
+                    .action("选择三个身份文件", icon: ("doc.on.doc", .systemGray)) { [unowned self] in self.chooseIdentityFiles(ipa: false) }
+                ]),
+                SettingsSection("说明", [
+                    .guide("所需文件", icon: ("doc.fill", .systemOrange), "certificate.p7b、leaf.cer、private.x963。三个文件必须属于同一身份。"),
+                    .guide("导入后", icon: ("checkmark.shield", .systemGreen), "本地匹配校验通过后可以尝试启动；最终认证是否接受仍由 iOS 决定。停止 CarPlay 后才能导入。")
+                ])
+            ]
+        }
+    }
+
+    private func chooseIdentityFiles(ipa: Bool) {
+        guard !running, !waitingForNetwork else {
+            alert("请先停止连接", "停止 CarPlay 和 Wi-Fi 连接后再导入身份。")
+            return
+        }
+        documentImportPurpose = ipa ? .identityIPA : .identityFiles
+        // .item also allows IPA/X9.63 files that have no registered type on iOS.
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
+        picker.allowsMultipleSelection = !ipa
+        picker.delegate = self
+        (settingsNavigation ?? self).present(picker, animated: true)
+    }
+
+    private func importIdentitySelection(_ urls: [URL], fromIPA: Bool) {
+        guard !running, !waitingForNetwork else { return }
+        let access = urls.map { $0.startAccessingSecurityScopedResource() }
+        defer {
+            for (url, granted) in zip(urls, access) where granted { url.stopAccessingSecurityScopedResource() }
+        }
+        do {
+            let imported: AccessoryIdentity
+            if fromIPA {
+                guard urls.count == 1, let url = urls.first else { throw MFiIdentityArchive.Failure.invalidArchive }
+                imported = try AccessoryIdentityStore.importFromIPA(url)
+            } else {
+                imported = try AccessoryIdentityStore.importSelectedFiles(urls)
+            }
+            identity = imported
+            modeChanged()
+            statusLabel.text = "身份已导入，可以尝试启动 CarPlay。"
+            identityImportStatus.text = "证书与私钥本地匹配校验通过，已保存到本机 Keychain。最终认证由 iOS 确认。"
+            log("用户选择的身份已通过本地匹配校验并存入 Keychain")
+        } catch {
+            identityImportStatus.text = "导入失败：\(error.localizedDescription)"
+            if identity == nil { statusLabel.text = "身份未导入，请在「CarPlay 身份」查看原因。" }
+            log("身份导入失败，未启动 CarPlay")
+        }
+        reloadVisibleSettings()
+    }
 
     private func bmsPage() -> SettingsPageController {
         page("电池与 BMS") { [unowned self] in
@@ -3099,6 +3188,7 @@ extension ReceiverViewController {
         guard !running else { return }
         saveHTTPSFields()
         guard HTTPSConfiguration.normalizedDomain(httpsDomainField.text ?? "") != nil else { httpsStatus.text = "请先填写有效域名。"; return }
+        documentImportPurpose = .https
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: [UTType(filenameExtension: "p12") ?? .data, UTType(filenameExtension: "pfx") ?? .data], asCopy: true)
         picker.delegate = self
         (settingsNavigation ?? self).present(picker, animated: true)
@@ -3234,6 +3324,15 @@ extension ReceiverViewController {
 
 extension ReceiverViewController: UIDocumentPickerDelegate {
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        switch documentImportPurpose {
+        case .identityIPA, .identityFiles:
+            let fromIPA: Bool
+            if case .identityIPA = documentImportPurpose { fromIPA = true } else { fromIPA = false }
+            documentImportPurpose = .https
+            importIdentitySelection(urls, fromIPA: fromIPA)
+            return
+        case .https: break
+        }
         guard let url = urls.first, !running else { return }
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
@@ -3258,6 +3357,10 @@ extension ReceiverViewController: UIDocumentPickerDelegate {
         } else {
             DispatchQueue.main.async(execute: presentPrompt)
         }
+    }
+
+    func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+        documentImportPurpose = .https
     }
 }
 

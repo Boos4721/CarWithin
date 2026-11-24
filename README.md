@@ -8,6 +8,12 @@ CarWithin 在同一台 iPhone 上启动、显示和触控本机 CarPlay。你可
 
 ![CarWithin 连接示意图：iPhone 本机显示，也可输出到浏览器、无线 CarLife、兼容仪表或实验性 AirPlay。](docs/images/carwithin-connections-zh.png)
 
+## 源码测试包提示缺少身份
+
+如果原版可以启动，而源码构建包提示「需要导入 MFi 身份」，在主界面点击「配置身份 / 从原版 IPA 导入」，或进入「设置 → CarPlay 身份」。选择你原来可用的 CarWithin IPA，程序会在本机读取证书与对应私钥，通过本地匹配校验后保存到此 App 的 Keychain；也支持同时选择三个独立身份文件。导入后再尝试启动 CarPlay，最终认证由 iOS 决定。
+
+这不是 IPA 安装签名，也不需要把身份文件上传到 GitHub。原版 IPA 不含相关资源时会明确提示，程序不会生成虚假的配件身份。
+
 ## 下载与安装
 
 - [从 GitHub Releases 下载](https://github.com/xmz28/CarWithin/releases/latest)。当前版本为 **1.0.4（构建 16）**。

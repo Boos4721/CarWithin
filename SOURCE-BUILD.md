@@ -17,3 +17,9 @@ Wi-Fi 自动加入使用 `App/TDSCarKit.entitlements`，包含 `com.apple.develo
 `.github/workflows/ios-build.yml` 在 `codex/ninebot-ant-bms` 分支推送时使用 GitHub 的 macOS 15 构建机运行核心测试、重新生成 Xcode 工程，再编译 Release iOS 应用。成功后在 Actions 的 Artifacts 中提供未签名 IPA、SHA-256、源代码提交号、签名权限文件及日志。该流程不发布 Release。
 
 安装前需要用自己的签名工具重新签名；有效配件身份仍需另行配置。使用 GitHub 构建不包含或上传本地身份材料。也可在 Mac 上执行与工作流相同的 `xcodebuild` 命令。
+
+## 从原版迁移身份
+
+Build 17 增加「设置 → CarPlay 身份」，支持选择原来可用的 CarWithin IPA，或同时选择 `certificate.p7b`、`leaf.cer`、`private.x963`。读取、匹配校验和 Keychain 保存均在用户设备本地执行；不上传身份材料，不更改原文件。归档解析只接受一个 App 中完整的一组资源，并检查大小、CRC、重复路径及压缩方式。
+
+本地证书/私钥匹配不等于 iOS 已接受 MFi 认证；最终仍需启动验证。若原包没有这三个资源，则不能通过该方式迁移。App 沙盒或签名访问组不同，也不会自动读取原 App 的 Keychain。
