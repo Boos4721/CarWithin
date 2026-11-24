@@ -14,6 +14,11 @@ static BOOL CWReturns(Method method, char first) {
     BOOL matches = type && type[0] == first;
     free(type); return matches;
 }
+static NSString *CWImplementationStatus(Class cls, SEL selector, IMP replacement, BOOL installed) {
+    if (!installed) return @"notInstalled";
+    Method method = cls ? class_getInstanceMethod(cls, selector) : NULL;
+    return method && method_getImplementation(method) == replacement ? @"active" : @"replaced";
+}
 static IMP CWReplace(Class cls, SEL selector, IMP replacement, IMP *saved) {
     Method method = class_getInstanceMethod(cls, selector);
     if (!method) return NULL;

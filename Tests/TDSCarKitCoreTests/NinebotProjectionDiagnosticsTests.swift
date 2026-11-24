@@ -64,6 +64,47 @@ final class NinebotProjectionDiagnosticsTests: XCTestCase {
         }))
     }
 
+    func testManualDisplayMarkWithEmptyCountersDoesNotImplyObservedVideo() throws {
+        // Matches the evidence in the user's 0.2 capture: hooks exist, no calls, manual display confirmation.
+        let report = try NinebotProjectionDiagnostics.decode(fixture {
+            $0["pluginVersion"] = "0.2"; $0["frameCount"] = 0; $0["counters"] = [String: Int]()
+            $0["hooks"] = ["recordVideo": true, "stop": true, "pixelBufferClass": true, "pixelBufferInstance": false, "controlAction": true]
+            $0["events"] = [["elapsed": 56.275, "kind": "mark", "detail": "标记：仪表已出画（人工确认）"]]
+        })
+        XCTAssertTrue(report.summary.contains("本次尚未观察到"))
+        XCTAssertTrue(report.summary.contains("普通转换 0 次"))
+        XCTAssertTrue(report.summary.contains("不能证明仪表已激活"))
+    }
+
+    func testProcessTotalsStaySeparateFromNewCaptureAndReportOverriddenHooks() throws {
+        let report = try NinebotProjectionDiagnostics.decode(fixture {
+            $0["pluginVersion"] = "0.3"; $0["frameCount"] = 0; $0["events"] = []
+            $0["counters"] = ["recordCalls": 0, "h264Callbacks": 12, "mjpegEncodedCallbacks": 0]
+            $0["processCounters"] = ["recordCalls": 1, "h264Callbacks": 45]
+            $0["observations"] = ["h264Callback": ["status": "hooked", "encoding": "v32@0:8@16@24"]]
+            $0["hookChecks"] = ["recordVideo": "replaced", "h264Callback": "active", "mjpegInstance": "notInstalled"]
+            $0["activationInventory"] = ["class Vehicle.NBProjectionScreenManager", "Vehicle.VideoGenerator -startRecordVideo | v16@0:8"]
+        })
+        XCTAssertTrue(report.summary.contains("本次尚未观察到"))
+        XCTAssertTrue(report.summary.contains("H.264 回调 12 次"))
+        XCTAssertTrue(report.summary.contains("进程累计录制：1 次"))
+        XCTAssertTrue(report.summary.contains("挂钩后被替换：1 项"))
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+        XCTAssertEqual(try NinebotProjectionDiagnostics.decode(encoder.encode(report)), report)
+        for counters in [["unknown": 1], ["h264Callbacks": -1], ["recordCalls": Int(Int32.max) + 1]] {
+            XCTAssertThrowsError(try NinebotProjectionDiagnostics.decode(fixture { $0["processCounters"] = counters }))
+        }
+        for checks in [["recordVideo": "activated"], ["unknown": "active"]] {
+            XCTAssertThrowsError(try NinebotProjectionDiagnostics.decode(fixture { $0["hookChecks"] = checks }))
+        }
+        XCTAssertThrowsError(try NinebotProjectionDiagnostics.decode(fixture {
+            $0["activationInventory"] = Array(repeating: "class", count: 65)
+        }))
+        XCTAssertThrowsError(try NinebotProjectionDiagnostics.decode(fixture {
+            $0["activationInventory"] = [String(repeating: "x", count: 513)]
+        }))
+    }
+
     func testRejectsOversizedUnknownSchemaAndUnknownProducer() throws {
         XCTAssertThrowsError(try NinebotProjectionDiagnostics.decode(Data(repeating: 0, count: 128 * 1024 + 1)))
         XCTAssertThrowsError(try NinebotProjectionDiagnostics.decode(fixture { $0["schema"] = 2 }))
