@@ -200,6 +200,21 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private var heroTitleRow: UIStackView?
     private let connectionDetailsButton = UIButton(type: .system)
     private var showsConnectionDetails = false
+    private let vehicleProfileButton = UIButton(type: .system)
+    private let autoFullscreenSwitch = UISwitch()
+    private var connectionTimeline: ConnectionTimeline?
+    private var lastReceiverMessage: String?
+    private let connectionReportStatus = StatusLabel()
+    private let bmsSessionStatus = StatusLabel()
+    private let bmsTrend = BMSVoltageTrendView()
+    private var bmsSession = ANTBMSSessionStatistics()
+    private var bmsSessionStartedAt: Date?
+    private var bmsSessionVehicle = ""
+    private var bmsSessionDevice: UUID?
+    private var bmsSessionMinimumUptime = 0.0
+    private var bmsSessionRecordID = UUID()
+    private var lastBMSSaveUptime = 0.0
+    private var applyingVehicleProfile = false
     private let logView = UITextView()
     private let videoSurface = H264Surface()
     private let bmsClient = ANTBMSClient()
@@ -404,6 +419,14 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         identitySetupButton.addAction(UIAction { [weak self] _ in self?.revealSettings(showIdentity: true) }, for: .touchUpInside)
         [titleStack, explanation, statusRow, identitySetupButton, startupHint, connectionHelp, receiverPicker, networkSummary]
             .forEach { heroStack.addArrangedSubview($0) }
+        vehicleProfileButton.configuration = .plain()
+        vehicleProfileButton.contentHorizontalAlignment = .leading
+        vehicleProfileButton.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            self.revealSettings()
+            self.settingsNavigation?.pushViewController(self.vehicleProfilesPage(), animated: true)
+        }, for: .touchUpInside)
+        heroStack.addArrangedSubview(vehicleProfileButton)
         heroStack.axis = .vertical; heroStack.spacing = 14
         heroStack.isLayoutMarginsRelativeArrangement = true
         heroStack.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 22, leading: 20, bottom: 22, trailing: 20)
@@ -605,10 +628,17 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             preferredWidth, stack.widthAnchor.constraint(lessThanOrEqualTo: scroll.frameLayoutGuide.widthAnchor, constant: -32),
             stack.widthAnchor.constraint(lessThanOrEqualToConstant: 720)
         ])
-        receiver.onLog = { [weak self] in self?.log($0) }; bluetooth.onLog = { [weak self] in self?.log($0) }
-        receiver.onControlConnected = { [weak self] in self?.sameDevice.didConnectControl() }
+        receiver.onLog = { [weak self] in self?.lastReceiverMessage = $0; self?.log($0) }
+        bluetooth.onLog = { [weak self] in self?.log($0) }
+        receiver.onControlConnected = { [weak self] in
+            self?.recordConnection(.control, "已收到 CarPlay 控制请求")
+            self?.sameDevice.didConnectControl()
+        }
         receiver.onConnectionProgress = { [weak self] in self?.sameDevice.didProgressControl($0) }
-        receiver.onFirstVideo = { [weak self] in self?.sameDevice.didReceiveVideo() }
+        receiver.onFirstVideo = { [weak self] in
+            self?.recordConnection(.video, "已收到视频关键帧")
+            self?.sameDevice.didReceiveVideo()
+        }
         receiver.onVideo = { [weak self] data, codec in
             guard let self, self.running else { return }
             // Nothing local is visible in the background without PiP: save the decoding work.
@@ -629,7 +659,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                     self.view.layoutIfNeeded()
                     self.homeScroll.setContentOffset(CGPoint(x: 0, y: -self.homeScroll.adjustedContentInset.top), animated: false)
                     self.log("视频已送入本机显示层")
-                    if UIDevice.current.userInterfaceIdiom == .pad { self.showFullscreen() }
+                    if UIDevice.current.userInterfaceIdiom == .pad || self.autoFullscreenSwitch.isOn { self.showFullscreen() }
                     self.updatePictureInPicturePolicy()
                 }
                 self.pictureInPicture.sourceMayBeReady()
@@ -656,6 +686,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         }
         receiver.onNinebotState = { [weak self] message in
             guard let self, self.running, self.outputMode.ninebotMode != nil else { return }
+            self.recordConnection(.instrument, message)
             self.updateNinebotStatus(message)
         }
         receiver.onTailingState = { [weak self] message in
@@ -704,7 +735,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         pictureInPicture.onRestore = { [weak self] in
             self?.hideFullscreen()
         }
-        receiver.onFailure = { [weak self] in self?.stop() }
+        receiver.onFailure = { [weak self] in
+            self?.recordConnection(.failed, self?.lastReceiverMessage ?? "接收服务失败，具体错误见运行日志")
+            self?.stop()
+        }
         bluetooth.onFailure = { [weak self] message in
             self?.stop()
             self?.statusLabel.text = message
@@ -730,6 +764,9 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         }
         sameDevice.onStage = { [weak self] message in
             guard let self, self.running, !self.displayedVideo else { return }
+            let stage: ConnectionTimeline.Stage = message.contains("控制") || message.contains("媒体")
+                || message.contains("认证响应") || message.contains("首帧") ? .control : .accessory
+            self.recordConnection(stage, message)
             if self.modeControl.selectedSegmentIndex == 2 {
                 self.statusLabel.text = message.contains("已请求")
                     ? "已请求连接，请保持 App 运行" : "正在连接 iPad…"
@@ -740,6 +777,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         }
         sameDevice.onLog = { [weak self] in self?.log($0) }
         sameDevice.onFinished = { [weak self] message in
+            self?.recordConnection(.failed, message)
             self?.stop()
             self?.statusLabel.text = message
         }
@@ -759,6 +797,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         ninebotCurrentWiFiSwitch.isOn = UserDefaults.standard.bool(forKey: "ninebotCurrentWiFi")
         ninebotCurrentWiFiSwitch.addTarget(self, action: #selector(ninebotCurrentWiFiChanged), for: .valueChanged)
         configureBMS()
+        configureExperience()
         loadIdentity()
         loadWiFiPassword()
         modeChanged()
@@ -833,7 +872,11 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     @objc private func bmsSettingsChanged() {
         UserDefaults.standard.set(bmsEnabledSwitch.isOn, forKey: "antBMSEnabled")
         UserDefaults.standard.set(bmsPosition.selectedSegmentIndex, forKey: "antBMSPosition")
-        if bmsEnabledSwitch.isOn { bmsClient.start() } else { bmsClient.stop() }
+        if bmsEnabledSwitch.isOn {
+            bmsClient.start()
+            if running { beginBMSSessionIfNeeded() }
+        } else { finishBMSSession(); bmsClient.stop() }
+        saveActiveVehicleProfile()
         refreshBMS()
         reloadVisibleSettings()
     }
@@ -846,6 +889,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private func saveBMSCardConfiguration() {
         UserDefaults.standard.set(bmsCardConfiguration.fields.map(\.rawValue), forKey: "antBMSCardFields")
         UserDefaults.standard.set(bmsCardConfiguration.size.rawValue, forKey: "antBMSCardSize")
+        saveActiveVehicleProfile()
         refreshBMS()
         reloadVisibleSettings()
     }
@@ -859,6 +903,19 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
 
     private func refreshBMS() {
         let reading = bmsClient.freshReading
+        if bmsSessionStartedAt != nil, bmsSessionDevice != bmsClient.selectedID {
+            finishBMSSession()
+            if running, bmsEnabledSwitch.isOn { beginBMSSessionIfNeeded() }
+        }
+        if bmsSessionStartedAt != nil, let sample = bmsClient.sample, sample.uptime >= bmsSessionMinimumUptime,
+           bmsSession.append(sample, now: ProcessInfo.processInfo.systemUptime) {
+            bmsTrend.points = bmsSession.points
+            if sample.uptime - lastBMSSaveUptime >= 15 {
+                checkpointBMSSession(completed: false)
+                lastBMSSaveUptime = sample.uptime
+            }
+        }
+        bmsSessionStatus.text = bmsStatisticsText(bmsSession)
         bmsStatus.text = bmsEnabledSwitch.isOn ? bmsClient.status : "BMS 显示已关闭"
         if let reading {
             let temperature = reading.maximumTemperature.map { String(format: "%.0f°C", $0) } ?? "--"
@@ -1217,6 +1274,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private func refreshHomePresentation() {
         let compact = displayedVideo && !showsConnectionDetails
         heroTitleRow?.isHidden = compact
+        vehicleProfileButton.isHidden = compact
+        vehicleProfileButton.isEnabled = !running && !waitingForNetwork
         explanation.isHidden = compact
         connectionHelp.isHidden = compact
         networkSummary.isHidden = compact
@@ -1689,9 +1748,11 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             }
         }
         if startCarPlay { attemptedNinebotAutoConnect = true }
+        if startCarPlay, !restartingAutomatically { beginConnectionTimeline() }
         view.endEditing(true)
         guard saveCurrentWiFiPreset() else {
             statusLabel.text = passwordStatus.text
+            recordConnection(.failed, passwordStatus.text ?? "Wi-Fi 配置未通过检查")
             reloadVisibleSettings()
             return
         }
@@ -1802,6 +1863,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
 
     private func finishWiFiJoin(id: UUID, message: String) {
         guard wiFiJoinID == id else { return }
+        recordConnection(message.hasPrefix("已连接 Wi-Fi") ? .wifi : .failed, message)
         wiFiJoinID = nil
         wiFiJoinTask?.cancel()
         wiFiJoinTask = nil
@@ -1826,6 +1888,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             joinSelectedWiFi(startCarPlay: true)
             return
         }
+        if !startingAfterWiFiJoin, !restartingAutomatically { beginConnectionTimeline() }
         if !restartingAutomatically { networkRestartCount = 0 }
         clearStartupHint()
         updateCheckTask?.cancel()
@@ -1874,6 +1937,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             guard saveSettings(config) else { return }
             if keepAliveSwitch.isOn { keepAlive.start() }
             view.endEditing(true); running = true; modeControl.isEnabled = false; setEditing(false)
+            beginBMSSessionIfNeeded()
             receiverPicker.isEnabled = false; receiverBrowser.stop()
             UIApplication.shared.isIdleTimerDisabled = true
             startButton.setTitle("停止 iPad 连接", for: .normal)
@@ -1895,6 +1959,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             }
             do { try config.validate(requiresWiFiCredentials: !startingWithCurrentWiFi) } catch {
                 log("无法启动本机 CarPlay：\(error.localizedDescription)")
+                recordConnection(.failed, error.localizedDescription)
                 revealSettings(); statusLabel.text = error.localizedDescription; return
             }
             liveDisplay = DisplayPlan(width: config.width, height: config.height, fps: config.maxFPS,
@@ -1907,6 +1972,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             if keepAliveSwitch.isOn { keepAlive.start() }
             view.endEditing(true)
             running = true; modeControl.isEnabled = false; setEditing(false)
+            beginBMSSessionIfNeeded()
+            saveActiveVehicleProfile()
             startButton.setTitle("停止 CarPlay", for: .normal)
             startButton.configuration?.image = UIImage(systemName: "stop.fill")
             statusLabel.text = "正在启动本机 CarPlay…"
@@ -1934,6 +2001,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         configureDisplay(&config)
         do { try config.validate(requiresWiFiCredentials: needsNetworkDetails) } catch {
             statusLabel.text = error.localizedDescription
+            recordConnection(.failed, error.localizedDescription)
             log("无法启动：\(error.localizedDescription)")
             revealSettings(wifi: config.ssid.isEmpty)
             return
@@ -1943,6 +2011,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         if keepAliveSwitch.isOn { keepAlive.start() }
         view.endEditing(true)
         running = true; modeControl.isEnabled = false; setEditing(false); startButton.setTitle("停止接收", for: .normal)
+        beginBMSSessionIfNeeded()
         startButton.configuration?.image = UIImage(systemName: "stop.fill")
         UIApplication.shared.isIdleTimerDisabled = true; statusLabel.text = "正在启动接收服务…"
         receiver.onListening = { [weak self] port in
@@ -2011,7 +2080,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                       UIApplication.shared.applicationState == .active else { continue }
                 self.networkRestartCount += 1
                 self.log("启动期间 Wi-Fi 地址已变更或长时间中断（\(initialAddress) → \(newAddress)），重新连接 CarPlay")
-                self.stop()
+                self.recordConnection(.preparing, "Wi-Fi 地址变化，自动重新连接")
+                self.stop(preserveDiagnostics: true)
                 self.restartingAutomatically = true
                 self.toggleReceiver()
                 self.restartingAutomatically = false
@@ -2020,7 +2090,9 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         }
     }
 
-    private func stop() {
+    private func stop(preserveDiagnostics: Bool = false) {
+        if !preserveDiagnostics { recordConnection(.stopped, "连接已停止") }
+        finishBMSSession()
         wiFiJoinID = nil
         wiFiJoinTask?.cancel()
         wiFiJoinTask = nil
@@ -2112,6 +2184,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             : "先启动此接收屏，再从另一台 iPhone 发起连接。"
         refreshNetworkSummary()
         refreshVideoOutputSummary()
+        refreshVehicleProfileTitle()
         startButton.isEnabled = identity != nil
         identitySetupButton.isHidden = identity != nil
         startButton.configuration?.image = UIImage(systemName: "play.fill")
@@ -2238,7 +2311,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         }
         log("自动重启 CarPlay：\(reason)")
         let keepScreen = reportedScreen, keepViewer = primaryViewer, level = lightLevel, count = autoRestarts
-        stop()
+        recordConnection(.preparing, "自动重连：\(reason)")
+        stop(preserveDiagnostics: true)
         statusLabel.text = "正在按新的画面设置重启 CarPlay…"
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
             guard let self, !self.running else { return }
@@ -2476,6 +2550,7 @@ extension ReceiverViewController {
         view.endEditing(true)
         UserDefaults.standard.set(nameField.text ?? "CarWithin", forKey: "receiverName")
         saveHeadUnitOutput()
+        saveActiveVehicleProfile()
         refreshNetworkSummary(); refreshVideoOutputSummary(); updateVideoAspect()
         updatePictureInPicturePolicy()
     }
@@ -2631,7 +2706,8 @@ extension ReceiverViewController {
     fileprivate func rootSettingsPage() -> SettingsPageController {
         page("设置") { [unowned self] in
             var connection: [SettingsRow] = [
-                .page("使用说明", icon: ("book.fill", .systemOrange)) { [unowned self] in self.usagePage() }
+                .page("使用说明", icon: ("book.fill", .systemOrange)) { [unowned self] in self.usagePage() },
+                .page("车辆配置", icon: ("scooter", .systemBlue), detail: { [unowned self] in self.currentVehicleName }) { [unowned self] in self.vehicleProfilesPage() }
             ]
             if needsNetworkDetails {
                 connection.append(.page("Wi-Fi 与网络", icon: ("wifi", .systemBlue), detail: { [unowned self] in
@@ -2647,6 +2723,7 @@ extension ReceiverViewController {
             return [
                 SettingsSection("连接与输出", connection),
                 SettingsSection("CarPlay", [
+                    .control("出画后自动全屏", icon: ("arrow.up.left.and.arrow.down.right", .systemBlue), autoFullscreenSwitch),
                     .page("画面", icon: ("rectangle.on.rectangle", .systemGreen), detail: { [unowned self] in
                         self.outputMode.usesInstrumentWiFi ? "仪表固定尺寸" : self.followsCarScreen ? "跟随车机" : self.resolutionControl.selectedTitle.components(separatedBy: "（").first
                     }) { [unowned self] in self.displayPage() },
@@ -2683,6 +2760,331 @@ extension ReceiverViewController {
     }
 
     // MARK: CarPlay 画面
+
+    private var currentVehicleName: String {
+        VehicleProfileStore.profiles().first { $0.id == VehicleProfileStore.selectedID }?.name ?? headUnitOutput.selectedTitle
+    }
+
+    private func configureExperience() {
+        autoFullscreenSwitch.isOn = UserDefaults.standard.bool(forKey: "autoFullscreen")
+        autoFullscreenSwitch.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            UserDefaults.standard.set(self.autoFullscreenSwitch.isOn, forKey: "autoFullscreen")
+            self.saveActiveVehicleProfile()
+        }, for: .valueChanged)
+        if let data = UserDefaults.standard.data(forKey: "lastConnectionTimeline.v1") {
+            connectionTimeline = try? JSONDecoder().decode(ConnectionTimeline.self, from: data)
+        }
+        refreshConnectionReport()
+        refreshVehicleProfileTitle()
+    }
+
+    private func refreshVehicleProfileTitle() {
+        vehicleProfileButton.setTitle("\(currentVehicleName) · 车辆配置", for: .normal)
+        vehicleProfileButton.accessibilityLabel = "车辆配置，\(currentVehicleName)"
+    }
+
+    private func capturedVehicle(id: UUID, name: String) -> VehicleProfile {
+        let address: String
+        switch outputMode {
+        case .zeeho: address = zeehoAddressField.text ?? ""
+        case .tailing: address = tailingAddressField.text ?? ""
+        case .carLife: address = carLifeAddressField.text ?? ""
+        default: address = activeNinebotAddressField.text ?? ""
+        }
+        return VehicleProfile(id: id, name: name, output: outputMode.rawValue, ssid: ssidField.text ?? "",
+            channel: UInt8(channelField.text ?? "") ?? 36, openNetwork: openNetworkSwitch.isOn,
+            instrumentAddress: address, bmsID: bmsClient.selectedID, bmsName: bmsClient.selectedName,
+            bmsEnabled: bmsEnabledSwitch.isOn, cardFields: bmsCardConfiguration.fields.map(\.rawValue),
+            cardSize: bmsCardConfiguration.size.rawValue, cardPosition: bmsPosition.selectedSegmentIndex,
+            autoConnect: ninebotAutoConnectSwitch.isOn, currentWiFiExperiment: ninebotCurrentWiFiSwitch.isOn,
+            keepAlive: keepAliveSwitch.isOn, autoFullscreen: autoFullscreenSwitch.isOn)
+    }
+
+    private func saveActiveVehicleProfile() {
+        guard !applyingVehicleProfile, let id = VehicleProfileStore.selectedID,
+              let previous = VehicleProfileStore.profiles().first(where: { $0.id == id }) else { return }
+        guard let ssid = ssidField.text, (1...32).contains(ssid.utf8.count), !ssid.contains("\0"),
+              let channel = UInt8(channelField.text ?? ""), (1...196).contains(channel) else { return }
+        do { try VehicleProfileStore.save(capturedVehicle(id: id, name: previous.name)) }
+        catch { log("车辆配置保存失败：\(error.localizedDescription)") }
+        refreshVehicleProfileTitle()
+    }
+
+    private func vehicleProfilesPage() -> SettingsPageController {
+        page("车辆配置") { [unowned self] in
+            let locked = self.running || self.waitingForNetwork
+            let rows = VehicleProfileStore.profiles().map { profile -> SettingsRow in
+                var row = SettingsRow.action(profile.name, detail: {
+                    (HeadUnitOutput(rawValue: profile.output).map { _ in profile.ssid }) ?? "请重新配置"
+                }) { [unowned self] in self.applyVehicleProfile(profile) }
+                row.checked = { VehicleProfileStore.selectedID == profile.id }
+                if !locked {
+                    row.onDelete = { [unowned self] in
+                        do { try VehicleProfileStore.remove(profile.id); self.refreshVehicleProfileTitle() }
+                        catch { self.alert("删除失败", error.localizedDescription) }
+                    }
+                }
+                return row
+            }
+            var sections = [SettingsSection("已保存车辆", footer: locked ? "停止连接后可切换或保存车辆。" :
+                "先设置仪表、Wi-Fi、BMS 和卡片样式，再保存为车辆。切换车辆会恢复该车配置；密码按 SSID 从 Keychain 读取。", rows)]
+            if !locked {
+                sections.append(SettingsSection([
+                    .action("将当前设置存为新车辆", icon: ("plus.circle", .systemBlue)) { [unowned self] in self.promptVehicleName() },
+                    .action("更新当前车辆配置", icon: ("square.and.arrow.down", .systemBlue)) { [unowned self] in
+                        guard VehicleProfileStore.selectedID != nil else {
+                            self.alert("尚未选择车辆", "先将当前设置保存为新车辆。保持现有连接设置即可。")
+                            return
+                        }
+                        self.saveActiveVehicleProfile(); self.reloadVisibleSettings()
+                    }
+                ]))
+            }
+            return sections
+        }
+    }
+
+    private func promptVehicleName() {
+        guard !running, !waitingForNetwork else { return }
+        view.endEditing(true)
+        guard saveCurrentWiFiPreset() else {
+            alert("先配置 Wi-Fi", passwordStatus.text ?? "请保存车辆的 Wi-Fi 名称。")
+            return
+        }
+        let prompt = UIAlertController(title: "保存车辆配置", message: "保存当前仪表、Wi-Fi、BMS 和显示设置。", preferredStyle: .alert)
+        prompt.addTextField { $0.placeholder = "例如：九号五寸"; $0.text = self.headUnitOutput.selectedTitle }
+        prompt.addAction(UIAlertAction(title: "取消", style: .cancel))
+        prompt.addAction(UIAlertAction(title: "保存", style: .default) { [weak self, weak prompt] _ in
+            guard let self, !self.running, !self.waitingForNetwork else { return }
+            let name = String((prompt?.textFields?.first?.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+            guard !name.isEmpty else {
+                self.alert("未填写车辆名称", "填写名称后再保存。")
+                return
+            }
+            self.saveActiveVehicleProfile()
+            do {
+                try VehicleProfileStore.save(self.capturedVehicle(id: UUID(), name: name))
+                self.refreshVehicleProfileTitle(); self.reloadVisibleSettings()
+            } catch { self.alert("保存失败", error.localizedDescription) }
+        })
+        (settingsNavigation ?? self).present(prompt, animated: true)
+    }
+
+    private func applyVehicleProfile(_ profile: VehicleProfile) {
+        guard !running, !waitingForNetwork, !applyingVehicleProfile else { return }
+        guard let output = HeadUnitOutput(rawValue: profile.output), (1...196).contains(profile.channel),
+              (1...32).contains(profile.ssid.utf8.count), !profile.ssid.contains("\0") else {
+            alert("车辆配置无效", "请重新保存该车辆的仪表和 Wi-Fi 配置。")
+            return
+        }
+        view.endEditing(true)
+        saveActiveVehicleProfile()
+        finishBMSSession()
+        applyingVehicleProfile = true
+        defer { applyingVehicleProfile = false }
+        bmsClient.stop()
+        headUnitOutput.selectedSegmentIndex = output.rawValue
+        switch output {
+        case .zeeho: zeehoAddressField.text = profile.instrumentAddress
+        case .tailing: tailingAddressField.text = profile.instrumentAddress
+        case .carLife: carLifeAddressField.text = profile.instrumentAddress
+        default: activeNinebotAddressField.text = profile.instrumentAddress
+        }
+        WiFiPresetStore.upsert(ssid: profile.ssid, channel: profile.channel, isOpen: profile.openNetwork)
+        applyWiFiPreset(WiFiPreset(ssid: profile.ssid, channel: profile.channel, isOpen: profile.openNetwork))
+        bmsClient.restoreSelection(id: profile.bmsID, name: profile.bmsName)
+        bmsEnabledSwitch.isOn = profile.bmsEnabled
+        bmsPosition.selectedSegmentIndex = profile.cardPosition == 1 ? 1 : 0
+        bmsCardConfiguration = ANTBMSCardConfiguration(savedFields: profile.cardFields, sizeRawValue: profile.cardSize)
+        bmsCardSize.selectedSegmentIndex = bmsCardConfiguration.size.rawValue
+        for (field, control) in bmsFieldSwitches { control.isOn = bmsCardConfiguration.fields.contains(field) }
+        ninebotAutoConnectSwitch.isOn = profile.autoConnect
+        ninebotCurrentWiFiSwitch.isOn = profile.currentWiFiExperiment
+        keepAliveSwitch.isOn = profile.keepAlive
+        autoFullscreenSwitch.isOn = profile.autoFullscreen
+        let defaults = UserDefaults.standard
+        defaults.set(profile.autoConnect, forKey: "ninebotAutoConnect")
+        defaults.set(profile.currentWiFiExperiment, forKey: "ninebotCurrentWiFi")
+        defaults.set(profile.keepAlive, forKey: "backgroundKeepAlive")
+        defaults.set(profile.autoFullscreen, forKey: "autoFullscreen")
+        defaults.set(profile.bmsEnabled, forKey: "antBMSEnabled")
+        defaults.set(bmsPosition.selectedSegmentIndex, forKey: "antBMSPosition")
+        saveBMSCardConfiguration()
+        VehicleProfileStore.select(profile.id)
+        saveHeadUnitOutput()
+        if profile.bmsEnabled { bmsClient.start() }
+        attemptedNinebotAutoConnect = false
+        modeChanged(); refreshVehicleProfileTitle(); reloadVisibleSettings()
+        statusLabel.text = "已切换到 \(profile.name)"
+    }
+
+    private func beginConnectionTimeline() {
+        lastReceiverMessage = nil
+        connectionTimeline = ConnectionTimeline(output: headUnitOutput.selectedTitle,
+            uptime: ProcessInfo.processInfo.systemUptime)
+        recordConnection(.preparing, outputMode.ninebotMode != nil
+            ? "开始连接；仪表自动激活仍需官方投屏流程" : "开始 CarPlay 连接")
+    }
+
+    private func recordConnection(_ stage: ConnectionTimeline.Stage, _ detail: String) {
+        connectionTimeline?.record(stage, detail: detail, uptime: ProcessInfo.processInfo.systemUptime)
+        if let timeline = connectionTimeline, let data = try? JSONEncoder().encode(timeline) {
+            UserDefaults.standard.set(data, forKey: "lastConnectionTimeline.v1")
+        }
+        refreshConnectionReport()
+    }
+
+    private func refreshConnectionReport() {
+        guard let timeline = connectionTimeline else { connectionReportStatus.text = "暂无连接记录。启动一次 CarPlay 后生成报告。"; return }
+        let timing = timeline.firstVideoSeconds.map { String(format: "首个视频关键帧：%.1f 秒\n", $0) } ?? "尚未收到视频关键帧\n"
+        connectionReportStatus.text = "输出：\(timeline.output)\n" + timing + timeline.events.map {
+            String(format: "+%.1f 秒 · %@：%@", $0.elapsed, $0.stage.title, $0.detail)
+        }.joined(separator: "\n")
+    }
+
+    private func connectionReportData() throws -> Data {
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+        let timeline: Any = try connectionTimeline.map { try JSONSerialization.jsonObject(with: encoder.encode($0)) } ?? NSNull()
+        let report: [String: Any] = ["version": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "",
+            "build": Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "",
+            "iOS": UIDevice.current.systemVersion, "device": UIDevice.current.model,
+            "localWiFiAddress": ReceiverConfiguration.wifiIPv4Address() ?? "",
+            "bmsStatus": bmsClient.status, "timeline": timeline,
+            "instrumentActivation": "尚未实现独立激活；仪表是否出画需实物确认"]
+        return try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys])
+    }
+
+    private func connectionReportPage() -> SettingsPageController {
+        page("连接诊断报告") { [unowned self] in
+            [SettingsSection("最近一次连接", footer: "记录连接阶段和耗时，保留最近 64 条；不包含 Wi-Fi 密码或身份私钥。", [.note(self.connectionReportStatus)]),
+             SettingsSection([
+                .page("预览并导出报告", icon: ("square.and.arrow.up", .systemBlue)) { [unowned self] in
+                    self.reportPreviewPage(title: "连接报告预览", name: "CarWithin-connection-report.json", data: { try self.connectionReportData() })
+                },
+                .page("运行日志", icon: ("doc.text", .systemGray)) { [unowned self] in self.logPage() }
+             ])]
+        }
+    }
+
+    private func reportPreviewPage(title: String, name: String, data: () throws -> Data) -> SettingsPageController {
+        do {
+            let snapshot = try data()
+            let text = UITextView(); text.isEditable = false; text.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+            text.text = String(data: snapshot, encoding: .utf8)
+            text.heightAnchor.constraint(equalToConstant: 360).isActive = true
+            return page(title) { [weak self] in
+                [SettingsSection(footer: "以下为本次导出的完整内容。", [.view(text)]), SettingsSection([
+                    .action("复制报告", icon: ("doc.on.doc", .systemBlue)) { UIPasteboard.general.string = text.text },
+                    .action("分享 JSON 文件", icon: ("square.and.arrow.up", .systemBlue)) {
+                        self?.shareReport(snapshot, name: name)
+                    }
+                ])]
+            }
+        } catch {
+            return page(title) { [SettingsSection([.info("报告生成失败", error.localizedDescription)])] }
+        }
+    }
+
+    private func shareReport(_ data: Data, name: String) {
+        do {
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent("CarWithinReports", isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let file = directory.appendingPathComponent(name)
+            try data.write(to: file, options: .atomic)
+            let sheet = UIActivityViewController(activityItems: [file], applicationActivities: nil)
+            let presenter: UIViewController = settingsNavigation ?? self
+            sheet.popoverPresentationController?.sourceView = presenter.view
+            sheet.popoverPresentationController?.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 1, height: 1)
+            presenter.present(sheet, animated: true)
+        } catch { alert("无法导出", error.localizedDescription) }
+    }
+
+    private func beginBMSSessionIfNeeded() {
+        guard bmsEnabledSwitch.isOn, bmsSessionStartedAt == nil else { return }
+        bmsSession = ANTBMSSessionStatistics(); bmsTrend.points = []
+        bmsSessionMinimumUptime = ProcessInfo.processInfo.systemUptime
+        lastBMSSaveUptime = bmsSessionMinimumUptime
+        bmsSessionRecordID = UUID()
+        bmsSessionStartedAt = Date(); bmsSessionVehicle = currentVehicleName; bmsSessionDevice = bmsClient.selectedID
+        bmsSessionStatus.text = "等待新的 BMS 实时数据"
+    }
+
+    private func finishBMSSession() {
+        checkpointBMSSession(completed: true)
+        bmsSessionStartedAt = nil
+    }
+
+    private func checkpointBMSSession(completed: Bool) {
+        guard let startedAt = bmsSessionStartedAt else { return }
+        guard bmsSession.sampleCount > 0 else { return }
+        let record = BMSRideRecord(id: bmsSessionRecordID, startedAt: startedAt, endedAt: Date(),
+            vehicleName: bmsSessionVehicle, statistics: bmsSession, completed: completed)
+        do { try BMSRideRecordStore.save(record) }
+        catch { log("BMS 记录保存失败，本次统计仍可导出：\(error.localizedDescription)") }
+    }
+
+    private func bmsStatisticsText(_ statistics: ANTBMSSessionStatistics) -> String {
+        guard statistics.sampleCount > 0 else { return "暂无有效样本。启动 CarPlay 且开启 BMS 后自动记录，也可手动开始。" }
+        let charge = statistics.firstCharge.flatMap { first in statistics.lastCharge.map { "\(first)% → \($0)%" } } ?? "--"
+        return String(format: "有效采样 %.0f 秒 · %d 帧\n电量 %@\n电压 %.2f–%.2f V\n峰值电流 |I| %.1f A · 峰值功率 |P| %ld W\n最高温度 %@ · 最大压差 %@",
+            statistics.sampledSeconds, statistics.sampleCount, charge, statistics.minimumVoltage ?? 0, statistics.maximumVoltage ?? 0,
+            statistics.peakAbsoluteCurrent, statistics.peakAbsolutePower,
+            statistics.maximumTemperature.map { String(format: "%.0f°C", $0) } ?? "--",
+            statistics.maximumCellDelta.map { String(format: "%.0f mV", $0 * 1000) } ?? "--")
+    }
+
+    private func bmsStatisticsPage() -> SettingsPageController {
+        page("BMS 统计与记录") { [unowned self] in
+            var sections = [SettingsSection(self.bmsSessionStartedAt == nil ? "本次统计" : "正在记录", footer:
+                "有效采样时长不计入断线间隔；峰值取绝对值。记录电池读数，不计算里程、每公里耗电或预计续航。", [.note(self.bmsSessionStatus), .view(self.bmsTrend)])]
+            var controls: [SettingsRow] = []
+            if self.bmsSessionStartedAt != nil {
+                controls.append(.action("结束并保存本次记录", icon: ("stop.circle", .systemBlue)) { [unowned self] in
+                    self.finishBMSSession(); self.reloadVisibleSettings()
+                })
+            } else {
+                controls.append(.action("开始新记录", icon: ("record.circle", .systemBlue)) { [unowned self] in
+                    guard self.bmsEnabledSwitch.isOn else { self.alert("先开启 BMS", "在电池与 BMS 页面开启读取并连接自己的设备。"); return }
+                    self.beginBMSSessionIfNeeded(); self.reloadVisibleSettings()
+                })
+            }
+            controls.append(.page("预览并导出本次统计", icon: ("square.and.arrow.up", .systemBlue)) { [unowned self] in
+                self.reportPreviewPage(title: "BMS 统计预览", name: "CarWithin-bms-statistics.json", data: {
+                    let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                    return try encoder.encode(self.bmsSession)
+                })
+            })
+            sections.append(SettingsSection(controls))
+            let history = BMSRideRecordStore.records().map { record -> SettingsRow in
+                let date = DateFormatter.localizedString(from: record.startedAt, dateStyle: .short, timeStyle: .short)
+                var row = SettingsRow.page("\(record.vehicleName) · \(date)", detail: {
+                    record.completed ? "已结束" : "已保存片段"
+                }) { [unowned self] in self.bmsRecordPage(record) }
+                row.onDelete = { [unowned self] in
+                    do { try BMSRideRecordStore.remove(record.id) } catch { self.alert("删除失败", error.localizedDescription) }
+                }
+                return row
+            }
+            sections.append(SettingsSection("最近记录", footer: "保存在本机，最多保留 20 次，每 15 秒保存片段。每次趋势保留最近 120 个采样点；断线不会用直线补齐。停止 CarPlay 或关闭 BMS 时完成记录。", history))
+            return sections
+        }
+    }
+
+    private func bmsRecordPage(_ record: BMSRideRecord) -> SettingsPageController {
+        let summary = StatusLabel(); summary.text = bmsStatisticsText(record.statistics)
+        let trend = BMSVoltageTrendView(); trend.points = record.statistics.points
+        return page(record.vehicleName) { [unowned self] in
+            [SettingsSection("电池记录", footer: record.completed ? "已结束并保存。" : "这是最近保存的片段，可能尚未正常结束。", [.note(summary), .view(trend)]),
+             SettingsSection([.page("预览并导出记录", icon: ("square.and.arrow.up", .systemBlue)) { [unowned self] in
+                 self.reportPreviewPage(title: "记录预览", name: "CarWithin-bms-\(record.id.uuidString).json", data: {
+                     let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+                     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                     return try encoder.encode(record)
+                 })
+             }])]
+        }
+    }
 
     private func identityPage() -> SettingsPageController {
         page("CarPlay 身份") { [unowned self] in
@@ -2750,6 +3152,7 @@ extension ReceiverViewController {
                 .page("卡片显示", icon: ("rectangle.topthird.inset.filled", .systemBlue), detail: { [unowned self] in
                     "\(self.bmsCardConfiguration.fields.count) 项 · \(self.bmsCardConfiguration.size.title)号"
                 }) { [unowned self] in self.bmsCardPage() },
+                .page("本次统计与记录", icon: ("chart.xyaxis.line", .systemGreen)) { [unowned self] in self.bmsStatisticsPage() },
                 .info("已记住的设备", self.bmsClient.selectedName),
                 .note(self.bmsStatus)
             ])]
@@ -3449,6 +3852,7 @@ extension ReceiverViewController {
         }
         return SettingsSection("诊断信息", [
             .page("日志", icon: ("doc.text.fill", .systemGray)) { [unowned self] in self.logPage() },
+            .page("连接诊断报告", icon: ("doc.text.magnifyingglass", .systemBlue)) { [unowned self] in self.connectionReportPage() },
             .info("浏览器页面", BrowserReceiverPage.version),
             .info("设备", "\(model) · iOS \(UIDevice.current.systemVersion)"),
             .info("MFi 身份", identity != nil ? "已载入" : "未载入")

@@ -31,6 +31,16 @@ Settings → 电池与 BMS adds opt-in, read-only ANT BLE monitoring. Select you
 
 Framing and decoding reference [maibms](https://github.com/lswlc33/maibms), with its MIT license retained and bundled. Only the default FFE0/FFE1 realtime-query channel is included. Other remote outputs and PiP do not include the panel. Hardware verification is pending; see [the integration guide](docs/ant-bms.md). Run `bash Tools/test_bms.sh` with Swift 5.9+ for standalone protocol tests.
 
+## Integrated experience (build 23)
+
+Vehicle profiles save the instrument mode/address, SSID/channel, selected ANT device, BMS card layout, automatic connection, background keep-alive and automatic fullscreen. Passwords remain in the SSID Keychain entry. Save the current setup as a vehicle under Settings → 车辆配置; stop the connection before switching. Current vehicle settings update when leaving settings. Removing a profile preserves its Wi-Fi password.
+
+Connection diagnostics under 诊断与实验 record explicit stages, first-keyframe timing, retries and errors in a bounded 64-event timeline. Preview, copy or share the local JSON report; credential material is excluded.
+
+BMS statistics track SOC changes, voltage range, absolute current/power peaks, maximum temperature/spread and a bounded voltage trend. Fresh, unique samples only; outages do not count as sampled time. Recording starts with CarPlay when BMS is enabled, or manually from 本次统计与记录. Fifteen-second checkpoints and completed records are stored locally, retaining up to 20 sessions for viewing, deletion and JSON export. No distance or range estimates are inferred.
+
+Independent Ninebot projection activation remains unimplemented. Instruments requiring the official app still need that step; see the iPhone capture guide.
+
 ## Home and BMS card (build 22)
 
 Once a video picture is accepted, the home screen collapses setup instructions and moves CarPlay and its controls directly below the status card. Connection details can be expanded, and stopping restores the setup layout. Instrument status remains visible below the video.

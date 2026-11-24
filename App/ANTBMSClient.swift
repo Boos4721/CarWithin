@@ -104,6 +104,20 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
         if enabled { scan() } else { update("未选择 BMS") }
     }
 
+    /// Restores a previously chosen device from a vehicle profile, never a scan guess.
+    func restoreSelection(id: UUID?, name: String?) {
+        clearConnection()
+        reconnectWork?.cancel(); reconnectWork = nil
+        if let id {
+            defaults.set(id.uuidString, forKey: "antBMSPeripheral")
+            defaults.set(name ?? "ANT BMS", forKey: "antBMSName")
+        } else {
+            defaults.removeObject(forKey: "antBMSPeripheral")
+            defaults.removeObject(forKey: "antBMSName")
+        }
+        if enabled { connectRememberedOrScan() } else { update("已恢复车辆 BMS 配置") }
+    }
+
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state != .poweredOn { disconnecting.removeAll() }
         guard enabled else { return }

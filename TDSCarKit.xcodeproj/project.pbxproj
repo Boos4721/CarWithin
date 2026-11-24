@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E26C16854D5907BF95A82E43 /* Sources/TDSCarKitCore/ConnectionTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4459D2CAF8024F4246C19DD4; };
+		B82B6A511CB6BF69986E8CD7 /* Sources/TDSCarKitCore/ANTBMSSessionStatistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A0CC3E8F23C3EB816A0AB0; };
+		65631E3A1D532315BF74BA9C /* App/BMSVoltageTrendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10F20CB5269F7E50BBF0AE40; };
+		8CBED6DDD6C12867EBE877F4 /* App/VehicleProfileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D7C5E41EC13C67B6A3CBB2D; };
 		DE9CAF6EAE8A9EEE38B602D4 /* Sources/TDSCarKitCore/ANTBMSCardConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29C0B88DFD31A3CB69BAF601; };
 		0824E7E2162924F83ABA8566 /* Sources/TDSCarKitCore/StartupNetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4571C4F22B7833F9971330A; };
 		2AF0A87E38083A38991DB4E0 /* Sources/TDSCarKitCore/CarPlayStartupDeadline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 646EEDE7072FACC6BE3E2ABC; };
@@ -104,6 +108,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		4459D2CAF8024F4246C19DD4 /* Sources/TDSCarKitCore/ConnectionTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TDSCarKitCore/ConnectionTimeline.swift; sourceTree = "<group>"; };
+		35A0CC3E8F23C3EB816A0AB0 /* Sources/TDSCarKitCore/ANTBMSSessionStatistics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TDSCarKitCore/ANTBMSSessionStatistics.swift; sourceTree = "<group>"; };
+		10F20CB5269F7E50BBF0AE40 /* App/BMSVoltageTrendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/BMSVoltageTrendView.swift; sourceTree = "<group>"; };
+		8D7C5E41EC13C67B6A3CBB2D /* App/VehicleProfileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/VehicleProfileStore.swift; sourceTree = "<group>"; };
 		29C0B88DFD31A3CB69BAF601 /* Sources/TDSCarKitCore/ANTBMSCardConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TDSCarKitCore/ANTBMSCardConfiguration.swift; sourceTree = "<group>"; };
 		A4571C4F22B7833F9971330A /* Sources/TDSCarKitCore/StartupNetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TDSCarKitCore/StartupNetworkMonitor.swift; sourceTree = "<group>"; };
 		646EEDE7072FACC6BE3E2ABC /* Sources/TDSCarKitCore/CarPlayStartupDeadline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TDSCarKitCore/CarPlayStartupDeadline.swift; sourceTree = "<group>"; };
@@ -223,6 +231,10 @@
 				646EEDE7072FACC6BE3E2ABC /* Sources/TDSCarKitCore/CarPlayStartupDeadline.swift */,
 				A4571C4F22B7833F9971330A /* Sources/TDSCarKitCore/StartupNetworkMonitor.swift */,
 				29C0B88DFD31A3CB69BAF601 /* Sources/TDSCarKitCore/ANTBMSCardConfiguration.swift */,
+				8D7C5E41EC13C67B6A3CBB2D /* App/VehicleProfileStore.swift */,
+				10F20CB5269F7E50BBF0AE40 /* App/BMSVoltageTrendView.swift */,
+				35A0CC3E8F23C3EB816A0AB0 /* Sources/TDSCarKitCore/ANTBMSSessionStatistics.swift */,
+				4459D2CAF8024F4246C19DD4 /* Sources/TDSCarKitCore/ConnectionTimeline.swift */,
 				CCED75C259FA04696F817035 /* Sources/TDSCarKitCore/CarPlayWiFiBootstrap.swift */,
 				7BAEDF1212F9D1065D1112FF /* App/TailingConnection.swift */,
 				F1F1006A6933CF59351244FE /* App/TailingH264Decoder.swift */,
@@ -395,6 +407,10 @@
 				2AF0A87E38083A38991DB4E0 /* Sources/TDSCarKitCore/CarPlayStartupDeadline.swift in Sources */,
 				0824E7E2162924F83ABA8566 /* Sources/TDSCarKitCore/StartupNetworkMonitor.swift in Sources */,
 				DE9CAF6EAE8A9EEE38B602D4 /* Sources/TDSCarKitCore/ANTBMSCardConfiguration.swift in Sources */,
+				8CBED6DDD6C12867EBE877F4 /* App/VehicleProfileStore.swift in Sources */,
+				65631E3A1D532315BF74BA9C /* App/BMSVoltageTrendView.swift in Sources */,
+				B82B6A511CB6BF69986E8CD7 /* Sources/TDSCarKitCore/ANTBMSSessionStatistics.swift in Sources */,
+				E26C16854D5907BF95A82E43 /* Sources/TDSCarKitCore/ConnectionTimeline.swift in Sources */,
 				10109BA21419978567A750F6 /* Sources/TDSCarKitCore/CarPlayWiFiBootstrap.swift in Sources */,
 				F981D54C81AFEB10623F8DF2 /* App/TailingConnection.swift in Sources */,
 				2A62092D5FAB7508B5E75585 /* App/TailingH264Decoder.swift in Sources */,
