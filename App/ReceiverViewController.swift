@@ -2516,10 +2516,7 @@ extension ReceiverViewController {
     fileprivate func rootSettingsPage() -> SettingsPageController {
         page("设置") { [unowned self] in
             var connection: [SettingsRow] = [
-                .page("使用说明", icon: ("book.fill", .systemOrange)) { [unowned self] in self.usagePage() },
-                .page("CarPlay 身份", icon: ("key.fill", .systemOrange), detail: { [unowned self] in
-                    self.identity == nil ? "待配置" : "已载入"
-                }) { [unowned self] in self.identityPage() }
+                .page("使用说明", icon: ("book.fill", .systemOrange)) { [unowned self] in self.usagePage() }
             ]
             if needsNetworkDetails {
                 connection.append(.page("Wi-Fi 与网络", icon: ("wifi", .systemBlue), detail: { [unowned self] in

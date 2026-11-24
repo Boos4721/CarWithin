@@ -20,6 +20,6 @@ Wi-Fi 自动加入使用 `App/TDSCarKit.entitlements`，包含 `com.apple.develo
 
 ## 从原版迁移身份
 
-Build 17 增加「设置 → CarPlay 身份」，支持选择原来可用的 CarWithin IPA，或同时选择 `certificate.p7b`、`leaf.cer`、`private.x963`。读取、匹配校验和 Keychain 保存均在用户设备本地执行；不上传身份材料，不更改原文件。归档解析只接受一个 App 中完整的一组资源，并检查大小、CRC、重复路径及压缩方式。
+内置身份安装包启动时自动加载身份。Build 21 移除设置列表中的「CarPlay 身份」入口；没有可用身份时，仍可从主界面的配置按钮选择原来可用的 CarWithin IPA，或同时选择 `certificate.p7b`、`leaf.cer`、`private.x963`。读取、匹配校验和 Keychain 保存均在用户设备本地执行；不上传身份材料，不更改原文件。归档解析只接受一个 App 中完整的一组资源，并检查大小、CRC、重复路径及压缩方式。
 
 本地证书/私钥匹配不等于 iOS 已接受 MFi 认证；最终仍需启动验证。若原包没有这三个资源，则不能通过该方式迁移。App 沙盒或签名访问组不同，也不会自动读取原 App 的 Keychain。
