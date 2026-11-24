@@ -132,7 +132,7 @@ One instrument was tested successfully, including screen lock. Other models and 
 
 ### ZEEHO AE2 Pro 5-inch display
 
-Connect the iPhone to the dashboard Wi-Fi, select the matching preset, then choose `极核 AE2 Pro 5 寸` under Current output. Start projection on the dashboard and start CarPlay in the app. The default dashboard address is `192.168.0.1`, configurable in Output settings. Video uses H.264 at the size reported by the dashboard, up to 25 fps. Projection was confirmed on one AE2 Pro.
+Connect the iPhone to the dashboard Wi-Fi, select the matching preset, then choose `极核 5 寸` under Current output and select AE2 Pro in Output settings → Dashboard model. Start projection on the dashboard and start CarPlay in the app. The default dashboard address is `192.168.0.1`, configurable in Output settings. Video uses H.264 at the size reported by the dashboard, up to 25 fps. Projection was confirmed on one AE2 Pro.
 
 ### Additional dashboard support
 
@@ -142,7 +142,7 @@ Connect the iPhone to the dashboard Wi-Fi, select the matching preset, then choo
 
 ### ZEEHO SE+ 5/5.5-inch display (experimental)
 
-Choose the separate SE+ output. Both ZEEHO modes offer automatic IP discovery and retain manual addresses. The 6.2-inch mode keeps its isolated original handshake/output at 1024×480 and 25 FPS.
+Choose `极核 5 寸`, then select SE+ in Output settings → Dashboard model. Both ZEEHO modes offer automatic IP discovery and retain manual addresses. The 6.2-inch mode keeps its isolated original handshake/output at 1024×480 and 25 FPS.
 
 SE+ offers a 1600×770 wide canvas or 800×480 compatibility canvas, plus 25/30/60 FPS targets. Start with 30 FPS and default compatibility transcoding. H.264 passthrough is opt-in and still needs instrument testing, as do sustained 60 FPS and lock-screen stability. Sent FPS is not panel refresh. The sound page provides the system audio route picker. See [implementation and validation scope](docs/zeeho-seplus-experimental.md).
 

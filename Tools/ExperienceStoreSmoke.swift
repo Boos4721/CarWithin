@@ -1,6 +1,6 @@
 import Foundation
 
-/// Exercises the persisted pre-build-24 vehicle schema without touching UserDefaults.
+/// Checks old schemas and five-inch migration; defaults checks use a temporary suite.
 @main
 enum ExperienceStoreSmoke {
     static func main() throws {
@@ -42,7 +42,45 @@ enum ExperienceStoreSmoke {
         let restoredAE2 = try decoder.decode(VehicleProfile.self, from: encoder.encode(ae2))
         precondition(restoredAE2.output == 9 && restoredAE2.instrumentAddress == "192.168.3.1"
             && restoredAE2.zeehoAutomaticAddress == false && restoredAE2.zeehoFrameRate == nil)
-        print("ZEEHO profiles: distinct SE+ and AE2 addresses, automatic/manual selection, frame rate, canvas and video mode round-trip passed")
+        let migratedSE = restoredZeeho.migratedZeehoFive, migratedAE = restoredAE2.migratedZeehoFive
+        precondition(migratedSE.output == 8 && migratedSE.zeehoFiveVariant == 0 && migratedSE.zeehoFrameRate == 60
+            && migratedSE.zeehoCanvas == 0 && migratedSE.zeehoVideoMode == 1 && migratedSE.instrumentAddress == "192.168.2.1")
+        precondition(migratedAE.output == 8 && migratedAE.zeehoFiveVariant == 1 && migratedAE.zeehoAutomaticAddress == false
+            && migratedAE.instrumentAddress == "192.168.3.1" && migratedAE.id == restoredAE2.id)
+        let migratedRoundTrip = try decoder.decode(VehicleProfile.self, from: encoder.encode(migratedAE)).migratedZeehoFive
+        precondition(migratedRoundTrip.output == 8 && migratedRoundTrip.zeehoFiveVariant == 1)
+        precondition(profile.migratedZeehoFive.output == 4 && profile.migratedZeehoFive.zeehoFiveVariant == nil)
+        for output in 0...7 {
+            var existing = profile; existing.output = output
+            precondition(existing.migratedZeehoFive.output == output && existing.migratedZeehoFive.ssid == profile.ssid)
+        }
+        let suite = "CarWithin.ZeehoFiveSmoke.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(9, forKey: "headUnitOutputV2")
+        defaults.set("192.168.2.1", forKey: "zeehoSEPlusAddress")
+        defaults.set("192.168.3.1", forKey: "zeehoAE2Address")
+        defaults.set(false, forKey: "zeehoAE2AutomaticAddress")
+        defaults.set(60, forKey: "zeehoSEPlusFrameRate")
+        defaults.set("Instrument", forKey: "selectedWiFiPreset")
+        ZeehoFivePreferences.migrate(defaults); ZeehoFivePreferences.migrate(defaults)
+        precondition(defaults.integer(forKey: "headUnitOutputV2") == 8 && defaults.integer(forKey: "zeehoFiveVariant") == 1)
+        precondition(defaults.string(forKey: "zeehoSEPlusAddress") == "192.168.2.1"
+            && defaults.string(forKey: "zeehoAE2Address") == "192.168.3.1"
+            && !defaults.bool(forKey: "zeehoAE2AutomaticAddress") && defaults.integer(forKey: "zeehoSEPlusFrameRate") == 60
+            && defaults.string(forKey: "selectedWiFiPreset") == "Instrument")
+        defaults.removeObject(forKey: "zeehoFiveVariant")
+        ZeehoFivePreferences.migrate(defaults)
+        precondition(defaults.integer(forKey: "zeehoFiveVariant") == 0)
+        defaults.set(1, forKey: "zeehoFiveVariant")
+        ZeehoFivePreferences.migrate(defaults)
+        precondition(defaults.integer(forKey: "zeehoFiveVariant") == 1)
+        for output in 0...7 {
+            defaults.set(output, forKey: "headUnitOutputV2")
+            ZeehoFivePreferences.migrate(defaults)
+            precondition(defaults.integer(forKey: "headUnitOutputV2") == output)
+        }
+        print("ZEEHO profiles: unified five-inch migration, subtype, separate addresses/settings, stable IDs 0-7 and idempotent defaults migration passed")
 
         let now = ISO8601DateFormatter().date(from: "2026-11-24T12:00:00Z")!
         var calendar = Calendar(identifier: .gregorian)

@@ -6,6 +6,12 @@ import CoreGraphics
 @main
 struct ZeehoSEPlusSizeSmoke {
     static func main() {
+        precondition(ZeehoFiveVariant.allCases.map(\.rawValue) == [0, 1])
+        precondition(ZeehoFiveVariant.sePlus.profile == .zeehoSEPlus)
+        precondition(ZeehoFiveVariant.ae2Pro.profile == .zeehoAE2)
+        precondition(ZeehoFiveVariant.sePlus.profile.outputSize(for: InstrumentFrameSize(width: 480, height: 800)) == nil)
+        precondition(ZeehoFiveVariant.ae2Pro.profile.outputSize(for: InstrumentFrameSize(width: 855, height: 481))
+            == InstrumentFrameSize(width: 854, height: 480))
         precondition(ZeehoFrameRate.allCases.map(\.rawValue) == [25, 30, 60])
         precondition(ZeehoFrameRate.fps25.sourceFPS == 30 && ZeehoFrameRate.fps25.bitrate == 2_500_000)
         precondition(ZeehoFrameRate.fps30.sourceFPS == 30 && ZeehoFrameRate.fps30.bitrate == 3_000_000)

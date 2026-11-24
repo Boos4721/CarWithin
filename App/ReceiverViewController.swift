@@ -146,6 +146,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let zeehoCardStatus = UILabel()
     private let zeehoStatus = StatusLabel()
     private let zeehoAddressField = UITextField()
+    private let zeehoFiveVariantControl = ChoiceMenu(items: ZeehoFiveVariant.allCases.map(\.title))
     private let zeehoSEPlusAddressField = UITextField()
     private let zeehoAE2AddressField = UITextField()
     private let zeehoAE2AutomaticSwitch = UISwitch()
@@ -161,11 +162,23 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         picker.heightAnchor.constraint(equalToConstant: 36).isActive = true
         return picker
     }()
+    private var selectedZeehoFiveVariant: ZeehoFiveVariant {
+        ZeehoFiveVariant(rawValue: zeehoFiveVariantControl.selectedSegmentIndex) ?? .sePlus
+    }
+    private var isZeehoSEPlus: Bool { outputMode == .zeehoFive && selectedZeehoFiveVariant == .sePlus }
+    private var isZeehoAE2: Bool { outputMode == .zeehoFive && selectedZeehoFiveVariant == .ae2Pro }
+    private var selectedZeehoProfile: TailingDisplayProfile? {
+        switch outputMode {
+        case .zeeho: return .zeeho62
+        case .zeehoFive: return selectedZeehoFiveVariant.profile
+        default: return nil
+        }
+    }
     private var selectedZeehoCanvas: ZeehoCanvas {
         ZeehoCanvas(rawValue: zeehoSEPlusCanvasControl.selectedSegmentIndex) ?? .wide
     }
     private var selectedZeehoVideoMode: ZeehoVideoMode {
-        guard outputMode == .zeehoSEPlus else { return .transcode }
+        guard isZeehoSEPlus else { return .transcode }
         let mode = ZeehoVideoMode(rawValue: zeehoSEPlusVideoModeControl.selectedSegmentIndex) ?? .transcode
         return mode.effective(for: selectedZeehoFrameRate)
     }
@@ -173,34 +186,28 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         AVAudioSession.sharedInstance().currentRoute.outputs.map { "\($0.portName)（\($0.portType.rawValue)）" }.joined(separator: "、")
     }
     private var selectedZeehoFrameRate: ZeehoFrameRate {
-        guard outputMode == .zeehoSEPlus else { return .fps25 }
+        guard isZeehoSEPlus else { return .fps25 }
         let rates = ZeehoFrameRate.allCases
         let index = max(0, min(zeehoSEPlusFrameRateControl.selectedSegmentIndex, rates.count - 1))
         return rates[index]
     }
     private var usesAutomaticZeehoAddress: Bool {
-        outputMode.zeehoProfile != nil && activeZeehoAutomaticSwitch.isOn
+        selectedZeehoProfile != nil && activeZeehoAutomaticSwitch.isOn
     }
     private var activeZeehoAutomaticSwitch: UISwitch {
-        switch outputMode {
-        case .zeehoSEPlus: return zeehoSEPlusAutomaticSwitch
-        case .zeehoAE2: return zeehoAE2AutomaticSwitch
-        default: return zeeho62AutomaticSwitch
-        }
+        if isZeehoSEPlus { return zeehoSEPlusAutomaticSwitch }
+        if isZeehoAE2 { return zeehoAE2AutomaticSwitch }
+        return zeeho62AutomaticSwitch
     }
     private var activeZeehoAutomaticKey: String {
-        switch outputMode {
-        case .zeehoSEPlus: return "zeehoSEPlusAutomaticAddress"
-        case .zeehoAE2: return "zeehoAE2AutomaticAddress"
-        default: return "zeeho62AutomaticAddress"
-        }
+        if isZeehoSEPlus { return "zeehoSEPlusAutomaticAddress" }
+        if isZeehoAE2 { return "zeehoAE2AutomaticAddress" }
+        return "zeeho62AutomaticAddress"
     }
     private var activeZeehoAddressField: UITextField {
-        switch outputMode {
-        case .zeehoSEPlus: return zeehoSEPlusAddressField
-        case .zeehoAE2: return zeehoAE2AddressField
-        default: return zeehoAddressField
-        }
+        if isZeehoSEPlus { return zeehoSEPlusAddressField }
+        if isZeehoAE2 { return zeehoAE2AddressField }
+        return zeehoAddressField
     }
     private func updateZeehoStatus(_ message: String) {
         zeehoStatus.text = message
@@ -305,10 +312,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private lazy var pictureInPicture = CarPlayPictureInPicture(surface: videoSurface)
     private let keepAlive = BackgroundKeepAlive()
     private let keepAliveSwitch = UISwitch()
-    private let headUnitOutput = ChoiceMenu(items: ["浏览器", "CarLife", "AirPlay", "台铃 4.3 寸", "九号 5 寸", "极核 6.2 寸", "九号 7 寸", "九号 4.3 寸（实验）", "极核 SE+ 5/5.5 寸（实验）", "极核 AE2 Pro 5 寸"])
+    private let headUnitOutput = ChoiceMenu(items: ["浏览器", "CarLife", "AirPlay", "台铃 4.3 寸", "九号 5 寸", "极核 6.2 寸", "九号 7 寸", "九号 4.3 寸（实验）", "极核 5 寸"])
     private enum HeadUnitOutput: Int {
-        // Persisted in headUnitOutputV2. Append new modes after existing values.
-        case browser, carLife, airPlay, tailing, ninebot, zeeho, ninebotSeven, ninebot43, zeehoSEPlus, zeehoAE2
+        // Persisted IDs 0–7 stay fixed. Five-inch is 8; legacy AE2 ID 9 migrates to it.
+        case browser, carLife, airPlay, tailing, ninebot, zeeho, ninebotSeven, ninebot43, zeehoFive
         var ninebotMode: NinebotOutput.Mode? {
             switch self {
             case .ninebot: .fiveInch
@@ -317,15 +324,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             default: nil
             }
         }
-        var zeehoProfile: TailingDisplayProfile? {
-            switch self {
-            case .zeeho: return .zeeho62
-            case .zeehoSEPlus: return .zeehoSEPlus
-            case .zeehoAE2: return .zeehoAE2
-            default: return nil
-            }
-        }
-        var usesInstrumentWiFi: Bool { self == .tailing || zeehoProfile != nil || ninebotMode != nil }
+        var isZeeho: Bool { self == .zeeho || self == .zeehoFive }
+        var usesInstrumentWiFi: Bool { self == .tailing || isZeeho || ninebotMode != nil }
     }
     private var airPlayStreamID: UUID?
     private var airPlayStreamURL: URL?
@@ -755,7 +755,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             guard let self, self.running else { return }
             // Nothing local is visible in the background without PiP: save the decoding work.
             // The browser output is fed before this callback and keeps running.
-            if (self.outputMode == .zeehoSEPlus && UIApplication.shared.applicationState != .active)
+            if (self.isZeehoSEPlus && UIApplication.shared.applicationState != .active)
                 || (UIApplication.shared.applicationState == .background && !self.pictureInPicture.canKeepSessionInBackground) {
                 self.skippedLocalVideo = true; return
             }
@@ -771,7 +771,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                     self.refreshHomePresentation()
                     self.view.layoutIfNeeded()
                     self.homeScroll.setContentOffset(CGPoint(x: 0, y: -self.homeScroll.adjustedContentInset.top), animated: false)
-                    self.pictureInPictureButton.isHidden = self.outputMode == .zeehoSEPlus
+                    self.pictureInPictureButton.isHidden = self.isZeehoSEPlus
                     self.log("视频已送入本机显示层")
                     if UIDevice.current.userInterfaceIdiom == .pad || self.autoFullscreenSwitch.isOn { self.showFullscreen() }
                     self.updatePictureInPicturePolicy()
@@ -785,7 +785,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         videoSurface.onLog = { [weak self] in self?.log($0) }
         videoSurface.onKeyframeNeeded = { [weak self] reason in
             guard let self else { return }
-            if self.outputMode == .zeehoSEPlus, UIApplication.shared.applicationState != .active { return }
+            if self.isZeehoSEPlus, UIApplication.shared.applicationState != .active { return }
             // In the background without PiP nothing is drawn locally; asking for keyframes then
             // would only bloat the browser stream with repeated IDRs.
             guard UIApplication.shared.applicationState != .background || self.pictureInPicture.canKeepSessionInBackground else { return }
@@ -796,7 +796,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             self?.refreshFullscreenExitButton()
         }
         receiver.onZeehoState = { [weak self] message in
-            guard let self, self.running, self.outputMode.zeehoProfile != nil else { return }
+            guard let self, self.running, self.selectedZeehoProfile != nil else { return }
             self.updateZeehoStatus(message)
         }
         receiver.onNinebotState = { [weak self] message in
@@ -1136,7 +1136,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     /// Size, frame rate and codec for the next session from the settings, the known head-unit
     /// screen and any lighter level chosen by "自动重启".
     private func planDisplay(for screen: CarScreen?) -> DisplayPlan {
-        if let profile = outputMode.zeehoProfile {
+        if let profile = selectedZeehoProfile {
             let icon = ReceiverConfiguration.iconSizes[max(0, iconSizeControl.selectedSegmentIndex)].widthMM
             let size = profile == .zeehoSEPlus ? selectedZeehoCanvas.size : profile.preferredSize
             return DisplayPlan(width: size.width, height: size.height, fps: selectedZeehoFrameRate.sourceFPS,
@@ -1382,7 +1382,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         secureVideoOutputPortField.placeholder = String(defaultSecurePort)
         portStatus.text = browserPortError ?? (running ? "停止 CarPlay 后可修改端口。" : "启动 CarPlay 后即可打开上方地址。")
         let showsLocalOutput = modeControl.selectedSegmentIndex != 2
-        zeehoCard.isHidden = !showsLocalOutput || outputMode.zeehoProfile == nil
+        zeehoCard.isHidden = !showsLocalOutput || selectedZeehoProfile == nil
         if !running {
             let address = usesAutomaticZeehoAddress ? "自动查找仪表 IP" : "仪表 IP：\(activeZeehoAddressField.text ?? "192.168.0.1")"
             updateZeehoStatus("等待启动 CarPlay · \(address)")
@@ -1491,7 +1491,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         log("画面计划：\(plan.width)×\(plan.height) @ \(plan.fps) FPS \(plan.codec.displayName)（\(source)\(lightLevel > 0 ? "，减轻档 \(lightLevel)" : "")）")
         config.browserAudio = soundOutput == .browser && config.videoOutputPort != nil && outputMode == .browser
         if outputMode == .airPlay, config.videoOutputPort != nil { config.airPlayStreamID = UUID() }
-        if let profile = outputMode.zeehoProfile {
+        if let profile = selectedZeehoProfile {
             config.zeehoProfile = profile
             config.zeehoFrameRate = selectedZeehoFrameRate
             config.zeehoVideoMode = selectedZeehoVideoMode
@@ -2372,6 +2372,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         zeehoAddressField.isEnabled = value
         ninebotAutoConnectSwitch.isEnabled = value
         ninebotCurrentWiFiSwitch.isEnabled = value
+        zeehoFiveVariantControl.isEnabled = value
         zeehoSEPlusAddressField.isEnabled = value
         zeehoAE2AddressField.isEnabled = value
         zeehoAE2AutomaticSwitch.isEnabled = value
@@ -2389,7 +2390,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         guard running else { return }
         // Normally already running; retry if foreground activation failed.
         if keepAliveSwitch.isOn { keepAlive.start() }
-        if outputMode == .zeehoSEPlus {
+        if isZeehoSEPlus {
             receiver.setLocalVideoEnabled(false)
             skippedLocalVideo = true
             pictureInPicture.stop()
@@ -2427,7 +2428,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     }
 
     private func updatePictureInPicturePolicy() {
-        if outputMode == .zeehoSEPlus {
+        if isZeehoSEPlus {
             pictureInPicture.setAutomatic(false)
             return
         }
@@ -2631,6 +2632,9 @@ extension ReceiverViewController {
         pictureInPictureTiming.addTarget(self, action: #selector(pictureInPictureTimingChanged), for: .valueChanged)
         keepAliveSwitch.isOn = defaults.object(forKey: "backgroundKeepAlive") as? Bool ?? true
         keepAliveSwitch.addTarget(self, action: #selector(keepAliveChanged), for: .valueChanged)
+        ZeehoFivePreferences.migrate(defaults)
+        zeehoFiveVariantControl.selectedSegmentIndex = (ZeehoFiveVariant(rawValue: defaults.integer(forKey: "zeehoFiveVariant")) ?? .sePlus).rawValue
+        zeehoFiveVariantControl.addTarget(self, action: #selector(zeehoFiveVariantChanged), for: .valueChanged)
         let savedOutput = defaults.object(forKey: "headUnitOutputV2") as? Int
         let previousOutput = defaults.object(forKey: "headUnitOutput") as? Int
         let legacyOutput: HeadUnitOutput = defaults.bool(forKey: "carLifeEnabled") ? .carLife : .browser
@@ -2712,6 +2716,14 @@ extension ReceiverViewController {
         UserDefaults.standard.set(ninebot43AddressField.text ?? "", forKey: "ninebot43Address")
         UserDefaults.standard.set(tailingAddressField.text ?? "", forKey: "tailingAddress")
         refreshVideoOutputSummary()
+    }
+    @objc private func zeehoFiveVariantChanged() {
+        guard !running, !waitingForNetwork else { return }
+        UserDefaults.standard.set(selectedZeehoFiveVariant.rawValue, forKey: "zeehoFiveVariant")
+        saveActiveVehicleProfile()
+        updateVideoAspect()
+        refreshVideoOutputSummary()
+        reloadVisibleSettings()
     }
     @objc private func zeehoFrameRateChanged() {
         guard !running else { return }
@@ -3113,7 +3125,7 @@ extension ReceiverViewController {
     private func capturedVehicle(id: UUID, name: String) -> VehicleProfile {
         let address: String
         switch outputMode {
-        case .zeeho, .zeehoSEPlus, .zeehoAE2: address = activeZeehoAddressField.text ?? ""
+        case .zeeho, .zeehoFive: address = activeZeehoAddressField.text ?? ""
         case .tailing: address = tailingAddressField.text ?? ""
         case .carLife: address = carLifeAddressField.text ?? ""
         default: address = activeNinebotAddressField.text ?? ""
@@ -3126,10 +3138,11 @@ extension ReceiverViewController {
             autoConnect: ninebotAutoConnectSwitch.isOn, currentWiFiExperiment: ninebotCurrentWiFiSwitch.isOn,
             keepAlive: keepAliveSwitch.isOn, autoFullscreen: autoFullscreenSwitch.isOn,
             cardBackground: bmsCardConfiguration.background.rawValue,
-            zeehoAutomaticAddress: outputMode.zeehoProfile != nil ? usesAutomaticZeehoAddress : nil,
-            zeehoFrameRate: outputMode == .zeehoSEPlus ? selectedZeehoFrameRate.rawValue : nil,
-            zeehoCanvas: outputMode == .zeehoSEPlus ? selectedZeehoCanvas.rawValue : nil,
-            zeehoVideoMode: outputMode == .zeehoSEPlus ? zeehoSEPlusVideoModeControl.selectedSegmentIndex : nil)
+            zeehoAutomaticAddress: selectedZeehoProfile != nil ? usesAutomaticZeehoAddress : nil,
+            zeehoFrameRate: isZeehoSEPlus ? selectedZeehoFrameRate.rawValue : nil,
+            zeehoCanvas: isZeehoSEPlus ? selectedZeehoCanvas.rawValue : nil,
+            zeehoVideoMode: isZeehoSEPlus ? zeehoSEPlusVideoModeControl.selectedSegmentIndex : nil,
+            zeehoFiveVariant: outputMode == .zeehoFive ? selectedZeehoFiveVariant.rawValue : nil)
     }
 
     private func saveActiveVehicleProfile() {
@@ -3204,6 +3217,7 @@ extension ReceiverViewController {
     }
 
     private func applyVehicleProfile(_ profile: VehicleProfile) {
+        let profile = profile.migratedZeehoFive
         guard !running, !waitingForNetwork, !applyingVehicleProfile else { return }
         guard let output = HeadUnitOutput(rawValue: profile.output), (1...196).contains(profile.channel),
               (1...32).contains(profile.ssid.utf8.count), !profile.ssid.contains("\0") else {
@@ -3217,17 +3231,22 @@ extension ReceiverViewController {
         defer { applyingVehicleProfile = false }
         bmsClient.stop()
         headUnitOutput.selectedSegmentIndex = output.rawValue
+        if output == .zeehoFive {
+            let variant = profile.zeehoFiveVariant.flatMap(ZeehoFiveVariant.init(rawValue:)) ?? .sePlus
+            zeehoFiveVariantControl.selectedSegmentIndex = variant.rawValue
+            UserDefaults.standard.set(variant.rawValue, forKey: "zeehoFiveVariant")
+        }
         switch output {
-        case .zeeho, .zeehoSEPlus, .zeehoAE2: activeZeehoAddressField.text = profile.instrumentAddress
+        case .zeeho, .zeehoFive: activeZeehoAddressField.text = profile.instrumentAddress
         case .tailing: tailingAddressField.text = profile.instrumentAddress
         case .carLife: carLifeAddressField.text = profile.instrumentAddress
         default: activeNinebotAddressField.text = profile.instrumentAddress
         }
-        if output.zeehoProfile != nil, let automatic = profile.zeehoAutomaticAddress {
+        if output.isZeeho, let automatic = profile.zeehoAutomaticAddress {
             activeZeehoAutomaticSwitch.isOn = automatic
             UserDefaults.standard.set(automatic, forKey: activeZeehoAutomaticKey)
         }
-        if output == .zeehoSEPlus {
+        if isZeehoSEPlus {
             if let raw = profile.zeehoFrameRate, let rate = ZeehoFrameRate(rawValue: raw),
                let index = ZeehoFrameRate.allCases.firstIndex(of: rate) {
                 zeehoSEPlusFrameRateControl.selectedSegmentIndex = index
@@ -3785,7 +3804,7 @@ extension ReceiverViewController {
 
     fileprivate func displayPage() -> SettingsPageController {
         page("画面") { [unowned self] in
-            if let profile = outputMode.zeehoProfile {
+            if let profile = selectedZeehoProfile {
                 let size = profile == .zeeho62 ? profile.preferredSize.description : "跟随仪表上报尺寸"
                 return [
                     SettingsSection(headUnitOutput.selectedTitle, [.info("仪表画面", "\(size) · H.264 · 目标 \(selectedZeehoFrameRate.rawValue) FPS")]),
@@ -4162,14 +4181,17 @@ extension ReceiverViewController {
             case .carLife: return carLifeOutputSections()
             case .airPlay: return airPlayOutputSections()
             case .tailing: return tailingOutputSections()
-            case .zeeho, .zeehoSEPlus, .zeehoAE2:
+            case .zeeho, .zeehoFive:
                 let name = headUnitOutput.selectedTitle
                 var rows: [SettingsRow] = []
+                if outputMode == .zeehoFive {
+                    rows.append(.control("仪表型号", icon: ("display", .systemBlue), zeehoFiveVariantControl))
+                }
                 rows.append(.control("自动查找仪表 IP", icon: ("network", .systemBlue), activeZeehoAutomaticSwitch))
-                if outputMode == .zeehoAE2 {
+                if isZeehoAE2 {
                     rows.append(.info("仪表画面", "按仪表上报尺寸协商 · H.264 · 25 FPS"))
                 }
-                if outputMode == .zeehoSEPlus {
+                if isZeehoSEPlus {
                     rows.append(.control("仪表目标帧率", icon: ("gauge.with.dots.needle.67percent", .systemGreen), zeehoSEPlusFrameRateControl))
                     rows.append(.control("CarPlay 画面", icon: ("aspectratio", .systemGreen), zeehoSEPlusCanvasControl))
                     rows.append(.control("视频发送方式", icon: ("film", .systemIndigo), zeehoSEPlusVideoModeControl))

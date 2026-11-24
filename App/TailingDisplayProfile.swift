@@ -22,6 +22,13 @@ enum ZeehoVideoMode: Int, CaseIterable, Sendable {
     }
 }
 
+/// One visible five-inch output; preserve the model-specific wire negotiation.
+enum ZeehoFiveVariant: Int, CaseIterable {
+    case sePlus, ae2Pro
+    var title: String { self == .sePlus ? "SE+（5／5.5 寸，实验）" : "AE2 Pro（5 寸）" }
+    var profile: TailingDisplayProfile { self == .sePlus ? .zeehoSEPlus : .zeehoAE2 }
+}
+
 enum ZeehoCanvas: Int, CaseIterable, Sendable {
     case wide = 0, compatible = 1
     var title: String { self == .wide ? "全宽 1600×770" : "兼容 800×480" }

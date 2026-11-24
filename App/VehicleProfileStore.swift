@@ -26,6 +26,31 @@ struct VehicleProfile: Codable, Identifiable {
     var zeehoFrameRate: Int? = nil
     var zeehoCanvas: Int? = nil
     var zeehoVideoMode: Int? = nil
+    /// Build 30 combines outputs 8/9; 0 = SE+, 1 = AE2 Pro.
+    var zeehoFiveVariant: Int? = nil
+
+    var migratedZeehoFive: VehicleProfile {
+        var value = self
+        if output == 9 {
+            value.output = 8
+            value.zeehoFiveVariant = 1
+        } else if output == 8, zeehoFiveVariant != 0 && zeehoFiveVariant != 1 {
+            value.zeehoFiveVariant = 0
+        }
+        return value
+    }
+}
+
+enum ZeehoFivePreferences {
+    /// Idempotent and limited to the old AE2 output and the new subtype preference.
+    static func migrate(_ defaults: UserDefaults) {
+        if defaults.object(forKey: "headUnitOutputV2") as? Int == 9 {
+            defaults.set(1, forKey: "zeehoFiveVariant")
+            defaults.set(8, forKey: "headUnitOutputV2")
+        } else if defaults.object(forKey: "zeehoFiveVariant") == nil {
+            defaults.set(0, forKey: "zeehoFiveVariant")
+        }
+    }
 }
 
 enum VehicleProfileStore {
@@ -35,9 +60,10 @@ enum VehicleProfileStore {
     }
     static func profiles() -> [VehicleProfile] {
         guard let data = UserDefaults.standard.data(forKey: key) else { return [] }
-        return (try? JSONDecoder().decode([VehicleProfile].self, from: data)) ?? []
+        return ((try? JSONDecoder().decode([VehicleProfile].self, from: data)) ?? []).map(\.migratedZeehoFive)
     }
     static func save(_ profile: VehicleProfile) throws {
+        let profile = profile.migratedZeehoFive
         var values = profiles()
         if let index = values.firstIndex(where: { $0.id == profile.id }) { values[index] = profile }
         else { values.append(profile) }
