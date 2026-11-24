@@ -37,6 +37,7 @@ struct TailingTests {
         try tailingJPEGSizeSmoke()
         try tailingMediaSmoke()
         #endif
+        try dimensions()
         try frames()
         try identity()
         try socketCancellation()
@@ -49,6 +50,11 @@ struct TailingTests {
         let alternate = InstrumentFrameSize(width: 854, height: 480)
         try simulatedInstrument(identity: stableIdentity, profile: .zeehoSEPlus,
                                 reported: alternate, expected: alternate)
+        for (width, height) in [(800, 480), (854, 480), (480, 800), (1024, 488), (855, 481)] {
+            try simulatedInstrument(identity: stableIdentity, profile: .zeehoAE2,
+                reported: InstrumentFrameSize(width: width, height: height),
+                expected: InstrumentFrameSize(width: width & ~1, height: height & ~1))
+        }
         try rejectedInstrument()
         try cancelledHandshake()
         print("PASS: 台铃拆包/合包、长度校验、RSA2048/type1、TCP取消、模拟仪表握手/逐帧拉取/保活/重启、错误型号拒绝、协商中停止")
@@ -79,6 +85,24 @@ struct TailingTests {
         let envelope = try TailingProtocol.jpeg(jpeg)
         try expect(envelope.uint32LE(0) == 6 && envelope.dropFirst(4) == jpeg, "JPEG小端长度及内容")
         try rejects("不完整 JPEG") { _ = try TailingProtocol.jpeg(Data(jpeg.dropLast())) }
+    }
+
+    private static func dimensions() throws {
+        for size in [(800, 480), (854, 480), (480, 800), (1024, 488), (1920, 1080)] {
+            let result = try TailingConnection.outputSize(for: .zeehoAE2, reportedWidth: size.0, reportedHeight: size.1)
+            try expect(result.width == size.0 && result.height == size.1, "使用仪表上报的尺寸")
+        }
+        let rounded = try TailingConnection.outputSize(for: .zeehoAE2, reportedWidth: 855, reportedHeight: 481)
+        try expect(rounded.width == 854 && rounded.height == 480, "H.264 偶数尺寸")
+        for size in [(0, 480), (800, 0), (65535, 480), (800, 65535)] {
+            try rejects("不合理尺寸") { _ = try TailingConnection.outputSize(for: .zeehoAE2, reportedWidth: size.0, reportedHeight: size.1) }
+        }
+        try rejects("6.2 寸继续限制型号尺寸") {
+            _ = try TailingConnection.outputSize(for: .zeeho62, reportedWidth: 800, reportedHeight: 480)
+        }
+        let legacy = try TailingConnection.outputSize(for: .zeeho62, reportedWidth: 1024, reportedHeight: 488)
+        try expect(legacy.height == 480, "保留 6.2 寸的 488 到 480 映射")
+        print("PASS: AE2 协商尺寸与旧型号边界")
     }
 
     private static func identity() throws {
@@ -174,7 +198,8 @@ struct TailingTests {
                     try primary.write(TailingProtocol.control(0x10780, identifier: 21, payload: runningLog))
                     let logResponse = try TailingProtocol.readControl { try primary.readExactly($0) }
                     try expect(logResponse.command == 0x10781 && logResponse.identifier == 21, "仪表运行日志不得中断协商")
-                    let notifications: [UInt32] = [0x103b0, 0x103a0, 0x10470, 0x104a0, 0x10020]
+                    // These optional notifications belong to SE+; do not send them to other profiles.
+                    let notifications: [UInt32] = profile == .zeehoSEPlus ? [0x103b0, 0x103a0, 0x10470, 0x104a0, 0x10020] : []
                     for (index, command) in notifications.enumerated() {
                         let identifier = UInt32(100 + index)
                         try primary.write(TailingProtocol.control(command, identifier: identifier,
@@ -203,7 +228,7 @@ struct TailingTests {
                     }
                     try reverse.write(TailingProtocol.control(m.command == 0x205a0 ? 0x80000010 : m.command + 1, identifier: m.identifier))
                 }
-                if isZeeho {
+                if profile == .zeehoSEPlus {
                     try reverse.write(TailingProtocol.control(0x103b0, identifier: 109))
                     let receipt = try TailingProtocol.readControl { try reverse.readExactly($0) }
                     try expect(receipt.command == 0x103b1 && receipt.identifier == 109 && receipt.payload.isEmpty,
@@ -220,6 +245,11 @@ struct TailingTests {
                            configured.payload.uint32LE(0) == (isZeeho ? 2 : 1) &&
                            configured.payload.uint16LE(4) == expectedSize.width &&
                            configured.payload.uint16LE(6) == expectedSize.height, "媒体配置回应")
+                // Repeating the authenticated configuration must keep the same dimensions and reply.
+                try aux.write(TailingProtocol.auxiliary(0x10, token: 157, payload: config))
+                let repeated = try TailingProtocol.readAuxiliary { try aux.readExactly($0) }
+                try expect(repeated.command == 0x11 && repeated.token == 157 && repeated.payload == configured.payload,
+                           "相同配置重试保持一致")
                 // 连续心跳、启动请求，验证不会丢弃配置后的消息。
                 try aux.write(TailingProtocol.auxiliary(0x40, token: 58) + TailingProtocol.auxiliary(0x70, token: 59))
                 try expect(try TailingProtocol.readAuxiliary { try aux.readExactly($0) }.token == 58, "媒体心跳回应")
@@ -263,6 +293,7 @@ struct TailingTests {
         }
         let sizeForEncoder = try connection.start()
         try expect(sizeForEncoder == expectedSize, "编码端尺寸必须与媒体回应一致")
+        try expect(connection.outputSize == expectedSize, "会话当前编码尺寸与协商一致")
         if isZeeho {
             for _ in 0..<2 {
                 try connection.waitForH264Request()

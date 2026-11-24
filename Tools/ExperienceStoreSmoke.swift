@@ -37,7 +37,12 @@ enum ExperienceStoreSmoke {
         precondition(restoredZeeho.zeehoAutomaticAddress == false && restoredZeeho.zeehoFrameRate == 60
             && restoredZeeho.zeehoCanvas == 0 && restoredZeeho.zeehoVideoMode == 1)
         precondition(profile.output == 4 && profile.zeehoAutomaticAddress == nil)
-        print("ZEEHO profiles: SE+ address, automatic/manual selection, frame rate, canvas and video mode round-trip passed")
+        var ae2 = profile
+        ae2.output = 9; ae2.instrumentAddress = "192.168.3.1"; ae2.zeehoAutomaticAddress = false
+        let restoredAE2 = try decoder.decode(VehicleProfile.self, from: encoder.encode(ae2))
+        precondition(restoredAE2.output == 9 && restoredAE2.instrumentAddress == "192.168.3.1"
+            && restoredAE2.zeehoAutomaticAddress == false && restoredAE2.zeehoFrameRate == nil)
+        print("ZEEHO profiles: distinct SE+ and AE2 addresses, automatic/manual selection, frame rate, canvas and video mode round-trip passed")
 
         let now = ISO8601DateFormatter().date(from: "2026-11-24T12:00:00Z")!
         var calendar = Calendar(identifier: .gregorian)

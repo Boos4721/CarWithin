@@ -93,6 +93,7 @@ enum TailingDisplayProfile: Equatable, Sendable {
     case tailing43
     case zeeho62
     case zeehoSEPlus
+    case zeehoAE2
 
     var isZeeho: Bool { self != .tailing43 }
 
@@ -102,6 +103,7 @@ enum TailingDisplayProfile: Equatable, Sendable {
         case .tailing43: return InstrumentFrameSize(width: 480, height: 272)
         case .zeeho62: return InstrumentFrameSize(width: 1024, height: 480)
         case .zeehoSEPlus: return InstrumentFrameSize(width: 800, height: 480)
+        case .zeehoAE2: return InstrumentFrameSize(width: 1024, height: 480)
         }
     }
 
@@ -119,6 +121,10 @@ enum TailingDisplayProfile: Equatable, Sendable {
                   reported.width >= reported.height, reported.width.isMultiple(of: 2),
                   reported.height.isMultiple(of: 2) else { return nil }
             return reported
+        case .zeehoAE2:
+            // AE2 permits portrait output and rounds odd sizes down for H.264 4:2:0.
+            guard (240...1920).contains(reported.width), (240...1080).contains(reported.height) else { return nil }
+            return InstrumentFrameSize(width: reported.width & ~1, height: reported.height & ~1)
         }
     }
 }

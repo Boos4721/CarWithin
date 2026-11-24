@@ -49,6 +49,17 @@ final class TailingConnection: @unchecked Sendable {
     private var sentH264Prefix = false
     private var mediaStarted = false
     private var mediaSize: InstrumentFrameSize?
+    var outputSize: InstrumentFrameSize {
+        condition.lock(); defer { condition.unlock() }
+        return mediaSize ?? profile.preferredSize
+    }
+    static func outputSize(for profile: TailingDisplayProfile, reportedWidth: Int, reportedHeight: Int) throws -> InstrumentFrameSize {
+        let reported = InstrumentFrameSize(width: reportedWidth, height: reportedHeight)
+        guard let size = profile.outputSize(for: reported) else {
+            throw TailingError.protocolFailure("仪表媒体尺寸 \(reported) 与配置不符")
+        }
+        return size
+    }
     private var isZeeho: Bool { profile.isZeeho }
     private var dashboard: String { profile.isZeeho ? "极核" : "台铃" }
 
@@ -396,9 +407,8 @@ final class TailingConnection: @unchecked Sendable {
                 }
                 let reported = InstrumentFrameSize(width: Int(request.payload.uint16LE(0)),
                                                    height: Int(request.payload.uint16LE(2)))
-                guard let size = profile.outputSize(for: reported) else {
-                    throw TailingError.protocolFailure("仪表媒体尺寸 \(reported) 与 \(dashboard) 配置不符")
-                }
+                log("仪表请求媒体尺寸：\(reported)")
+                let size = try Self.outputSize(for: profile, reportedWidth: reported.width, reportedHeight: reported.height)
                 let deadline = Date().addingTimeInterval(5)
                 condition.lock()
                 while signedHUID == nil && !closed {
@@ -411,7 +421,7 @@ final class TailingConnection: @unchecked Sendable {
                       echoed == signature else { throw TailingError.protocolFailure("媒体身份回显不匹配") }
                 try identity.verify(echoed, huid: huid)
                 condition.lock()
-                if mediaStarted, mediaSize != size {
+                if let previous = mediaSize, previous != size {
                     condition.unlock()
                     throw TailingError.protocolFailure("仪表已改为 \(size)，请重新连接以切换编码尺寸")
                 }

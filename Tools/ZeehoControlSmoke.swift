@@ -22,7 +22,7 @@ struct ZeehoControlSmoke {
                 return encoded.subdata(in: offset..<(offset + count))
             }
             precondition(response.payload.isEmpty && response.identifier == identifier)
-            for otherProfile: TailingDisplayProfile in [.zeeho62, .tailing43] {
+            for otherProfile: TailingDisplayProfile in [.zeeho62, .tailing43, .zeehoAE2] {
                 let excluded = try TailingProtocol.zeehoExtensionReply(to: request, profile: otherProfile)
                 precondition(excluded == nil)
             }
