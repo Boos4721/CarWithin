@@ -2804,8 +2804,9 @@ extension ReceiverViewController {
     private func saveActiveVehicleProfile() {
         guard !applyingVehicleProfile, let id = VehicleProfileStore.selectedID,
               let previous = VehicleProfileStore.profiles().first(where: { $0.id == id }) else { return }
+        let channel = UInt8(channelField.text ?? "") ?? 36
         guard let ssid = ssidField.text, (1...32).contains(ssid.utf8.count), !ssid.contains("\0"),
-              let channel = UInt8(channelField.text ?? ""), (1...196).contains(channel) else { return }
+              (1...196).contains(channel) else { return }
         do { try VehicleProfileStore.save(capturedVehicle(id: id, name: previous.name)) }
         catch { log("车辆配置保存失败：\(error.localizedDescription)") }
         refreshVehicleProfileTitle()
@@ -3059,10 +3060,13 @@ extension ReceiverViewController {
             let history = BMSRideRecordStore.records().map { record -> SettingsRow in
                 let date = DateFormatter.localizedString(from: record.startedAt, dateStyle: .short, timeStyle: .short)
                 var row = SettingsRow.page("\(record.vehicleName) · \(date)", detail: {
-                    record.completed ? "已结束" : "已保存片段"
+                    self.bmsSessionStartedAt != nil && record.id == self.bmsSessionRecordID
+                        ? "记录中" : record.completed ? "已结束" : "已保存片段"
                 }) { [unowned self] in self.bmsRecordPage(record) }
-                row.onDelete = { [unowned self] in
-                    do { try BMSRideRecordStore.remove(record.id) } catch { self.alert("删除失败", error.localizedDescription) }
+                if self.bmsSessionStartedAt == nil || record.id != self.bmsSessionRecordID {
+                    row.onDelete = { [unowned self] in
+                        do { try BMSRideRecordStore.remove(record.id) } catch { self.alert("删除失败", error.localizedDescription) }
+                    }
                 }
                 return row
             }
