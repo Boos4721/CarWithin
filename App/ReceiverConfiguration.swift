@@ -8,6 +8,9 @@ struct ReceiverConfiguration {
     var address: String
     var ssid: String
     var password: String
+    /// Nil preserves the existing credential-based startup. Only confirmed local
+    /// Ninebot connections opt into omitting the wireless group experimentally.
+    var wiFiBootstrap: CarPlayWiFiBootstrap?
     var port: UInt16 = 7000
     var width = 1280
     var height = 720

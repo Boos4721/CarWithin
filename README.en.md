@@ -21,6 +21,22 @@ CarWithin runs CarPlay on the same iPhone that generates its interface. Use CarP
 3. **Use Safari on the same iPhone.** After starting CarPlay, use the option to open the receiver in the local browser under the app's output settings. If the page prompts you to start playback, tap it.
 4. **Stop sharing when finished.** Stop CarPlay from the iPhone. The browser receiver has no sign-in. A device that can reach its address can view and control the CarPlay session, so use a trusted network.
 
+## ANT BMS telemetry
+
+Settings → 电池与 BMS adds opt-in, read-only ANT BLE monitoring. Select your own device; the saved CoreBluetooth UUID is used for reconnection. SOC, voltage, current, reported power and temperature are displayed on the local CarPlay view and composited into Ninebot 5-inch/7-inch video. Capacity, MOS temperature and cell spread are available in settings. Stale values are hidden after five seconds.
+
+Framing and decoding reference [maibms](https://github.com/lswlc33/maibms), with its MIT license retained and bundled. Only the default FFE0/FFE1 realtime-query channel is included. Other remote outputs and PiP do not include the panel. Hardware verification is pending; see [the integration guide](docs/ant-bms.md). Run `bash Tools/test_bms.sh` with Swift 5.9+ for standalone protocol tests.
+
+## Ninebot current-network startup experiment
+
+For the 5-inch and 7-inch outputs, enable **使用当前 Wi-Fi 启动（实验）** (use current Wi-Fi, experimental) under Output settings. Connect the iPhone to the instrument network first, then read or enter its exact SSID in the app. With the experiment enabled, the preset may be saved without a password. Do not mark an encrypted network as open just because its password is unknown.
+
+After confirming the current SSID and a stable Wi-Fi IPv4 address, the app prepares UDP 5012/5013 and requests local CarPlay without the wireless configuration group. If no CarPlay control connection is established within 12 seconds of the first request, valid entered/saved credentials are used as a single fallback; without credentials the attempt stops with a message. Stopping or establishing the control connection suppresses that fallback. This is unverified on hardware.
+
+When disconnected or unable to read the current SSID, credentials are still required to join. Networks joined by this attempt use the existing credential-based CarPlay path. The app cannot read iOS-saved passwords. Saving only the SSID preserves existing Keychain passwords. Wi-Fi information requires the appropriate signing entitlement and, for networks not configured by this app, usually precise location permission. The experiment is off by default and is not offered for other outputs.
+
+This does not implement the official Ninebot app's remote projection activation, Shortcuts actions, or background wake-up. Hardware verification steps are in [the validation guide](docs/ninebot-auto-connect-validation.md).
+
 ## Browser playback and audio
 
 | Mode | When to use it | Default port |

@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import CoreGraphics
 
 /// All listener/session state is confined to queue. UI callbacks are always main-thread.
 final class NativeReceiver {
@@ -72,6 +73,12 @@ final class NativeReceiver {
     var onVideoOutputState: ((String) -> Void)?
     var onFailure: (() -> Void)?
 
+    /// BMS updates are serialized with output startup; CoreGraphics images are
+    /// immutable and reused by the instrument encoder until the next update.
+    func setBMSOverlay(_ image: CGImage?, atTop: Bool) {
+        queue.async { [weak self] in self?.ninebot.setBMSOverlay(image, atTop: atTop) }
+    }
+
     func start(configuration: ReceiverConfiguration, identity: AccessoryIdentity, advertise: Bool = true,
                preferredViewer: UUID? = nil) {
         let listening = onListening
@@ -100,12 +107,6 @@ final class NativeReceiver {
                     onState: { [weak self] in self?.onZeehoState?($0) },
                     onLog: { [weak self] in self?.log($0) },
                     requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "极核解码恢复") })
-            }
-            if let target = configuration.ninebotAddress {
-                self.ninebot.start(localAddress: configuration.address, targetAddress: target, mode: configuration.ninebotMode,
-                    onState: { [weak self] in self?.onNinebotState?($0) },
-                    onLog: { [weak self] in self?.log($0) },
-                    requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "九号解码恢复") })
             }
             if let target = configuration.tailingAddress {
                 self.tailing.onLog = { [weak self] in self?.log($0) }
@@ -156,7 +157,29 @@ final class NativeReceiver {
                 } catch { self.fail("无线音频编解码器不可用：\(error.localizedDescription)"); return }
             }
             self.log("请求 \(configuration.width)×\(configuration.height) @ \(configuration.maxFPS) FPS，\(configuration.videoCodec.displayName)；音频\(configuration.audioEnabled ? "已启用（PCM/AAC/Opus）" : "已关闭")")
-            self.listen(configuration: configuration, identity: identity, port: configuration.port, onReady: listening)
+            if let target = configuration.ninebotAddress {
+                let generation = self.generation
+                self.ninebot.start(localAddress: configuration.address, targetAddress: target, mode: configuration.ninebotMode,
+                    onState: { [weak self] in self?.onNinebotState?($0) },
+                    onLog: { [weak self] in self?.log($0) },
+                    requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "九号解码恢复") },
+                    onPrepared: { [weak self] result in
+                        guard let self else { return }
+                        self.queue.async { [weak self] in
+                            guard let self, self.generation == generation else { return }
+                            switch result {
+                            case .success:
+                                self.log("九号投屏通道已准备，继续启动 CarPlay 接收服务")
+                                self.listen(configuration: configuration, identity: identity,
+                                            port: configuration.port, onReady: listening)
+                            case .failure(let error):
+                                self.fail("九号投屏通道启动失败：\(error.localizedDescription)")
+                            }
+                        }
+                    })
+            } else {
+                self.listen(configuration: configuration, identity: identity, port: configuration.port, onReady: listening)
+            }
         }
     }
     private func listen(configuration: ReceiverConfiguration, identity: AccessoryIdentity, port: UInt16?, onReady: ((UInt16) -> Void)?) {

@@ -36,6 +36,10 @@ license_path = 'App/KCP-LICENSE.txt'
 license_ref = add('ref:'+license_path, f'isa = PBXFileReference; lastKnownFileType = text; path = {q(license_path)}; sourceTree = "<group>";')
 refs.append(license_ref)
 resource_builds.append(add('build:'+license_path, f'isa = PBXBuildFile; fileRef = {license_ref};'))
+license_path = 'App/maibms-MIT.txt'
+license_ref = add('ref:'+license_path, f'isa = PBXFileReference; lastKnownFileType = text; path = {q(license_path)}; sourceTree = "<group>";')
+refs.append(license_ref)
+resource_builds.append(add('build:'+license_path, f'isa = PBXBuildFile; fileRef = {license_ref};'))
 # Bundle any staged MFi identity files at the app bundle root so the app can load them directly.
 for path in sorted(root.glob('App/BundledIdentity/*')):
     relative = str(path.relative_to(root))
@@ -53,7 +57,7 @@ common = {
 'IPHONEOS_DEPLOYMENT_TARGET':'16.0', 'MACOSX_DEPLOYMENT_TARGET':'13.3', 'TARGETED_DEVICE_FAMILY':'1,2',
 'SDKROOT':'iphoneos','SUPPORTED_PLATFORMS':'iphoneos iphonesimulator macosx', 'SUPPORTS_MACCATALYST':'YES',
 'SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD':'YES', 'DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER':'NO',
-'INFOPLIST_FILE':'App/Info.plist', 'GENERATE_INFOPLIST_FILE':'NO', 'ASSETCATALOG_COMPILER_APPICON_NAME':'AppIcon', 'CODE_SIGN_STYLE':'Automatic', 'CODE_SIGN_ENTITLEMENTS':'$(TDS_WIFI_ENTITLEMENTS)', 'TDS_WIFI_NAME_DETECTION':'NO',
+'INFOPLIST_FILE':'App/Info.plist', 'GENERATE_INFOPLIST_FILE':'NO', 'ASSETCATALOG_COMPILER_APPICON_NAME':'AppIcon', 'CODE_SIGN_STYLE':'Automatic', 'CODE_SIGN_ENTITLEMENTS':'$(TDS_WIFI_ENTITLEMENTS)', 'TDS_WIFI_NAME_DETECTION':'YES', 'TDS_WIFI_ENTITLEMENTS':'App/TDSCarKit.entitlements',
 'SWIFT_OBJC_BRIDGING_HEADER':'App/TDSCarKit-Bridging-Header.h',
 'HEADER_SEARCH_PATHS':'$(SRCROOT)/Sources/CTDSCarKitCrypto/include', 'CLANG_ENABLE_MODULES':'YES',
 'CLANG_ENABLE_OBJC_ARC':'YES',

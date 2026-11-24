@@ -75,3 +75,15 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+ANT BMS telemetry
+-----------------
+Sources/TDSCarKitCore/ANTBMSProtocol.swift adapts ANT realtime framing, CRC16,
+field offsets and operating-state warning filtering from lswlc33/maibms.
+ANTBMSProtocolTests.swift includes the project's published recorded 20S frame.
+Reference commit: 6bbb5d64ef823385df5f5b8dd54580594a604ba5.
+Source: https://github.com/lswlc33/maibms
+Copyright (c) 2026 lswlc33. MIT license; full text in LICENSES/maibms-MIT.txt
+and bundled as App/maibms-MIT.txt.
+The BLE client uses only the realtime query on FFE0/FFE1; it does not port
+parameter writes, authentication elevation or battery control commands.

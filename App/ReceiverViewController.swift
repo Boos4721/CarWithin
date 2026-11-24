@@ -81,6 +81,24 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let wifiPathMonitor = NWPathMonitor(requiredInterfaceType: .wifi)
     private var networkStartupTask: Task<Void, Never>?
     private var waitingForNetwork = false
+    private let ninebotAutoConnectSwitch = UISwitch()
+    private let ninebotCurrentWiFiSwitch = UISwitch()
+    private var attemptedNinebotAutoConnect = false
+    private var wiFiJoinID: UUID?
+    private var wiFiJoinTask: Task<Void, Never>?
+    private var wiFiJoinTimeoutTask: Task<Void, Never>?
+    private var startingAfterWiFiJoin = false
+    private var startingWithCurrentWiFi = false
+    private var supportsCurrentWiFiStartup: Bool {
+        modeControl.selectedSegmentIndex == 1 && (outputMode == .ninebot || outputMode == .ninebotSeven)
+    }
+    private var prefersCurrentWiFiStartup: Bool { supportsCurrentWiFiStartup && ninebotCurrentWiFiSwitch.isOn }
+    private var enteredWiFiCredentials: AccessoryMessages.WiFi? {
+        let password = openNetworkSwitch.isOn ? "" : (passwordField.text ?? "")
+        guard openNetworkSwitch.isOn || !password.isEmpty else { return nil }
+        return try? AccessoryMessages.WiFi(ssid: ssidField.text ?? "", password: password,
+                                         channel: UInt8(channelField.text ?? "") ?? 36)
+    }
     private var networkRestartCount = 0
     private var localStartupID: UUID?
     private let aspectRatioControl = ChoiceMenu(items: ["预设比例"] + ReceiverConfiguration.aspectRatios.map(\.title))
@@ -132,8 +150,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     }
     private let ninebotCard = UIStackView()
     private var ninebotCardInstructions: UILabel?
-    private static let ninebotFiveInstructions = "iPhone 连上仪表 Wi-Fi 后，直接点「启动本机 CarPlay」。\n如果仪表没画面，保持 CarWithin 的 CarPlay 运行，切到九号出行开启投屏导航。仪表出画后，从多任务界面划掉九号出行，再回到 CarWithin。"
-    private static let ninebotOfficialInstructions = "加入仪表 Wi-Fi 后，先在这里启动 CarPlay，再到九号出行开启投屏导航，并让九号出行留在后台。"
+    private static let ninebotFiveInstructions = "点「启动本机 CarPlay」后，会先准备仪表投屏通道并发送握手，再自动启动 CarPlay。\n若仪表仍未出画，可保持 CarPlay 运行，到九号出行开启投屏导航；出画后退出九号出行。"
+    private static let ninebotOfficialInstructions = "点「启动本机 CarPlay」后，会先准备仪表投屏通道并发送握手，再自动启动 CarPlay。\n若仪表仍未出画，该型号可能仍需在九号出行开启投屏导航，并让九号出行留在后台。"
     private let ninebotCardStatus = UILabel()
     private let ninebotStatus = StatusLabel()
     private let ninebotAddressField = UITextField()
@@ -174,6 +192,13 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let connectionHelp = UILabel()
     private let logView = UITextView()
     private let videoSurface = H264Surface()
+    private let bmsClient = ANTBMSClient()
+    private let bmsOverlay = BMSOverlayPresenter()
+    private let bmsEnabledSwitch = UISwitch()
+    private let bmsPosition = ChoiceMenu(items: ["右上角", "右下角"])
+    private let bmsStatus = StatusLabel()
+    private let bmsDetails = StatusLabel()
+    private var bmsDeviceList: [UUID] = []
     private let inlineVideoContainer = UIView()
     private var inlineVideoConstraints: [NSLayoutConstraint] = []
     private lazy var pictureInPicture = CarPlayPictureInPicture(surface: videoSurface)
@@ -258,6 +283,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         if !running { modeChanged() }
+        attemptNinebotAutoConnect()
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
             self?.checkForUpdates(manual: false)
         }
@@ -690,6 +716,11 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             DispatchQueue.main.async { self?.refreshNetworkAddresses() }
         }
         wifiPathMonitor.start(queue: DispatchQueue(label: "CarWithin.wifiPath"))
+        ninebotAutoConnectSwitch.isOn = UserDefaults.standard.bool(forKey: "ninebotAutoConnect")
+        ninebotAutoConnectSwitch.addTarget(self, action: #selector(ninebotAutoConnectChanged), for: .valueChanged)
+        ninebotCurrentWiFiSwitch.isOn = UserDefaults.standard.bool(forKey: "ninebotCurrentWiFi")
+        ninebotCurrentWiFiSwitch.addTarget(self, action: #selector(ninebotCurrentWiFiChanged), for: .valueChanged)
+        configureBMS()
         loadIdentity()
         loadWiFiPassword()
         modeChanged()
@@ -711,12 +742,61 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         }
     }
     deinit {
+        wiFiJoinTask?.cancel()
+        wiFiJoinTimeoutTask?.cancel()
         wifiPathMonitor.cancel()
         networkStartupTask?.cancel()
     }
 
     /// Presets are listed on their own settings page; refresh it if it is open.
     private func refreshWiFiPresetMenu() { reloadVisibleSettings() }
+
+    private func configureBMS() {
+        bmsEnabledSwitch.isOn = UserDefaults.standard.bool(forKey: "antBMSEnabled")
+        bmsPosition.selectedSegmentIndex = UserDefaults.standard.integer(forKey: "antBMSPosition") == 1 ? 1 : 0
+        bmsEnabledSwitch.addTarget(self, action: #selector(bmsSettingsChanged), for: .valueChanged)
+        bmsPosition.addTarget(self, action: #selector(bmsSettingsChanged), for: .valueChanged)
+        bmsDetails.numberOfLines = 0
+        bmsDetails.font = .monospacedDigitSystemFont(ofSize: 14, weight: .regular)
+        bmsOverlay.attach(to: videoSurface)
+        bmsOverlay.onImage = { [weak self] image, atTop in self?.receiver.setBMSOverlay(image, atTop: atTop) }
+        bmsClient.onLog = { [weak self] message in self?.log("BMS：" + message) }
+        bmsClient.onChange = { [weak self] in self?.refreshBMS() }
+        if bmsEnabledSwitch.isOn { bmsClient.start() }
+        refreshBMS()
+    }
+
+    @objc private func bmsSettingsChanged() {
+        UserDefaults.standard.set(bmsEnabledSwitch.isOn, forKey: "antBMSEnabled")
+        UserDefaults.standard.set(bmsPosition.selectedSegmentIndex, forKey: "antBMSPosition")
+        if bmsEnabledSwitch.isOn { bmsClient.start() } else { bmsClient.stop() }
+        refreshBMS()
+        reloadVisibleSettings()
+    }
+
+    private func refreshBMS() {
+        let reading = bmsClient.freshReading
+        bmsStatus.text = bmsEnabledSwitch.isOn ? bmsClient.status : "BMS 显示已关闭"
+        if let reading {
+            let temperature = reading.maximumTemperature.map { String(format: "%.0f°C", $0) } ?? "--"
+            let mos = reading.mosTemperature.map { String(format: "%.0f°C", $0) } ?? "--"
+            let delta = reading.cellDelta.map { String(format: "%.0f mV", $0 * 1000) } ?? "--"
+            let states = [0: "无状态", 1: "静止", 2: "充电", 3: "待机", 4: "放电", 5: "异常"]
+            bmsDetails.text = String(format: "电量 %d%% · %.2f V · %+.1f A · %d W\n剩余 %.2f / %.2f Ah\n最高温度 %@ · MOS %@\n%d 串 · 单体压差 %@\n状态：%@\n保护位：0x%llX · 告警位：0x%llX",
+                reading.stateOfCharge, reading.voltage, reading.current, reading.power,
+                reading.remainingAh, reading.capacityAh, temperature, mos, reading.cells.count, delta,
+                states[reading.stateCode] ?? "未知", reading.protectionBits, reading.alarmBits)
+        } else {
+            bmsDetails.text = "电量 -- · 电压 -- · 电流 -- · 功率 --\n等待校验有效的 ANT 实时数据。"
+        }
+        bmsOverlay.update(enabled: bmsEnabledSwitch.isOn, reading: reading, status: bmsClient.status,
+                          atTop: bmsPosition.selectedSegmentIndex == 0)
+        let ids = bmsClient.devices.map(\.id)
+        if ids != bmsDeviceList {
+            bmsDeviceList = ids
+            reloadVisibleSettings()
+        }
+    }
     private func applyWiFiPreset(_ preset: WiFiPreset) {
         WiFiPresetStore.select(preset.ssid)
         ssidField.text = preset.ssid
@@ -731,17 +811,23 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         let ssid = ssidField.text ?? ""
         let channelText = channelField.text ?? ""
         let channel = channelText.isEmpty ? UInt8(36) : UInt8(channelText)
-        guard !ssid.isEmpty, ssid.utf8.count <= 32, let channel, (1...196).contains(channel) else {
+        guard !ssid.isEmpty, ssid.utf8.count <= 32, !ssid.contains("\0"), let channel, (1...196).contains(channel) else {
             passwordStatus.text = "请输入有效的 Wi-Fi 名称和 1–196 的兼容信道。"; return false
         }
         let password = openNetworkSwitch.isOn ? "" : (passwordField.text ?? "")
-        guard openNetworkSwitch.isOn || (8...63).contains(password.utf8.count) else {
+        let credentials = enteredWiFiCredentials
+        let canSaveWithoutPassword = prefersCurrentWiFiStartup && !openNetworkSwitch.isOn && password.isEmpty
+        guard credentials != nil || canSaveWithoutPassword else {
             passwordStatus.text = "Wi-Fi 密码需要 8–63 字节。"; return false
         }
         do {
-            try WiFiCredentials.save(password, for: ssid)
+            // A remembered SSID without credentials must not overwrite an existing
+            // Keychain password or be marked as an open network.
+            if credentials != nil { try WiFiCredentials.save(password, for: ssid) }
             WiFiPresetStore.upsert(ssid: ssid, channel: channel, isOpen: openNetworkSwitch.isOn)
-            passwordStatus.text = "已保存 Wi-Fi 预设“\(ssid)”"
+            passwordStatus.text = credentials == nil
+                ? "已记住 Wi-Fi 名称“\(ssid)”，仅用于当前连接实验"
+                : "已保存 Wi-Fi 预设“\(ssid)”"
             refreshWiFiPresetMenu()
             return true
         } catch { passwordStatus.text = "保存 Wi-Fi 预设失败：\(error.localizedDescription)"; return false }
@@ -1310,10 +1396,12 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         } catch { passwordStatus.text = "无法删除 Wi-Fi 预设：\(error.localizedDescription)" }
     }
     private func saveSettings(_ config: ReceiverConfiguration) -> Bool {
-        do { if needsNetworkDetails { try WiFiCredentials.save(config.password, for: config.ssid) } }
+        let savesPassword = needsNetworkDetails &&
+            (config.wiFiBootstrap == nil || config.wiFiBootstrap?.availableCredentials != nil)
+        do { if savesPassword { try WiFiCredentials.save(config.password, for: config.ssid) } }
         catch { statusLabel.text = "无法安全保存 Wi-Fi 密码，请重试。"; return false }
         if needsNetworkDetails {
-            passwordStatus.text = "Wi-Fi 密码已保存到 Keychain"
+            passwordStatus.text = savesPassword ? "Wi-Fi 密码已保存到 Keychain" : "已记住 Wi-Fi 名称，未保存或修改密码"
             UserDefaults.standard.set(config.ssid, forKey: "wifiSSID")
             UserDefaults.standard.set(Int(config.wifiChannel), forKey: "wifiChannel")
             WiFiPresetStore.upsert(ssid: config.ssid, channel: config.wifiChannel, isOpen: openNetworkSwitch.isOn)
@@ -1393,8 +1481,171 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             log("无法保存身份导入结果：\(error.localizedDescription)")
         }
     }
+    @objc private func ninebotAutoConnectChanged() {
+        UserDefaults.standard.set(ninebotAutoConnectSwitch.isOn, forKey: "ninebotAutoConnect")
+        // A failed or cancelled attempt is retried only by an explicit user action.
+        attemptedNinebotAutoConnect = false
+    }
+
+    @objc private func ninebotCurrentWiFiChanged() {
+        UserDefaults.standard.set(ninebotCurrentWiFiSwitch.isOn, forKey: "ninebotCurrentWiFi")
+        reloadVisibleSettings()
+    }
+
+    private func attemptNinebotAutoConnect() {
+        guard ninebotAutoConnectSwitch.isOn, !attemptedNinebotAutoConnect,
+              outputMode.ninebotMode != nil, modeControl.selectedSegmentIndex == 1,
+              identity != nil, !running, !waitingForNetwork, activeWiFiForm == nil,
+              presentedViewController == nil, UIApplication.shared.applicationState == .active,
+              let preset = WiFiPresetStore.selected(), preset.ssid == ssidField.text else { return }
+        attemptedNinebotAutoConnect = true
+        joinSelectedWiFi(startCarPlay: true)
+    }
+
+    private func joinSelectedWiFi(startCarPlay: Bool) {
+        guard !running, !waitingForNetwork, UIApplication.shared.applicationState == .active else { return }
+        guard !startCarPlay || (identity != nil && modeControl.selectedSegmentIndex == 1) else {
+            statusLabel.text = "请先配置有效身份并选择本机 CarPlay。"
+            return
+        }
+        if startCarPlay { attemptedNinebotAutoConnect = true }
+        view.endEditing(true)
+        guard saveCurrentWiFiPreset() else {
+            statusLabel.text = passwordStatus.text
+            reloadVisibleSettings()
+            return
+        }
+        #if targetEnvironment(macCatalyst) || targetEnvironment(simulator)
+        statusLabel.text = "自动加入或复用 Wi-Fi 需要在 iPhone 或 iPad 真机上使用。"
+        passwordStatus.text = statusLabel.text
+        reloadVisibleSettings()
+        #else
+        let ssid = ssidField.text ?? ""
+        let credentials = enteredWiFiCredentials
+        let reuseCurrentWiFi = startCarPlay && prefersCurrentWiFiStartup
+        let restarting = restartingAutomatically
+        let id = UUID()
+        wiFiJoinID = id
+        waitingForNetwork = true
+        modeControl.isEnabled = false
+        setEditing(false)
+        startButton.setTitle("取消连接", for: .normal)
+        statusLabel.text = "正在检查当前 Wi-Fi…"
+        passwordStatus.text = statusLabel.text
+        wiFiJoinTimeoutTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 60_000_000_000)
+            guard !Task.isCancelled else { return }
+            self?.finishWiFiJoin(id: id, message: "检查或加入 Wi-Fi 超时，请确认系统提示后重试。")
+        }
+        NEHotspotNetwork.fetchCurrent { [weak self] network in
+            DispatchQueue.main.async {
+                guard let self, self.wiFiJoinID == id else { return }
+                if network?.ssid == ssid {
+                    self.log("已连接所选仪表 Wi-Fi，复用当前网络，不重复申请加入")
+                    self.statusLabel.text = "已连接 Wi-Fi：\(ssid)，正在确认网络就绪…"
+                    self.passwordStatus.text = self.statusLabel.text
+                    self.waitForSelectedWiFi(id: id, ssid: ssid, startCarPlay: startCarPlay,
+                        useCurrentWiFi: reuseCurrentWiFi, restarting: restarting)
+                    return
+                }
+                guard let credentials else {
+                    self.finishWiFiJoin(id: id, message: "未确认已连接所选仪表 Wi-Fi。请先在系统设置连接并允许读取 Wi-Fi 名称，或填写密码后重试。")
+                    return
+                }
+                guard UIApplication.shared.applicationState == .active else {
+                    self.finishWiFiJoin(id: id, message: "请返回 CarWithin 后重试连接。")
+                    return
+                }
+                let configuration = credentials.password.isEmpty
+                    ? NEHotspotConfiguration(ssid: ssid)
+                    : NEHotspotConfiguration(ssid: ssid, passphrase: credentials.password, isWEP: false)
+                // Keep the network when switching to the official Ninebot app.
+                configuration.joinOnce = false
+                self.statusLabel.text = "正在加入 Wi-Fi：\(ssid)…"
+                self.passwordStatus.text = self.statusLabel.text
+                NEHotspotConfigurationManager.shared.apply(configuration) { [weak self] error in
+                    DispatchQueue.main.async {
+                        guard let self, self.wiFiJoinID == id else { return }
+                        if let error = error as NSError?,
+                           !(error.domain == NEHotspotConfigurationErrorDomain &&
+                             error.code == NEHotspotConfigurationError.alreadyAssociated.rawValue) {
+                            let denied = error.domain == NEHotspotConfigurationErrorDomain &&
+                                error.code == NEHotspotConfigurationError.userDenied.rawValue
+                            self.finishWiFiJoin(id: id, message: denied ? "已取消加入 Wi-Fi，可手动重试。" :
+                                "加入 Wi-Fi 失败：\(error.localizedDescription)。请检查密码、仪表热点和签名的 Hotspot Configuration 权限。")
+                            return
+                        }
+                        // Newly joined networks retain the established credential-based path.
+                        self.waitForSelectedWiFi(id: id, ssid: ssid, startCarPlay: startCarPlay,
+                            useCurrentWiFi: false, restarting: restarting)
+                    }
+                }
+            }
+        }
+        #endif
+    }
+
+    private func waitForSelectedWiFi(id: UUID, ssid: String, startCarPlay: Bool,
+                                     useCurrentWiFi: Bool, restarting: Bool) {
+        guard wiFiJoinID == id else { return }
+        wiFiJoinTask?.cancel()
+        wiFiJoinTask = Task { [weak self] in
+            var previousAddress: String?
+            for _ in 0..<60 {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                guard !Task.isCancelled, let self, self.wiFiJoinID == id else { return }
+                let network = await NEHotspotNetwork.fetchCurrent()
+                guard !Task.isCancelled, self.wiFiJoinID == id else { return }
+                let address = ReceiverConfiguration.wifiIPv4Address()
+                if network?.ssid == ssid, let address, address == previousAddress,
+                   UIApplication.shared.applicationState == .active {
+                    self.finishWiFiJoin(id: id, message: "已连接 Wi-Fi：\(ssid)")
+                    if startCarPlay {
+                        let previousRestarting = self.restartingAutomatically
+                        self.startingAfterWiFiJoin = true
+                        self.startingWithCurrentWiFi = useCurrentWiFi
+                        self.restartingAutomatically = restarting
+                        defer {
+                            self.startingAfterWiFiJoin = false
+                            self.startingWithCurrentWiFi = false
+                            self.restartingAutomatically = previousRestarting
+                        }
+                        self.toggleReceiver()
+                    }
+                    return
+                }
+                previousAddress = network?.ssid == ssid ? address : nil
+            }
+            self?.finishWiFiJoin(id: id, message: "未确认仪表 Wi-Fi 连接。请检查热点已开启、Wi-Fi 权限及密码，然后重试。")
+        }
+    }
+
+    private func finishWiFiJoin(id: UUID, message: String) {
+        guard wiFiJoinID == id else { return }
+        wiFiJoinID = nil
+        wiFiJoinTask?.cancel()
+        wiFiJoinTask = nil
+        wiFiJoinTimeoutTask?.cancel()
+        wiFiJoinTimeoutTask = nil
+        waitingForNetwork = false
+        modeControl.isEnabled = true
+        setEditing(true)
+        ninebotAutoConnectSwitch.isEnabled = true
+        modeChanged()
+        statusLabel.text = message
+        passwordStatus.text = message
+        if outputMode.ninebotMode != nil { updateNinebotStatus(message) }
+        refreshNetworkAddresses()
+        reloadVisibleSettings()
+    }
+
     @objc private func toggleReceiver() {
-        if running || waitingForNetwork { stop(); return }
+        if running || waitingForNetwork { attemptedNinebotAutoConnect = true; stop(); return }
+        if outputMode.ninebotMode != nil, modeControl.selectedSegmentIndex == 1,
+           !startingAfterWiFiJoin {
+            joinSelectedWiFi(startCarPlay: true)
+            return
+        }
         if !restartingAutomatically { networkRestartCount = 0 }
         clearStartupHint()
         updateCheckTask?.cancel()
@@ -1425,7 +1676,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             outputPort = nil
             httpsPort = nil
         }
-        guard !needsNetworkDetails || openNetworkSwitch.isOn || !(passwordField.text ?? "").isEmpty else {
+        guard startingWithCurrentWiFi || !needsNetworkDetails || openNetworkSwitch.isOn || !(passwordField.text ?? "").isEmpty else {
             statusLabel.text = "请输入 Wi-Fi 密码；开放网络请选择“无密码”。"
             revealSettings(wifi: true); return
         }
@@ -1459,7 +1710,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                 deviceID: ReceiverConfiguration.persistentDeviceID())
             if !restartingAutomatically { autoRestarts = 0; lightLevel = 0; reportedScreen = nil; primaryViewer = nil }
             configureDisplay(&config)
-            do { try config.validate() } catch {
+            if startingWithCurrentWiFi {
+                config.wiFiBootstrap = CarPlayWiFiBootstrap(currentNetworkWithFallback: enteredWiFiCredentials)
+            }
+            do { try config.validate(requiresWiFiCredentials: !startingWithCurrentWiFi) } catch {
                 log("无法启动本机 CarPlay：\(error.localizedDescription)")
                 revealSettings(); statusLabel.text = error.localizedDescription; return
             }
@@ -1586,6 +1840,11 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     }
 
     private func stop() {
+        wiFiJoinID = nil
+        wiFiJoinTask?.cancel()
+        wiFiJoinTask = nil
+        wiFiJoinTimeoutTask?.cancel()
+        wiFiJoinTimeoutTask = nil
         localStartupID = nil
         networkStartupTask?.cancel()
         networkStartupTask = nil
@@ -1693,6 +1952,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         transportProbeButton.isEnabled = value
         headUnitOutput.isEnabled = value
         zeehoAddressField.isEnabled = value
+        ninebotAutoConnectSwitch.isEnabled = value
+        ninebotCurrentWiFiSwitch.isEnabled = value
         ninebotAddressField.isEnabled = value
         ninebot43AddressField.isEnabled = value
         tailingAddressField.isEnabled = value
@@ -1706,6 +1967,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     }
     @objc private func becameActive() {
         refreshNetworkAddresses()
+        attemptNinebotAutoConnect()
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
             self?.checkForUpdates(manual: false)
         }
@@ -2208,6 +2470,9 @@ extension ReceiverViewController {
                         }
                     }) { [unowned self] in self.soundPage() },
                     .control("驾驶位", icon: ("steeringwheel", .systemTeal), driveControl),
+                    .page("电池与 BMS", icon: ("battery.100", .systemGreen), detail: { [unowned self] in
+                        self.bmsEnabledSwitch.isOn ? self.bmsClient.selectedName : "关闭"
+                    }) { [unowned self] in self.bmsPage() },
                     .page("车辆", icon: ("car.fill", .systemTeal)) { [unowned self] in self.vehiclePage() }
                 ]),
                 SettingsSection("后台与画中画", footer: "锁屏前，请在 iPhone「设置 › 通用 › CarPlay › CarWithin」中打开「锁定时允许 CarPlay」。后台运行会增加耗电。画中画仅显示实时画面。离开 App 时自动开启需打开 iPhone「设置 › 通用 › 画中画」中的自动选项。", [
@@ -2229,6 +2494,35 @@ extension ReceiverViewController {
     }
 
     // MARK: CarPlay 画面
+
+    private func bmsPage() -> SettingsPageController {
+        page("电池与 BMS") { [unowned self] in
+            var sections = [SettingsSection("蚂蚁 ANT BMS", footer: "通过蓝牙读取默认 FFE0/FFE1 通道。只查询实时信息。显示在手机 CarPlay 画面，以及九号五寸、七寸投屏；浏览器、其他输出和画中画暂不叠加。", [
+                .control("读取并显示 BMS", self.bmsEnabledSwitch),
+                .control("显示位置", self.bmsPosition),
+                .info("已记住的设备", self.bmsClient.selectedName),
+                .note(self.bmsStatus)
+            ])]
+            guard self.bmsEnabledSwitch.isOn else { return sections }
+            sections.append(SettingsSection("连接", footer: "先选择自己的设备。FFE0 也用于其他品牌，扫描出现不代表已支持；收到 CRC 校验正确的 ANT 实时帧后才确认数据连接。若无法连接，请先断开其他 BMS App。", [
+                .action("扫描附近 BMS", icon: ("antenna.radiowaves.left.and.right", .systemBlue)) { [unowned self] in self.bmsClient.scan() },
+                .action("忘记当前 BMS", destructive: true) { [unowned self] in
+                    self.bmsClient.forget()
+                    self.reloadVisibleSettings()
+                }
+            ]))
+            let devices = self.bmsClient.devices.map { device in
+                var row = SettingsRow.action(device.name, detail: { "\(device.rssi) dBm" }) { [unowned self] in
+                    self.bmsClient.select(device.id)
+                }
+                row.checked = { [weak self] in self?.bmsClient.selectedID == device.id }
+                return row
+            }
+            if !devices.isEmpty { sections.append(SettingsSection("附近设备", devices)) }
+            sections.append(SettingsSection("实时数据", footer: "电流保留 ANT 原始符号，充放电状态按 BMS 状态码显示。超过 5 秒未更新会隐藏旧值；断线按已选设备重连。后台刷新取决于 iOS 调度。", [.note(self.bmsDetails)]))
+            return sections
+        }
+    }
 
     fileprivate func displayPage() -> SettingsPageController {
         page("画面") { [unowned self] in
@@ -2481,13 +2775,22 @@ extension ReceiverViewController {
             }
             fields += [
                 .field("Wi-Fi 名称", ssidField),
-                .field("密码", passwordField, placeholder: "开放网络留空"),
+                .field("密码", passwordField, placeholder: prefersCurrentWiFiStartup ? "复用当前连接可留空（实验）" : "开放网络留空"),
                 .control("开放网络（无密码）", openNetworkSwitch),
                 .field("兼容信道", channelField, placeholder: "36")
             ]
             var sections: [SettingsSection] = []
             if !current.isEmpty { sections.append(SettingsSection(current)) }
             sections.append(SettingsSection(footer: editingLockedFooter ?? "返回自动保存。同名网络会更新原预设，兼容信道通常保持 36。", fields))
+            if editable {
+                sections.append(SettingsSection(footer: prefersCurrentWiFiStartup
+                    ? "可只保存名称并复用已连接的仪表网络（实验）。填写密码后可主动加入，并用于实验失败时回退。"
+                    : "可先读取当前 Wi-Fi 名称。已连接所选网络时直接复用；未连接时申请加入。首次配置密码仍需填写，后续自动读取。", [
+                    .action("保存并加入 Wi-Fi", icon: ("wifi", .systemBlue)) { [unowned self] in
+                        self.joinSelectedWiFi(startCarPlay: false)
+                    }
+                ]))
+            }
             if editable, passwordStatus.text?.isEmpty == false { sections.append(SettingsSection([.note(passwordStatus)])) }
             return sections
         }
@@ -2526,7 +2829,11 @@ extension ReceiverViewController {
             }
             let rows = presets.map { preset in
                 var row = SettingsRow.action(preset.ssid) { [unowned self] in if editable { self.applyWiFiPreset(preset) } }
-                if preset.isOpen { row.subtitle = { "开放网络" } }
+                row.subtitle = {
+                    if preset.isOpen { return "开放网络" }
+                    let password = try? WiFiCredentials.password(for: preset.ssid)
+                    return password?.isEmpty == false ? "已保存密码" : "未保存密码，仅可复用当前连接（实验）"
+                }
                 row.checked = { WiFiPresetStore.selected()?.ssid == preset.ssid }
                 row.onDelete = { [unowned self] in
                     guard !self.running else { return }
@@ -2568,10 +2875,20 @@ extension ReceiverViewController {
                     .note(zeehoStatus)
                 ])]
             case .ninebot, .ninebotSeven, .ninebot43:
-                return [SettingsSection(headUnitOutput.selectedTitle, footer: outputMode == .ninebot ? ninebotInstructions : "\(ninebotInstructions) 切换 App 前请打开「锁屏与后台继续运行」。", [
+                var sections = [SettingsSection(headUnitOutput.selectedTitle, footer: outputMode == .ninebot ? ninebotInstructions : "\(ninebotInstructions) 切换 App 前请打开「锁屏与后台继续运行」。", [
+                    .control("打开 App 自动连接", ninebotAutoConnectSwitch),
+                    .action("连接并启动 CarPlay", icon: ("wifi", .systemBlue)) { [unowned self] in
+                        self.joinSelectedWiFi(startCarPlay: true)
+                    },
                     .field("仪表 IP 地址", activeNinebotAddressField, placeholder: outputMode == .ninebot43 ? "192.168.169.1" : "192.168.1.1"),
                     .note(ninebotStatus)
                 ])]
+                if supportsCurrentWiFiStartup {
+                    sections.append(SettingsSection(footer: "仅在手机已连接所选仪表 Wi-Fi 时尝试免密码启动。未建立 CarPlay 连接且有有效密码时会回退一次；没有密码时提示补全。此功能尚需真机验证。", [
+                        .control("使用当前 Wi-Fi 启动（实验）", ninebotCurrentWiFiSwitch)
+                    ]))
+                }
+                return sections
             }
         }
     }

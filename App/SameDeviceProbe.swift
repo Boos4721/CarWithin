@@ -19,6 +19,7 @@ final class SameDeviceProbe {
     private var requested = false
     private var controlConnected = false
     private var expectsLocalControl = true
+    private var wiFiBootstrap: CarPlayWiFiBootstrap?
     var onLog: ((String) -> Void)?
     var onFinished: ((String) -> Void)?
     var onStage: ((String) -> Void)?
@@ -29,6 +30,12 @@ final class SameDeviceProbe {
         let run = generation
         transport.onData = { [weak self] data in self?.receive(data) }
         do {
+            if let bootstrap = configuration.wiFiBootstrap {
+                wiFiBootstrap = bootstrap
+            } else {
+                wiFiBootstrap = CarPlayWiFiBootstrap(credentials: try AccessoryMessages.WiFi(
+                    ssid: configuration.ssid, password: configuration.password, channel: configuration.wifiChannel))
+            }
             // Use transport type 2 for a Wi-Fi accessory connection.
             try transport.start(withIdentifier: configuration.deviceID, transportType: 2)
             stage("已创建本机配件端点（传输类型 2），正在建立 iAP2")
@@ -54,6 +61,7 @@ final class SameDeviceProbe {
     func stop() {
         active = false; generation = UUID(); transport.stop(); transport.onData = nil; parser = IAP2Parser()
         identity = nil; configuration = nil; messageBytes = Data(); sequence = 0x10; acknowledgement = 0
+        wiFiBootstrap = nil
         session = 1; lastPayloadSequence = nil; linked = false; authenticated = false; identified = false; requested = false; controlConnected = false
     }
     func didConnectControl() {
@@ -62,9 +70,31 @@ final class SameDeviceProbe {
         stage("CarPlay 控制连接已建立，正在协商会话")
     }
     private func requestSession(_ configuration: ReceiverConfiguration) throws {
-        let wifi = try AccessoryMessages.WiFi(ssid: configuration.ssid, password: configuration.password, channel: configuration.wifiChannel)
         try send(AccessoryMessages.startSession(address: configuration.address, port: configuration.port,
-            deviceID: configuration.deviceID, wifi: wifi))
+            deviceID: configuration.deviceID, wifi: wiFiBootstrap?.wifi))
+    }
+
+    private func scheduleCurrentNetworkFallback(_ configuration: ReceiverConfiguration) {
+        guard wiFiBootstrap?.usesCurrentNetwork == true else { return }
+        let run = generation
+        stage("正在尝试使用当前 Wi-Fi 启动 CarPlay（实验），不发送 Wi-Fi 配置")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 12) { [weak self] in
+            guard let self, self.active, self.generation == run, !self.controlConnected else { return }
+            guard self.wiFiBootstrap?.useFallbackCredentials() == true else {
+                self.finish("使用当前 Wi-Fi 启动未建立 CarPlay 连接。请补全 Wi-Fi 密码并关闭实验选项后重试。")
+                return
+            }
+            self.stage("当前 Wi-Fi 启动尚未建立连接，正在使用已保存的 Wi-Fi 配置重试")
+            do { try self.requestSession(configuration) }
+            catch { self.finish("Wi-Fi 配置回退失败：\(error.localizedDescription)"); return }
+            for delay in [3.0, 6.0, 9.0] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    guard let self, self.active, self.generation == run, !self.controlConnected else { return }
+                    do { try self.requestSession(configuration) }
+                    catch { self.finish("会话重试失败：\(error.localizedDescription)") }
+                }
+            }
+        }
     }
     private func stage(_ message: String) { onLog?(message); onStage?(message) }
     private func finish(_ message: String) { onLog?(message); stop(); onFinished?(message) }
@@ -138,6 +168,7 @@ final class SameDeviceProbe {
             if controlConnected || (!expectsLocalControl && requested) { return }
             try requestSession(configuration)
             if !requested && expectsLocalControl {
+                scheduleCurrentNetworkFallback(configuration)
                 let run = generation
                 for delay in [3.0, 6.0, 9.0] {
                     DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in

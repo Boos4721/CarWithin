@@ -1,0 +1,77 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches:
+      - codex/ninebot-ant-bms
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Test and build unsigned iOS app
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Inspect build tools
+        run: |
+          mkdir -p artifacts
+          xcodebuild -version
+          swift --version
+
+      - name: Generate Xcode project
+        run: python3 Tools/generate_project.py
+
+      - name: Run core protocol tests
+        shell: bash
+        run: |
+          set -o pipefail
+          bash Tools/test.sh 2>&1 | tee artifacts/core-tests.log
+
+      - name: Build iPhone and iPad app
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild -project TDSCarKit.xcodeproj -scheme TDSCarKit \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/CarWithinBuild" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
+            build 2>&1 | tee artifacts/ios-build.log
+
+      - name: Package unsigned IPA
+        shell: bash
+        run: |
+          app_path="$RUNNER_TEMP/CarWithinBuild/Build/Products/Release-iphoneos/TDSCarKit.app"
+          package_root="$RUNNER_TEMP/CarWithinPackage"
+          test -d "$app_path"
+          mkdir -p "$package_root/Payload"
+          ditto "$app_path" "$package_root/Payload/TDSCarKit.app"
+          (
+            cd "$package_root"
+            ditto -c -k --keepParent Payload "$GITHUB_WORKSPACE/artifacts/CarWithin-ninebot-ant-bms-unsigned.ipa"
+          )
+          shasum -a 256 artifacts/CarWithin-ninebot-ant-bms-unsigned.ipa > artifacts/SHA256SUMS.txt
+          git rev-parse HEAD > artifacts/source-commit.txt
+          cp App/TDSCarKit.entitlements artifacts/required-entitlements.plist
+          printf '%s\n' 'Unsigned iOS build. Re-sign with your provisioning profile before installing.' \
+            'CarPlay requires a valid accessory identity configured separately.' \
+            'Wi-Fi features require Hotspot Configuration and Access WiFi Information signing capabilities.' \
+            > artifacts/INSTALL.txt
+
+      - name: Upload IPA and build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarWithin-ninebot-ant-bms-${{ github.run_number }}
+          path: artifacts/
+          if-no-files-found: warn
+          retention-days: 14

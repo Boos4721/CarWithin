@@ -17,15 +17,28 @@ final class NinebotOutput {
 
     private let queue = DispatchQueue(label: "CarWithin.ninebot", qos: .userInitiated)
     private var session: Session?
+    private var bmsImage: CGImage?
+    private var bmsAtTop = true
+
+    func setBMSOverlay(_ image: CGImage?, atTop: Bool) {
+        bmsImage = image; bmsAtTop = atTop
+        let current = session
+        queue.async { current?.setBMSOverlay(image, atTop: atTop) }
+    }
 
     deinit { stop() }
 
     func start(localAddress: String, targetAddress: String, mode: Mode, onState: @escaping (String) -> Void,
-               onLog: @escaping (String) -> Void, requestKeyframe: @escaping () -> Void) {
+               onLog: @escaping (String) -> Void, requestKeyframe: @escaping () -> Void,
+               onPrepared: @escaping (Result<Void, Error>) -> Void) {
         stop()
         let next = Session(queue: queue, mode: mode, onState: onState, onLog: onLog, requestKeyframe: requestKeyframe)
         session = next
-        queue.async { next.start(localAddress, targetAddress) }
+        let overlay = bmsImage, atTop = bmsAtTop
+        queue.async {
+            next.setBMSOverlay(overlay, atTop: atTop)
+            next.start(localAddress, targetAddress, onPrepared: onPrepared)
+        }
     }
 
     func append(_ data: Data, codec: VideoCodec, keyframe: Bool) {
@@ -86,6 +99,15 @@ final class NinebotOutput {
         private var acknowledgedVideo = false
         private var nextVideoFrame = 0.0
         private var status = ""
+        private var bmsOverlay: CIImage?
+        private var bmsAtTop = true
+
+        func setBMSOverlay(_ image: CGImage?, atTop: Bool) {
+            // Only 5/7-inch H.264 outputs are included in the first BMS integration.
+            bmsOverlay = usesJPEG ? nil : image.map { CIImage(cgImage: $0) }
+            bmsAtTop = atTop
+            fresh = true
+        }
 
         init(queue: DispatchQueue, mode: Mode, onState: @escaping (String) -> Void, onLog: @escaping (String) -> Void,
              requestKeyframe: @escaping () -> Void) {
@@ -97,14 +119,23 @@ final class NinebotOutput {
             self.requestKeyframe = requestKeyframe
         }
 
-        func start(_ local: String, _ target: String) {
+        func start(_ local: String, _ target: String, onPrepared: (Result<Void, Error>) -> Void) {
             guard active else { return }
             do {
                 let videoPort = NinebotH264Packetizer.videoPort
                 let controlPort = NinebotH264Packetizer.controlPort
                 video = try NinebotUDPSocket(localIP: local, localPort: videoPort, remoteIP: target, remotePort: videoPort)
                 control = try NinebotUDPSocket(localIP: local, localPort: controlPort, remoteIP: target, remotePort: controlPort)
-                report(sevenInch ? "等待九号 7 寸仪表回应…" : "等待九号仪表回应…")
+                // Prepare both sockets and send the first control packet before starting CarPlay.
+                // Local send success is not an acknowledgement that projection is enabled remotely.
+                counter &+= 1
+                let heartbeat = usesJPEG ? NinebotJPEGPacketizer.heartbeat(counter: counter)
+                                         : NinebotH264Packetizer.heartbeat(counter: counter)
+                try control?.send(heartbeat)
+                nextHeartbeat = ProcessInfo.processInfo.systemUptime + 1
+                guard active else { close(); return }
+                onLog("九号投屏端口 5012/5013 已就绪，已发送首个控制握手")
+                report("投屏通道已准备，等待仪表回应…")
                 switch mode {
                 case .fourThreeInch: onLog("九号 4.3 寸：JPEG/RTP UDP 5012 · RTCP UDP 5013 · 480×272 · 最高 10 FPS")
                 case .sevenInch: onLog("九号 7 寸：KCP/UDP 5012 · RTCP/UDP 5013 · 1024×600 · H.264 Baseline 3.1 · 25 FPS")
@@ -115,7 +146,11 @@ final class NinebotOutput {
                 timer.setEventHandler { [weak self] in self?.tick() }
                 self.timer = timer
                 timer.resume()
-            } catch { fail(error) }
+                onPrepared(.success(()))
+            } catch {
+                fail(error)
+                onPrepared(.failure(error))
+            }
         }
 
         private var active: Bool { lock.withLock { !cancelled } }
@@ -343,7 +378,7 @@ final class NinebotOutput {
         private func fittedImage(_ image: CVPixelBuffer) throws -> CVPixelBuffer {
             let width = sevenInch ? NinebotOutput.sevenInchFormat.width : NinebotOutput.width
             let height = sevenInch ? NinebotOutput.sevenInchFormat.height : NinebotOutput.height
-            if CVPixelBufferGetWidth(image) == width, CVPixelBufferGetHeight(image) == height { return image }
+            if bmsOverlay == nil, CVPixelBufferGetWidth(image) == width, CVPixelBufferGetHeight(image) == height { return image }
             var buffer: CVPixelBuffer?
             let status = CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA,
                                              [kCVPixelBufferIOSurfacePropertiesKey: [:]] as CFDictionary, &buffer)
@@ -360,7 +395,16 @@ final class NinebotOutput {
             let positioned = scaled.transformed(by: CGAffineTransform(
                 translationX: (bounds.width - scaled.extent.width) / 2,
                 y: (bounds.height - scaled.extent.height) / 2))
-            return positioned.composited(over: CIImage(color: .black)).cropped(to: bounds)
+            let canvas = positioned.composited(over: CIImage(color: .black)).cropped(to: bounds)
+            guard let bmsOverlay else { return canvas }
+            let overlayWidth = bounds.width * 0.46
+            let factor = overlayWidth / bmsOverlay.extent.width
+            let scaledOverlay = bmsOverlay.transformed(by: CGAffineTransform(scaleX: factor, y: factor))
+            let margin = max(6, bounds.width * 0.007)
+            let overlay = scaledOverlay.transformed(by: CGAffineTransform(
+                translationX: bounds.maxX - margin - scaledOverlay.extent.width,
+                y: bmsAtTop ? bounds.maxY - margin - scaledOverlay.extent.height : margin))
+            return overlay.composited(over: canvas).cropped(to: bounds)
         }
 
         private func logCodecFailure(_ stage: String, _ error: Error) {

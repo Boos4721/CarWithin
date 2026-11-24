@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		888D6F672462898E1F5643A1 /* maibms-MIT.txt in Resources */ = {isa = PBXBuildFile; fileRef = 20713B3F12BAE41349E87E21; };
+		5731981ECDAF108184A64D8B /* Sources/TDSCarKitCore/ANTBMSProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C1816364EE73AD87BF627E7 /* Sources/TDSCarKitCore/ANTBMSProtocol.swift */; };
+		E930864F8105F55C8A988836 /* App/BMSOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = C73ED9EB7064ACDBB2EF3041 /* App/BMSOverlay.swift */; };
+		958FF5BA17BA9021F5076BFC /* App/ANTBMSClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE3FD3B152F054D10D2D79D /* App/ANTBMSClient.swift */; };
+		10109BA21419978567A750F6 /* Sources/TDSCarKitCore/CarPlayWiFiBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCED75C259FA04696F817035 /* Sources/TDSCarKitCore/CarPlayWiFiBootstrap.swift */; };
         AAAAAAAA0000000000000001 /* ikcp.c in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAAAA0000000000000003; };
         AAAAAAAA0000000000000002 /* NinebotKCPVideo.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAAAA0000000000000004; };
         AAAAAAAA0000000000000005 /* KCP-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAA0000000000000006; };
@@ -95,6 +100,11 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		20713B3F12BAE41349E87E21 /* maibms-MIT.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = App/maibms-MIT.txt; sourceTree = "<group>"; };
+		1C1816364EE73AD87BF627E7 /* Sources/TDSCarKitCore/ANTBMSProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TDSCarKitCore/ANTBMSProtocol.swift; sourceTree = "<group>"; };
+		C73ED9EB7064ACDBB2EF3041 /* App/BMSOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/BMSOverlay.swift; sourceTree = "<group>"; };
+		5AE3FD3B152F054D10D2D79D /* App/ANTBMSClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/ANTBMSClient.swift; sourceTree = "<group>"; };
+		CCED75C259FA04696F817035 /* Sources/TDSCarKitCore/CarPlayWiFiBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TDSCarKitCore/CarPlayWiFiBootstrap.swift; sourceTree = "<group>"; };
         AAAAAAAA0000000000000003 /* ikcp.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = App/ikcp.c; sourceTree = "<group>"; };
         AAAAAAAA0000000000000004 /* NinebotKCPVideo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/NinebotKCPVideo.swift; sourceTree = "<group>"; };
         AAAAAAAA0000000000000006 /* KCP-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "App/KCP-LICENSE.txt"; sourceTree = "<group>"; };
@@ -197,6 +207,11 @@
 		64292B1C2B2E13EAD8788FC8 = {
 			isa = PBXGroup;
 			children = (
+				20713B3F12BAE41349E87E21 /* maibms-MIT.txt */,
+				1C1816364EE73AD87BF627E7 /* Sources/TDSCarKitCore/ANTBMSProtocol.swift */,
+				C73ED9EB7064ACDBB2EF3041 /* App/BMSOverlay.swift */,
+				5AE3FD3B152F054D10D2D79D /* App/ANTBMSClient.swift */,
+				CCED75C259FA04696F817035 /* Sources/TDSCarKitCore/CarPlayWiFiBootstrap.swift */,
 				7BAEDF1212F9D1065D1112FF /* App/TailingConnection.swift */,
 				F1F1006A6933CF59351244FE /* App/TailingH264Decoder.swift */,
 				B04FAD42C897506E681468AD /* App/TailingIdentity.swift */,
@@ -345,6 +360,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				888D6F672462898E1F5643A1 /* maibms-MIT.txt in Resources */,
 				716E9590E60B3AFA6E62BF18 /* App/Assets.xcassets in Resources */,
                 AAAAAAAA0000000000000005 /* KCP-LICENSE.txt in Resources */,
 				094F299DB983C107B346E308 /* App/BundledIdentity/certificate.p7b in Resources */,
@@ -360,6 +376,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5731981ECDAF108184A64D8B /* Sources/TDSCarKitCore/ANTBMSProtocol.swift in Sources */,
+				E930864F8105F55C8A988836 /* App/BMSOverlay.swift in Sources */,
+				958FF5BA17BA9021F5076BFC /* App/ANTBMSClient.swift in Sources */,
+				10109BA21419978567A750F6 /* Sources/TDSCarKitCore/CarPlayWiFiBootstrap.swift in Sources */,
 				F981D54C81AFEB10623F8DF2 /* App/TailingConnection.swift in Sources */,
 				2A62092D5FAB7508B5E75585 /* App/TailingH264Decoder.swift in Sources */,
 				20981E104E400F63191A9A75 /* App/TailingIdentity.swift in Sources */,
@@ -453,6 +473,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CODE_SIGN_ENTITLEMENTS = "$(TDS_WIFI_ENTITLEMENTS)";
+				TDS_WIFI_ENTITLEMENTS = App/TDSCarKit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
@@ -480,7 +501,7 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TDS_WIFI_NAME_DETECTION = NO;
+				TDS_WIFI_NAME_DETECTION = YES;
 			};
 			name = Release;
 		};
@@ -491,6 +512,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CODE_SIGN_ENTITLEMENTS = "$(TDS_WIFI_ENTITLEMENTS)";
+				TDS_WIFI_ENTITLEMENTS = App/TDSCarKit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
@@ -518,7 +540,7 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TDS_WIFI_NAME_DETECTION = NO;
+				TDS_WIFI_NAME_DETECTION = YES;
 			};
 			name = Debug;
 		};
