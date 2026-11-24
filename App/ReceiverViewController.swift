@@ -870,11 +870,12 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     }
 
     @objc private func bmsSettingsChanged() {
+        let wasEnabled = UserDefaults.standard.bool(forKey: "antBMSEnabled")
         UserDefaults.standard.set(bmsEnabledSwitch.isOn, forKey: "antBMSEnabled")
         UserDefaults.standard.set(bmsPosition.selectedSegmentIndex, forKey: "antBMSPosition")
         if bmsEnabledSwitch.isOn {
             bmsClient.start()
-            if running { beginBMSSessionIfNeeded() }
+            if running, !wasEnabled { beginBMSSessionIfNeeded() }
         } else { finishBMSSession(); bmsClient.stop() }
         saveActiveVehicleProfile()
         refreshBMS()
