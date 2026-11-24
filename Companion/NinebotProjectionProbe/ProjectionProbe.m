@@ -91,6 +91,10 @@ static void CWAction(id object, SEL selector, SEL action, id target, UIEvent *ev
     // Store class/selector names only. No labels, user text, arguments, credentials or payloads.
     NSString *targetName = target ? NSStringFromClass([target class]) : @"nil";
     NSString *actionName = action ? NSStringFromSelector(action) : @"nil";
+    if ([targetName hasPrefix:@"CWProjectionProbe"]) {
+        CWOriginalAction(object, selector, action, target, event);
+        return;
+    }
     BOOL relevant = CWRelevant(targetName) || CWRelevant(actionName);
     if (!relevant && [object isKindOfClass:UIView.class]) {
         UIView *ancestor = object;
@@ -223,6 +227,7 @@ static NSDictionary *CWSnapshot(void) {
     [presenter presentViewController:sheet animated:YES completion:nil];
 }
 - (void)showPanel {
+    CWInstallHooks(); // Recheck modules loaded after the app first became active.
     UIViewController *presenter = self.presenter;
     if (!presenter || [presenter isKindOfClass:UIAlertController.class]) return;
     NSDictionary *snapshot = CWSnapshot(); NSDictionary *hooks = snapshot[@"hooks"];
