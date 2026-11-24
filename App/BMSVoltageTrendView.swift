@@ -42,7 +42,7 @@ final class BMSVoltageTrendView: UIView, UIGestureRecognizerDelegate {
         selectInterval(at: recognizer.location(in: self), announce: recognizer.state == .ended)
     }
 
-    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         guard let pan = gestureRecognizer as? UIPanGestureRecognizer else { return true }
         let velocity = pan.velocity(in: self)
         let area = bounds.inset(by: UIEdgeInsets(top: 30, left: 48, bottom: 100, right: 8))
