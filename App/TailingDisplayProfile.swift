@@ -90,6 +90,7 @@ enum TailingDisplayProfile: Equatable, Sendable {
     case tailing43
     case zeeho62
     case zeehoSEPlus
+    case zeehoAE2
 
     var isZeeho: Bool { self != .tailing43 }
 
@@ -97,7 +98,7 @@ enum TailingDisplayProfile: Equatable, Sendable {
     var preferredSize: InstrumentFrameSize {
         switch self {
         case .tailing43: return InstrumentFrameSize(width: 480, height: 272)
-        case .zeeho62: return InstrumentFrameSize(width: 1024, height: 480)
+        case .zeeho62, .zeehoAE2: return InstrumentFrameSize(width: 1024, height: 480)
         case .zeehoSEPlus: return InstrumentFrameSize(width: 800, height: 480)
         }
     }
@@ -109,6 +110,9 @@ enum TailingDisplayProfile: Equatable, Sendable {
         case .zeeho62:
             guard reported.width == 1024, reported.height == 480 || reported.height == 488 else { return nil }
             return preferredSize
+        case .zeehoAE2:
+            guard (240...1920).contains(reported.width), (240...1080).contains(reported.height) else { return nil }
+            return InstrumentFrameSize(width: reported.width & ~1, height: reported.height & ~1)
         case .zeehoSEPlus:
             // Use the PXC media dimensions verbatim. Bound pixel-buffer allocations and
             // require even dimensions for the encoder's 4:2:0 chroma format.
