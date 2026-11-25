@@ -233,10 +233,29 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private lazy var pictureInPicture = CarPlayPictureInPicture(surface: videoSurface)
     private let keepAlive = BackgroundKeepAlive()
     private let keepAliveSwitch = UISwitch()
-    private let headUnitOutput = ChoiceMenu(items: ["浏览器", "CarLife", "AirPlay", "台铃 4.3 寸", "九号 5 寸", "极核 6.2 寸", "九号 7 寸", "九号 4.3 寸（实验）", "极核 SE+ 5/5.5 寸（实验）", "极核 AE2 Pro 5 寸", "春风 5 寸", "春风 6.2 寸"])
+    private let headUnitOutput = ChoiceMenu(items: HeadUnitOutput.menuOrder.map(\.title))
     private enum HeadUnitOutput: Int {
         // Persisted in headUnitOutputV2. Append new modes after existing values.
         case browser, carLife, airPlay, tailing, ninebot, zeeho, ninebotSeven, ninebot43, zeehoSEPlus, zeehoAE2, cfmoto5, cfmoto62
+        // Display order is independent of the persisted raw values above.
+        static let menuOrder: [Self] = [.browser, .carLife, .airPlay, .ninebot43, .ninebot, .ninebotSeven, .tailing, .zeeho, .zeehoSEPlus, .zeehoAE2, .cfmoto5, .cfmoto62]
+        var menuIndex: Int { Self.menuOrder.firstIndex(of: self)! }
+        var title: String {
+            switch self {
+            case .browser: return "浏览器"
+            case .carLife: return "CarLife"
+            case .airPlay: return "AirPlay"
+            case .ninebot43: return "九号 4.3 寸"
+            case .ninebot: return "九号 5 寸"
+            case .ninebotSeven: return "九号 7 寸"
+            case .tailing: return "台铃 4.3 寸"
+            case .zeeho: return "极核 6.2 寸"
+            case .zeehoSEPlus: return "极核 SE+ 5/5.5 寸"
+            case .zeehoAE2: return "极核 AE2 Pro 5 寸"
+            case .cfmoto5: return "春风 5 寸"
+            case .cfmoto62: return "春风 6.2 寸"
+            }
+        }
         var ninebotMode: NinebotOutput.Mode? {
             switch self {
             case .ninebot: .fiveInch
@@ -279,7 +298,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             airPlayRoutePicker.accessibilityTraits.insert(.notEnabled)
         }
     }
-    private var outputMode: HeadUnitOutput { HeadUnitOutput(rawValue: headUnitOutput.selectedSegmentIndex) ?? .browser }
+    private var outputMode: HeadUnitOutput {
+        let index = headUnitOutput.selectedSegmentIndex
+        return HeadUnitOutput.menuOrder.indices.contains(index) ? HeadUnitOutput.menuOrder[index] : .browser
+    }
     private let carLifeAddressField = UITextField()
     private let carLifeStatus = StatusLabel()
     private func updateCarLifeStatus(_ message: String) {
@@ -341,7 +363,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             let pages: [String: () -> UIViewController] = [
                 "display": displayPage, "screens": screensPage, "wifi": wifiPage, "presets": presetsPage,
                 "vehicle": vehiclePage, "sound": soundPage, "output": headUnitPage,
-                "tailing": { [unowned self] in self.headUnitOutput.selectedSegmentIndex = HeadUnitOutput.tailing.rawValue; self.refreshVideoOutputSummary(); return self.headUnitPage() },
+                "tailing": { [unowned self] in self.headUnitOutput.selectedSegmentIndex = HeadUnitOutput.tailing.menuIndex; self.refreshVideoOutputSummary(); return self.headUnitPage() },
                 "web": headUnitPage, "log": logPage, "lab": diagnosticsPage, "about": aboutPage,
                 "usage": usagePage, "updates": aboutPage, "https": httpsSettingsPage]
             if arguments.indices.contains(index + 1), let make = pages[arguments[index + 1]] {
@@ -2052,7 +2074,7 @@ extension ReceiverViewController {
         let previousOutput = defaults.object(forKey: "headUnitOutput") as? Int
         let legacyOutput: HeadUnitOutput = defaults.bool(forKey: "carLifeEnabled") ? .carLife : .browser
         let migratedOutput = previousOutput.map { $0 == 1 ? HeadUnitOutput.carLife : .browser } ?? legacyOutput
-        headUnitOutput.selectedSegmentIndex = (savedOutput.flatMap(HeadUnitOutput.init(rawValue:)) ?? migratedOutput).rawValue
+        headUnitOutput.selectedSegmentIndex = (savedOutput.flatMap(HeadUnitOutput.init(rawValue:)) ?? migratedOutput).menuIndex
         headUnitOutput.addTarget(self, action: #selector(headUnitOutputChanged), for: .valueChanged)
         for (field, key) in [(zeehoAddressField, "zeehoAddress"), (zeehoSEPlusAddressField, "zeehoSEPlusAddress")] {
             field.text = defaults.string(forKey: key) ?? "192.168.0.1"
@@ -2394,6 +2416,9 @@ extension ReceiverViewController {
                         UIApplication.shared.open(Self.supportURL)
                     },
                     .page("诊断与实验", icon: ("stethoscope", .systemTeal)) { [unowned self] in self.diagnosticsPage() },
+                    .externalLink("反馈与建议", icon: ("bubble.left.and.bubble.right.fill", .systemBlue)) {
+                        UIApplication.shared.open(URL(string: "https://v.wjx.cn/vm/e5IX6eZ.aspx")!)
+                    },
                     .page("关于", icon: ("info.circle.fill", .systemGray)) { [unowned self] in self.aboutPage() }
                 ])
             ]
@@ -2747,7 +2772,7 @@ extension ReceiverViewController {
             case .airPlay: return airPlayOutputSections()
             case .tailing: return tailingOutputSections()
             case .zeeho, .zeehoSEPlus, .zeehoAE2:
-                let name = outputMode == .zeehoAE2 ? "极核 AE2 Pro 5 寸" : outputMode == .zeehoSEPlus ? "极核 AE4 SE+ 升级版 5/5.5 寸（实验）" : "极核 AE4 MAX2+ 6.2 寸"
+                let name = outputMode == .zeehoAE2 ? "极核 AE2 Pro 5 寸" : outputMode == .zeehoSEPlus ? "极核 AE4 SE+ 升级版 5/5.5 寸" : "极核 AE4 MAX2+ 6.2 寸"
                 var rows: [SettingsRow] = []
                 rows.append(.control("自动查找仪表 IP", icon: ("network", .systemBlue), outputMode == .zeehoSEPlus ? zeehoSEPlusAutomaticSwitch : zeeho62AutomaticSwitch))
                 if outputMode == .zeehoSEPlus {
@@ -3073,7 +3098,13 @@ extension ReceiverViewController {
         page("关于") { [unowned self] in
             [
                 SettingsSection([.view(self.aboutIdentityCard())]),
-                SettingsSection(footer: "Copyright © 2026 xmz28", self.aboutLinks())
+                SettingsSection(footer: "Copyright © 2026 xmz28", self.aboutLinks()),
+                SettingsSection("开发与测试贡献", [
+                    .externalLink("yiquchangge1", icon: ("person.crop.circle", .systemBlue), detail: "极核 SE+ 5/5.5 寸") { UIApplication.shared.open(URL(string: "https://github.com/yiquchangge1")!) },
+                    .externalLink("武汉 · @yuliang-shuji", icon: ("person.crop.circle", .systemBlue), detail: "极核 AE2 Pro 5 寸") { UIApplication.shared.open(URL(string: "https://github.com/yuliang-shuji")!) },
+                    .externalLink("Boos4721", icon: ("person.crop.circle", .systemBlue), detail: "蚂蚁 ANT BMS") { UIApplication.shared.open(URL(string: "https://github.com/Boos4721")!) },
+                    .externalLink("扫毒单位 · @SDDW007", icon: ("person.crop.circle", .systemBlue), detail: "春风 5/6.2 寸") { UIApplication.shared.open(URL(string: "https://github.com/SDDW007")!) }
+                ])
             ]
         }
     }
