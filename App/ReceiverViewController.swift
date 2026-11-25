@@ -10,6 +10,7 @@ import UniformTypeIdentifiers
 
 final class ReceiverViewController: UIViewController, CLLocationManagerDelegate {
     private let receiver = NativeReceiver()
+    private let antBMS = ANTBMSController()
     private let bluetooth = BLEBootstrap()
     private let sameDevice = SameDeviceProbe()
     private let transportProbe = DirectAccessoryTransport()
@@ -622,6 +623,11 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                 self.log("视频显示失败：\(error.localizedDescription)")
             }
         }
+        antBMS.onLog = { [weak self] in self?.log($0) }
+        antBMS.onImage = { [weak self] image, configuration in
+            self?.receiver.setBMSOverlay(image, configuration: configuration)
+        }
+        antBMS.attach(to: videoSurface)
         videoSurface.onLog = { [weak self] in self?.log($0) }
         videoSurface.onKeyframeNeeded = { [weak self] reason in
             guard let self else { return }
@@ -898,6 +904,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         (settingsNavigation?.topViewController as? SettingsPageController)?.reload()
     }
     private func updateVideoAspect() {
+        antBMS.aspectRatio = outputMode == .ninebotSeven ? 1024 / 600 : 848 / 480
         guard videoHeight != nil else { return }
         let plan = running ? (liveDisplay ?? planDisplay(for: targetScreen)) : planDisplay(for: targetScreen)
         let width = plan.width, height = plan.height
@@ -2322,6 +2329,9 @@ extension ReceiverViewController {
                     }) { [unowned self] in self.soundPage() },
                     .control("驾驶位", icon: ("steeringwheel", .systemTeal), driveControl),
                     .page("车辆", icon: ("car.fill", .systemTeal)) { [unowned self] in self.vehiclePage() }
+                ]),
+                SettingsSection("电池", [
+                    .page("电池与 BMS", icon: ("battery.100", .systemGreen)) { [unowned self] in self.antBMS.settingsPage() }
                 ]),
                 SettingsSection("后台与画中画", footer: "锁屏前，请在 iPhone「设置 › 通用 › CarPlay › CarWithin」中打开「锁定时允许 CarPlay」。后台运行会增加耗电。画中画仅显示实时画面。离开 App 时自动开启需打开 iPhone「设置 › 通用 › 画中画」中的自动选项。", [
                     .control("锁屏与后台继续运行", icon: ("lock.fill", .systemPurple), keepAliveSwitch),

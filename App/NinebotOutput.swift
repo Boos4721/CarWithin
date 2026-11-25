@@ -18,6 +18,15 @@ final class NinebotOutput {
     private let queue = DispatchQueue(label: "CarWithin.ninebot", qos: .userInitiated)
     private var session: Session?
 
+    private var bmsImage: CGImage?
+    private var bmsConfiguration = ANTBMSCardConfiguration()
+
+    func setBMSOverlay(_ image: CGImage?, configuration: ANTBMSCardConfiguration) {
+        bmsImage = image; bmsConfiguration = configuration
+        let current = session
+        queue.async { current?.setBMSOverlay(image, configuration: configuration) }
+    }
+
     deinit { stop() }
 
     func start(localAddress: String, targetAddress: String, mode: Mode, onState: @escaping (String) -> Void,
@@ -25,7 +34,11 @@ final class NinebotOutput {
         stop()
         let next = Session(queue: queue, mode: mode, onState: onState, onLog: onLog, requestKeyframe: requestKeyframe)
         session = next
-        queue.async { next.start(localAddress, targetAddress) }
+        let overlay = bmsImage, configuration = bmsConfiguration
+        queue.async {
+            next.setBMSOverlay(overlay, configuration: configuration)
+            next.start(localAddress, targetAddress)
+        }
     }
 
     func append(_ data: Data, codec: VideoCodec, keyframe: Bool) {
@@ -86,6 +99,16 @@ final class NinebotOutput {
         private var acknowledgedVideo = false
         private var nextVideoFrame = 0.0
         private var status = ""
+
+        private var bmsOverlay: CIImage?
+        private var bmsConfiguration = ANTBMSCardConfiguration()
+
+        func setBMSOverlay(_ image: CGImage?, configuration: ANTBMSCardConfiguration) {
+            // Only 5/7-inch H.264 outputs are included in the first BMS integration.
+            bmsOverlay = usesJPEG ? nil : image.map { CIImage(cgImage: $0) }
+            bmsConfiguration = configuration
+            fresh = true
+        }
 
         init(queue: DispatchQueue, mode: Mode, onState: @escaping (String) -> Void, onLog: @escaping (String) -> Void,
              requestKeyframe: @escaping () -> Void) {
@@ -343,7 +366,7 @@ final class NinebotOutput {
         private func fittedImage(_ image: CVPixelBuffer) throws -> CVPixelBuffer {
             let width = sevenInch ? NinebotOutput.sevenInchFormat.width : NinebotOutput.width
             let height = sevenInch ? NinebotOutput.sevenInchFormat.height : NinebotOutput.height
-            if CVPixelBufferGetWidth(image) == width, CVPixelBufferGetHeight(image) == height { return image }
+            if bmsOverlay == nil, CVPixelBufferGetWidth(image) == width, CVPixelBufferGetHeight(image) == height { return image }
             var buffer: CVPixelBuffer?
             let status = CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA,
                                              [kCVPixelBufferIOSurfacePropertiesKey: [:]] as CFDictionary, &buffer)
@@ -360,7 +383,16 @@ final class NinebotOutput {
             let positioned = scaled.transformed(by: CGAffineTransform(
                 translationX: (bounds.width - scaled.extent.width) / 2,
                 y: (bounds.height - scaled.extent.height) / 2))
-            return positioned.composited(over: CIImage(color: .black)).cropped(to: bounds)
+            let canvas = positioned.composited(over: CIImage(color: .black)).cropped(to: bounds)
+            guard let bmsOverlay else { return canvas }
+            let overlayWidth = bounds.width * CGFloat(bmsConfiguration.size.widthFraction)
+            let factor = overlayWidth / bmsOverlay.extent.width
+            let scaledOverlay = bmsOverlay.transformed(by: CGAffineTransform(scaleX: factor, y: factor))
+            let margin = max(6, bounds.width * 0.007)
+            let overlay = scaledOverlay.transformed(by: CGAffineTransform(
+                translationX: bmsConfiguration.position.isAtRight ? bounds.maxX - margin - scaledOverlay.extent.width : margin,
+                y: bmsConfiguration.position.isAtTop ? bounds.maxY - margin - scaledOverlay.extent.height : margin))
+            return overlay.composited(over: canvas).cropped(to: bounds)
         }
 
         private func logCodecFailure(_ stage: String, _ error: Error) {
