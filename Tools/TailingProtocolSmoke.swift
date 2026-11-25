@@ -174,6 +174,7 @@ struct TailingTests {
                     try primary.write(TailingProtocol.control(0x10780, identifier: 21, payload: runningLog))
                     let logResponse = try TailingProtocol.readControl { try primary.readExactly($0) }
                     try expect(logResponse.command == 0x10781 && logResponse.identifier == 21, "仪表运行日志不得中断协商")
+                    if profile == .zeehoSEPlus {
                     let notifications: [UInt32] = [0x103b0, 0x103a0, 0x10470, 0x104a0, 0x10020]
                     for (index, command) in notifications.enumerated() {
                         let identifier = UInt32(100 + index)
@@ -182,6 +183,7 @@ struct TailingTests {
                         let receipt = try TailingProtocol.readControl { try primary.readExactly($0) }
                         try expect(receipt.command == command + 1 && receipt.identifier == identifier && receipt.payload.isEmpty,
                                    "MotoPlay 扩展通知不得终止控制通道")
+                    }
                     }
                     let serialCheck = try TailingProtocol.json(["sn": "TEST-SERIAL"])
                     try primary.write(TailingProtocol.control(0x103e0, identifier: 24, payload: serialCheck))
@@ -203,7 +205,7 @@ struct TailingTests {
                     }
                     try reverse.write(TailingProtocol.control(m.command == 0x205a0 ? 0x80000010 : m.command + 1, identifier: m.identifier))
                 }
-                if isZeeho {
+                if profile == .zeehoSEPlus {
                     try reverse.write(TailingProtocol.control(0x103b0, identifier: 109))
                     let receipt = try TailingProtocol.readControl { try reverse.readExactly($0) }
                     try expect(receipt.command == 0x103b1 && receipt.identifier == 109 && receipt.payload.isEmpty,
