@@ -216,7 +216,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     }
     private let ninebotCard = UIStackView()
     private var ninebotCardInstructions: UILabel?
-    private static let ninebotFiveInstructions = "点「启动本机 CarPlay」后，会先准备仪表投屏通道并发送握手，再自动启动 CarPlay。\n若仪表仍未出画，可保持 CarPlay 运行，到九号出行开启投屏导航；出画后退出九号出行。"
+    private static let ninebotFiveInstructions = "点「启动本机 CarPlay」后，会先准备仪表投屏通道并发送握手，再自动启动 CarPlay。\n若仪表仍未出画，可保持 CarPlay 运行，到九号出行开启投屏导航。出画后可尝试退出九号出行；若投屏随之结束，请保留九号出行的后台会话。"
     private static let ninebotOfficialInstructions = "点「启动本机 CarPlay」后，会先准备仪表投屏通道并发送握手，再自动启动 CarPlay。\n若仪表仍未出画，该型号可能仍需在九号出行开启投屏导航，并让九号出行留在后台。"
     private let ninebotVehicle = NinebotVehicleConnection()
     private let ninebotVehicleButton = UIButton(type: .system)
