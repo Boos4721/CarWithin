@@ -37,6 +37,7 @@ struct TailingTests {
         try tailingJPEGSizeSmoke()
         try tailingMediaSmoke()
         #endif
+        try dimensions()
         try frames()
         try identity()
         try socketCancellation()
@@ -49,6 +50,9 @@ struct TailingTests {
         let alternate = InstrumentFrameSize(width: 854, height: 480)
         try simulatedInstrument(identity: stableIdentity, profile: .zeehoSEPlus,
                                 reported: alternate, expected: alternate)
+        for size in [InstrumentFrameSize(width: 800, height: 480), InstrumentFrameSize(width: 854, height: 480), InstrumentFrameSize(width: 480, height: 800)] {
+            try simulatedInstrument(identity: stableIdentity, profile: .zeehoAE2, reported: size, expected: size)
+        }
         try rejectedInstrument()
         try cancelledHandshake()
         print("PASS: 台铃拆包/合包、长度校验、RSA2048/type1、TCP取消、模拟仪表握手/逐帧拉取/保活/重启、错误型号拒绝、协商中停止")
@@ -79,6 +83,29 @@ struct TailingTests {
         let envelope = try TailingProtocol.jpeg(jpeg)
         try expect(envelope.uint32LE(0) == 6 && envelope.dropFirst(4) == jpeg, "JPEG小端长度及内容")
         try rejects("不完整 JPEG") { _ = try TailingProtocol.jpeg(Data(jpeg.dropLast())) }
+    }
+
+    private static func outputSize(for profile: TailingDisplayProfile, reportedWidth: Int, reportedHeight: Int) throws -> InstrumentFrameSize {
+        guard let size = profile.outputSize(for: InstrumentFrameSize(width: reportedWidth, height: reportedHeight)) else { throw TailingError.protocolFailure("invalid size") }
+        return size
+    }
+
+    private static func dimensions() throws {
+        for size in [(800, 480), (854, 480), (480, 800), (1024, 488), (1920, 1080)] {
+            let result = try outputSize(for: .zeehoAE2, reportedWidth: size.0, reportedHeight: size.1)
+            try expect(result.width == size.0 && result.height == size.1, "使用仪表上报的尺寸")
+        }
+        let rounded = try outputSize(for: .zeehoAE2, reportedWidth: 855, reportedHeight: 481)
+        try expect(rounded.width == 854 && rounded.height == 480, "H.264 偶数尺寸")
+        for size in [(0, 480), (800, 0), (65535, 480), (800, 65535)] {
+            try rejects("不合理尺寸") { _ = try outputSize(for: .zeehoAE2, reportedWidth: size.0, reportedHeight: size.1) }
+        }
+        try rejects("6.2 寸继续限制型号尺寸") {
+            _ = try outputSize(for: .zeeho62, reportedWidth: 800, reportedHeight: 480)
+        }
+        let legacy = try outputSize(for: .zeeho62, reportedWidth: 1024, reportedHeight: 488)
+        try expect(legacy.height == 480, "保留 6.2 寸的 488 到 480 映射")
+        print("PASS: AE2 协商尺寸与旧型号边界")
     }
 
     private static func identity() throws {
@@ -117,6 +144,7 @@ struct TailingTests {
     private static func simulatedInstrument(identity: TailingIdentity, idleControlFrames: Int = 0,
                                             profile: TailingDisplayProfile = .tailing43,
                                             reported: InstrumentFrameSize? = nil, expected: InstrumentFrameSize? = nil) throws {
+        FileHandle.standardError.write(Data("Testing instrument profile: \(profile)\n".utf8))
         let panel = reported ?? (profile == .zeeho62 ? InstrumentFrameSize(width: 1024, height: 488) : profile.preferredSize)
         let expectedSize = expected ?? profile.preferredSize
         let announcement = try TailingSocket.listening(localIP: "127.0.0.1", port: 0)

@@ -80,6 +80,10 @@ Connect the iPhone to the instrument Wi-Fi, select the matching preset and choos
 
 One instrument was tested successfully, including screen lock. Other models and long sessions require further testing.
 
+### ZEEHO AE2 Pro 5-inch display
+
+Connect the iPhone to the dashboard Wi-Fi, select the matching preset, then choose `极核 AE2 Pro 5 寸` under Current output. Start projection on the dashboard and start CarPlay in the app. The default dashboard address is `192.168.0.1`, configurable in Output settings. Video uses H.264 at the size reported by the dashboard, up to 25 fps. Projection was confirmed on one AE2 Pro.
+
 ### Additional dashboard support
 
 - **Ninebot 7-inch:** Connect to the dashboard Wi-Fi, select this output, start CarPlay, then enable navigation casting in Ninebot app and keep it running in the background. Display was confirmed on one dashboard.

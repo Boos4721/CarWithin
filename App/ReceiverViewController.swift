@@ -216,10 +216,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private lazy var pictureInPicture = CarPlayPictureInPicture(surface: videoSurface)
     private let keepAlive = BackgroundKeepAlive()
     private let keepAliveSwitch = UISwitch()
-    private let headUnitOutput = ChoiceMenu(items: ["浏览器", "CarLife", "AirPlay", "台铃 4.3 寸", "九号 5 寸", "极核 6.2 寸", "九号 7 寸", "九号 4.3 寸（实验）", "极核 SE+ 5/5.5 寸（实验）"])
+    private let headUnitOutput = ChoiceMenu(items: ["浏览器", "CarLife", "AirPlay", "台铃 4.3 寸", "九号 5 寸", "极核 6.2 寸", "九号 7 寸", "九号 4.3 寸（实验）", "极核 SE+ 5/5.5 寸（实验）", "极核 AE2 Pro 5 寸"])
     private enum HeadUnitOutput: Int {
         // Persisted in headUnitOutputV2. Append new modes after existing values.
-        case browser, carLife, airPlay, tailing, ninebot, zeeho, ninebotSeven, ninebot43, zeehoSEPlus
+        case browser, carLife, airPlay, tailing, ninebot, zeeho, ninebotSeven, ninebot43, zeehoSEPlus, zeehoAE2
         var ninebotMode: NinebotOutput.Mode? {
             switch self {
             case .ninebot: .fiveInch
@@ -231,6 +231,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         var zeehoProfile: TailingDisplayProfile? {
             switch self {
             case .zeeho: return .zeeho62
+            case .zeehoAE2: return .zeehoAE2
             case .zeehoSEPlus: return .zeehoSEPlus
             default: return nil
             }
@@ -2679,8 +2680,8 @@ extension ReceiverViewController {
             case .carLife: return carLifeOutputSections()
             case .airPlay: return airPlayOutputSections()
             case .tailing: return tailingOutputSections()
-            case .zeeho, .zeehoSEPlus:
-                let name = outputMode == .zeehoSEPlus ? "极核 AE4 SE+ 升级版 5/5.5 寸（实验）" : "极核 AE4 MAX2+ 6.2 寸"
+            case .zeeho, .zeehoSEPlus, .zeehoAE2:
+                let name = outputMode == .zeehoAE2 ? "极核 AE2 Pro 5 寸" : outputMode == .zeehoSEPlus ? "极核 AE4 SE+ 升级版 5/5.5 寸（实验）" : "极核 AE4 MAX2+ 6.2 寸"
                 var rows: [SettingsRow] = []
                 rows.append(.control("自动查找仪表 IP", icon: ("network", .systemBlue), outputMode == .zeehoSEPlus ? zeehoSEPlusAutomaticSwitch : zeeho62AutomaticSwitch))
                 if outputMode == .zeehoSEPlus {
