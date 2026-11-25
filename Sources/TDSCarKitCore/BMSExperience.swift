@@ -43,7 +43,7 @@ public struct BMSConnectionPresentation: Equatable {
             title = "请检查模块登录信息"; detail = reason; tone = .attention; action = .access; return
         }
         if phase == .needsFamily {
-            title = "请核对设备板型"; detail = reason; tone = .attention; action = .family; return
+            title = "请核对设备板型"; detail = reason; tone = .attention; action = hasSelection ? .family : .scan; return
         }
         if !hasSelection {
             title = phase == .scanning ? "正在查找电池" : "添加你的电池"

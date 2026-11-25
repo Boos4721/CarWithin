@@ -34,6 +34,7 @@ final class BMSExperienceTests: XCTestCase {
         XCTAssertEqual(state(.bluetoothUnavailable).action, .settings)
         XCTAssertEqual(state(.needsAccess).action, .access)
         XCTAssertEqual(state(.needsFamily).action, .family)
+        XCTAssertEqual(state(.needsFamily, selected: false).action, .scan)
         XCTAssertEqual(state(.scanning, selected: false).action, .scan)
         XCTAssertEqual(state(.receiving, fresh: true).action, .none)
     }

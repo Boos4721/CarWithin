@@ -120,8 +120,9 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
         guard enabled else { return }
         scanRequested=true;found.removeAll();discovered.removeAll();beginScan()
     }
-    func select(_ id:UUID, family: BMSFamily? = nil, requiresConfirmation: Bool = false) {
-        guard enabled,let device=found[id],let family=family ?? rememberedFamily(for: id) ?? device.family else { return }
+    @discardableResult
+    func select(_ id:UUID, family: BMSFamily? = nil, requiresConfirmation: Bool = false) -> Bool {
+        guard enabled,let device=found[id],let family=family ?? rememberedFamily(for: id) ?? device.family else { return false }
         automaticReconnect = true
         sample=nil;lastReadingUptime=nil
         let selection = Selection(id: id, name: device.name, family: family)
@@ -130,6 +131,7 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
         reconnectWork?.cancel();reconnectWork=nil;scanTimeout?.cancel();scanTimeout=nil
         central?.stopScan();scanRequested=false;clearConnection();retryDelay=2
         connectRememberedOrScan()
+        return true
     }
     private func persist(_ selection: Selection) {
         defaults.set(selection.id.uuidString, forKey: "antBMSPeripheral")
@@ -273,7 +275,7 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
         let soc=BMSFamily.advertisedSOC(name)
         discovered[item.identifier]=item
         found[item.identifier]=Device(id:item.identifier,name:name,rssi:RSSI.intValue,family:family,advertisedSOC:soc)
-        if selectedID==item.identifier,selectedFamily == .xiaoha,let soc {
+        if automaticReconnect,selectedID==item.identifier,selectedFamily == .xiaoha,let soc {
             var values=BMSValues();values.soc=soc;values.details["数据来源"]="HBB 名称广播，只有电量"
             let now=ProcessInfo.processInfo.systemUptime
             sample=ANTBMSSample(reading:values.reading(.xiaoha),uptime:now);lastReadingUptime=now

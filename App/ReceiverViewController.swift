@@ -3733,6 +3733,9 @@ extension ReceiverViewController {
             } else {
                 controls.append(.action("开始新记录", icon: ("record.circle", .systemBlue)) { [unowned self] in
                     guard self.bmsEnabledSwitch.isOn else { self.alert("先开启 BMS", "在电池与 BMS 页面开启读取并连接自己的设备。"); return }
+                    guard !self.bmsClient.isConfirmingSelection else {
+                        self.alert("先完成电池核对", "保存已确认的电池后再开始记录。"); return
+                    }
                     self.beginBMSSessionIfNeeded(); self.reloadVisibleSettings()
                 })
             }
@@ -3926,7 +3929,9 @@ extension ReceiverViewController {
             settingsNavigation?.pushViewController(bmsDevicesPage(), animated: true)
             bmsClient.scan()
         case .retry: bmsClient.retry()
-        case .access: configureBMSAccess()
+        case .access:
+            if [.jbd, .lanbao].contains(bmsClient.selectedFamily) { configureBMSAccess() }
+            else { alert("暂时无法读取本机配置", bmsClient.status) }
         case .family: settingsNavigation?.pushViewController(bmsFamilyPage(), animated: true)
         case .settings:
             if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
@@ -3984,7 +3989,10 @@ extension ReceiverViewController {
     private func bmsDeviceRow(_ device: ANTBMSClient.Device) -> SettingsRow {
         var row = SettingsRow.action(device.name) { [unowned self] in
             if let family = self.bmsClient.rememberedFamily(for: device.id) {
-                self.bmsClient.select(device.id, family: family); self.saveActiveVehicleProfile()
+                guard self.bmsClient.select(device.id, family: family) else {
+                    self.alert("设备列表已更新", "请重新扫描并选择设备。"); return
+                }
+                self.saveActiveVehicleProfile()
                 if self.running { self.beginBMSSessionIfNeeded() }
             } else { self.chooseBMSFamily(for: device.id) }
         }
@@ -4073,7 +4081,9 @@ extension ReceiverViewController {
             let title = family.title + (family == suggested ? "（设备提示）" : "")
             prompt.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
                 guard let self else { return }
-                self.bmsClient.select(id, family: family, requiresConfirmation: true)
+                guard self.bmsClient.select(id, family: family, requiresConfirmation: true) else {
+                    self.alert("设备列表已更新", "请重新扫描并选择设备。"); return
+                }
                 self.settingsNavigation?.pushViewController(self.bmsSetupPage(), animated: true)
             })
         }
