@@ -84,6 +84,17 @@ final class PxcConnection: @unchecked Sendable {
         return parts.joined(separator: ".")
     }
 
+    static func validatedMediaSize(_ body: Data) throws -> MediaSize {
+        guard body.count >= 12 else { throw TailingError.protocolFailure("春风媒体配置不完整") }
+        let width = Int(body.uint16LE(0)), height = Int(body.uint16LE(2))
+        let fps = Int(body.uint32LE(4)), codec = body.uint32LE(8)
+        guard (240...1920).contains(width), (240...1080).contains(height),
+              (1...60).contains(fps), codec == 0 || codec == 2 else {
+            throw TailingError.protocolFailure("春风媒体尺寸、帧率或编码格式无效")
+        }
+        return MediaSize(width: width & ~0xF, height: height & ~0xF, fps: fps)
+    }
+
     func start() throws {
         let loaded = try identityProvider()
         condition.lock(); identity = loaded; condition.unlock()
@@ -125,7 +136,7 @@ final class PxcConnection: @unchecked Sendable {
                 let reply = try TailingProtocol.readControl { try socket.readExactly($0, timeout: 4) }
                 let text = String(data: reply.payload, encoding: .utf8) ?? ""
                 log("\(dashboard) 探测#\(attempt) ← 0x\(String(format: "%08x", reply.command)) \(text)")
-                guard reply.command == Command.probeAck, text.contains("true") else {
+                guard reply.command == Command.probeAck, try TailingProtocol.object(reply.payload)["status"] as? Bool == true else {
                     throw TailingError.protocolFailure("仪表拒绝了投屏探测：\(text)")
                 }
                 log("\(dashboard) 仪表同意投屏，正在等它回连 \(Port.control)/\(Port.media)/\(Port.video)")
@@ -275,13 +286,15 @@ final class PxcConnection: @unchecked Sendable {
         switch request.command {
         case Command.configCapture:
             let body = request.payload
-            let width = body.count >= 2 ? Int(body.uint16LE(0)) : negotiated.width
-            let height = body.count >= 4 ? Int(body.uint16LE(2)) : negotiated.height
-            let fps = body.count >= 8 ? Int(body.uint32LE(4)) : 30
-            let encoder = body.count >= 12 ? Int(body.uint32LE(8)) : 2
+            let size = try Self.validatedMediaSize(body)
+            let width = Int(body.uint16LE(0)), height = Int(body.uint16LE(2))
+            let fps = size.fps, encoder = Int(body.uint32LE(8))
             let ext = body.count >= 30 ? body[body.startIndex + 29] : 0
-            let alignedWidth = width & ~0xF
-            let alignedHeight = height & ~0xF
+            let alignedWidth = size.width, alignedHeight = size.height
+            condition.lock()
+            let changed = configured && negotiated != size
+            condition.unlock()
+            guard !changed else { throw TailingError.protocolFailure("春风会话内媒体尺寸发生变化，请重新连接") }
             var payload = Data()
             payload.appendLE(UInt32(encoder == 0 ? 2 : encoder))
             payload.appendLE(UInt16(alignedWidth))
@@ -306,7 +319,9 @@ final class PxcConnection: @unchecked Sendable {
             try socket.write(TailingProtocol.auxiliary(Command.configExtend + 1, token: request.token, payload: payload))
             log("\(dashboard) 扩展采集配置 \(request.payload.count) 字节 → 回 97")
         case Command.dataStart:
-            condition.lock(); mediaStarted = true; condition.broadcast(); condition.unlock()
+            condition.lock()
+            guard configured else { condition.unlock(); throw TailingError.protocolFailure("春风在媒体配置前请求开流") }
+            mediaStarted = true; condition.broadcast(); condition.unlock()
             try socket.write(TailingProtocol.auxiliary(Command.dataStart + 1, token: request.token, payload: Data()))
             log("\(dashboard) 仪表要求开流，已回 113（等待仪表逐帧拉画面）")
         case Command.dataNext:
@@ -330,6 +345,7 @@ final class PxcConnection: @unchecked Sendable {
             if !condition.wait(until: deadline) { throw TailingError.timeout("等待仪表逐帧拉取画面") }
         }
         try checkLocked()
+        frameRequested = false
     }
 
     func sendH264(_ accessUnit: Data) throws {
@@ -349,7 +365,6 @@ final class PxcConnection: @unchecked Sendable {
             throw terminalError(or: TailingError.channel("发送 H.264", error))
         }
         condition.lock()
-        frameRequested = false
         let count = framesSent + 1
         framesSent = count
         condition.unlock()
