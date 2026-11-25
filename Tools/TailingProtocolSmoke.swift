@@ -38,6 +38,7 @@ struct TailingTests {
         try tailingMediaSmoke()
         #endif
         try dimensions()
+        try cfmotoNegotiationSmoke()
         try frames()
         try identity()
         try socketCancellation()

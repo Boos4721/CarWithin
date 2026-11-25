@@ -31,6 +31,10 @@ struct ReceiverConfiguration {
     var zeehoProfile: TailingDisplayProfile = .zeeho62
     var zeehoFrameRate: ZeehoFrameRate = .fps25
     var zeehoVideoMode: ZeehoVideoMode = .transcode
+    /// 春风仪表（MotoPlay / PXC）：手机监听 10920/10921/10922，向仪表 10930 探测。
+    /// 留空表示自动取本机所在网段的网关（仪表热点一般是 .1）。
+    var cfmotoAddress: String?
+    var cfmotoProfile: CfmotoProfile?
     var ninebotAddress: String?
     var ninebotMode: NinebotOutput.Mode = .fiveInch
     var tailingAddress: String?
@@ -154,6 +158,15 @@ struct ReceiverConfiguration {
                   !zeehoAddress.hasPrefix("127."), !zeehoAddress.hasPrefix("0."),
                   !zeehoAddress.hasPrefix("169.254."), UInt32(bigEndian: target.s_addr) < 0xe0000000 else {
                 throw ConfigurationError("请输入有效的极核仪表 IPv4 地址，与本机 IP 不同。")
+            }
+        }
+        if let cfmotoAddress, !cfmotoAddress.isEmpty {
+            var target = in_addr()
+            guard inet_pton(AF_INET, cfmotoAddress, &target) == 1, cfmotoAddress != address,
+                  !cfmotoAddress.hasPrefix("127."), !cfmotoAddress.hasPrefix("0."),
+                  !cfmotoAddress.hasPrefix("169.254."), UInt32(bigEndian: target.s_addr) < 0xe0000000,
+                  !cfmotoAddress.hasSuffix(".0"), !cfmotoAddress.hasSuffix(".255") else {
+                throw ConfigurationError("请输入春风仪表真实的 IPv4 地址（不能用网段地址 .0 或广播地址 .255），留空则自动取网关 .1。")
             }
         }
         if let ninebotAddress {
