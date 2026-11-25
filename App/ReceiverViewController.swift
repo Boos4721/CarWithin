@@ -1,5 +1,6 @@
 import UIKit
 import SwiftUI
+import Combine
 import AVKit
 import Network
 import NetworkExtension
@@ -185,17 +186,21 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         cfmotoCardStatus.text = message
     }
     private let ninebotCard = UIStackView()
-    private var ninebotCardInstructions: UILabel?
-    private static let ninebotFiveInstructions = "iPhone 连上仪表 Wi-Fi 后，直接点「启动本机 CarPlay」。\n如果仪表没画面，保持 CarWithin 的 CarPlay 运行，切到九号出行开启投屏导航。仪表出画后，从多任务界面划掉九号出行，再回到 CarWithin。"
-    private static let ninebotOfficialInstructions = "加入仪表 Wi-Fi 后，先在这里启动 CarPlay，再到九号出行开启投屏导航，并让九号出行留在后台。"
+    private static let ninebotInstructions = "让 iPhone 加入仪表 Wi-Fi。配对并选择车辆后，CarWithin 会在启动投屏时自动开启仪表导航。"
     private let ninebotCardStatus = UILabel()
     private let ninebotStatus = StatusLabel()
     private let ninebotAddressField = UITextField()
     private let ninebot43AddressField = UITextField()
+    private let ninebotVehicle = NinebotVehicleConnection()
+    private let ninebotVehicleButton = UIButton(type: .system)
+    private let ninebotVehicleStatus = UILabel()
+    private var ninebotVehicleObservation: AnyCancellable?
+    private var requestedVehicleProjection = false
     private var activeNinebotAddressField: UITextField { outputMode == .ninebot43 ? ninebot43AddressField : ninebotAddressField }
-    private var ninebotInstructions: String {
-        outputMode == .ninebot ? Self.ninebotFiveInstructions : Self.ninebotOfficialInstructions
+    private var supportsNinebotVehicle: Bool {
+        modeControl.selectedSegmentIndex != 2 && outputMode.ninebotMode != nil
     }
+
     private func updateNinebotStatus(_ message: String) {
         ninebotStatus.text = message
         ninebotCardStatus.text = message
@@ -543,13 +548,27 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         cfmotoSettings.addAction(UIAction { [weak self] _ in self?.revealSettings(output: true) }, for: .touchUpInside)
         cfmotoCard.addArrangedSubview(cfmotoSettings)
         stack.addArrangedSubview(cfmotoCard)
-        ninebotCardInstructions = configureConnectionCard(ninebotCard, title: "九号仪表连接", symbol: "scooter", color: .systemBlue,
-            instructions: Self.ninebotFiveInstructions, status: ninebotCardStatus)
+        configureConnectionCard(ninebotCard, title: "九号仪表连接", symbol: "scooter", color: .systemBlue,
+            instructions: Self.ninebotInstructions, status: ninebotCardStatus)
+        ninebotVehicleStatus.font = .preferredFont(forTextStyle: .footnote)
+        ninebotVehicleStatus.adjustsFontForContentSizeCategory = true
+        ninebotVehicleStatus.textColor = .secondaryLabel
+        ninebotVehicleStatus.numberOfLines = 0
+        ninebotCard.addArrangedSubview(ninebotVehicleStatus)
         let ninebotSettings = UIButton(type: .system)
         ninebotSettings.configuration = .tinted()
         ninebotSettings.configuration?.title = "连接设置"
         ninebotSettings.addAction(UIAction { [weak self] _ in self?.revealSettings(output: true) }, for: .touchUpInside)
         ninebotCard.addArrangedSubview(ninebotSettings)
+        ninebotVehicleButton.configuration = .tinted()
+        ninebotVehicleButton.configuration?.title = "车辆配对"
+        ninebotVehicleButton.addAction(UIAction { [weak self] _ in self?.revealSettings(vehicle: true) }, for: .touchUpInside)
+        ninebotCard.addArrangedSubview(ninebotVehicleButton)
+        ninebotVehicleObservation = ninebotVehicle.$status.combineLatest(ninebotVehicle.$garage).sink { [weak self] status, garage in
+            self?.ninebotVehicleButton.configuration?.subtitle = garage.selected?.name
+            self?.ninebotVehicleStatus.isHidden = garage.selected == nil
+            self?.ninebotVehicleStatus.text = status
+        }
         stack.addArrangedSubview(ninebotCard)
         configureConnectionCard(tailingCard, title: "台铃 4.3 寸连接", symbol: "scooter", color: .systemOrange,
             instructions: "iPhone 加入仪表的 Wi-Fi，打开仪表投屏，再启动本机 CarPlay。画面在仪表上显示，操作在 iPhone 上完成。",
@@ -1138,8 +1157,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             let address = usesAutomaticZeehoAddress ? "自动查找仪表 IP" : "仪表 IP：\(activeZeehoAddressField.text ?? "192.168.0.1")"
             updateZeehoStatus("等待启动 CarPlay · \(address)")
         }
-        ninebotCard.isHidden = !showsLocalOutput || outputMode.ninebotMode == nil
-        ninebotCardInstructions?.text = ninebotInstructions
+        ninebotCard.isHidden = !supportsNinebotVehicle
         if !running { updateNinebotStatus("等待启动 CarPlay · 仪表 IP：\(activeNinebotAddressField.text ?? "")") }
         cfmotoCard.isHidden = !showsLocalOutput || !outputMode.cfmoto
         if !running {
@@ -1557,6 +1575,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             httpsPort = nil
         }
         guard !needsNetworkDetails || openNetworkSwitch.isOn || !(passwordField.text ?? "").isEmpty else {
+            stopVehicleProjection()
             statusLabel.text = "请输入 Wi-Fi 密码；开放网络请选择“无密码”。"
             revealSettings(wifi: true); return
         }
@@ -1583,7 +1602,11 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         }
         if modeControl.selectedSegmentIndex == 1 {
             guard let identity else { return }
-            guard let address = localCarPlayAddress else { waitForLocalNetwork(); return }
+            guard let address = localCarPlayAddress else {
+                let waitingForVehicle = beginVehicleProjection()
+                waitForLocalNetwork(waitingForVehicle: waitingForVehicle)
+                return
+            }
             var config = ReceiverConfiguration(name: nameField.text ?? "CarWithin", address: address,
                 ssid: ssidField.text ?? "", password: password, wifiChannel: channel, audioEnabled: soundOutput != .phone,
                 videoOutputPort: outputPort, secureVideoOutputPort: httpsPort,
@@ -1591,13 +1614,14 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             if !restartingAutomatically { autoRestarts = 0; lightLevel = 0; reportedScreen = nil; primaryViewer = nil }
             configureDisplay(&config)
             do { try config.validate() } catch {
+                stopVehicleProjection()
                 log("无法启动本机 CarPlay：\(error.localizedDescription)")
                 revealSettings(); statusLabel.text = error.localizedDescription; return
             }
             liveDisplay = DisplayPlan(width: config.width, height: config.height, fps: config.maxFPS,
                                       codec: config.videoCodec, iconWidthMM: config.widthPhysicalMM)
             updateVideoAspect()
-            guard saveSettings(config) else { return }
+            guard saveSettings(config) else { stopVehicleProjection(); return }
             sessionHasVehicleButton = CarPlayInfo.vehicleButtonSize(in: config) != nil
             // Activate while foregrounded, before the virtual CarPlay route is selected.
             // Waiting until willResignActive can fail to acquire an audio session on CarAudio.
@@ -1618,6 +1642,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             }
             prepareExternalOutput(configuration: config)
             receiver.start(configuration: config, identity: identity, preferredViewer: primaryViewer)
+            beginVehicleProjection()
             watchStartupAddress(address)
             return
         }
@@ -1650,7 +1675,24 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         }
         prepareExternalOutput(configuration: config)
         receiver.start(configuration: config, identity: identity)
+        beginVehicleProjection()
     }
+
+    @discardableResult
+    private func beginVehicleProjection() -> Bool {
+        guard supportsNinebotVehicle, ninebotVehicle.garage.selected != nil else { return false }
+        if !requestedVehicleProjection {
+            requestedVehicleProjection = true
+            ninebotVehicle.startProjection()
+        }
+        return true
+    }
+
+    private func stopVehicleProjection() {
+        requestedVehicleProjection = false
+        ninebotVehicle.stopProjection()
+    }
+
     private var localCarPlayAddress: String? {
         outputMode.usesInstrumentWiFi ? ReceiverConfiguration.wifiIPv4Address() : browserAddress
     }
@@ -1659,16 +1701,18 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         refreshBrowserAddressLabels()
     }
 
-    private func waitForLocalNetwork() {
+    private func waitForLocalNetwork(waitingForVehicle: Bool) {
         waitingForNetwork = true
         modeControl.isEnabled = false
         setEditing(false)
         startButton.setTitle("取消连接", for: .normal)
-        statusLabel.text = "正在等待 Wi-Fi 分配 IP 地址…"
+        statusLabel.text = waitingForVehicle
+            ? "正在连接车辆。请在系统设置加入仪表 Wi-Fi。"
+            : "正在等待 Wi-Fi 分配 IP 地址…"
         networkStartupTask?.cancel()
         networkStartupTask = Task { [weak self] in
             var candidate: String?
-            for _ in 0..<20 {
+            for _ in 0..<(waitingForVehicle ? 120 : 20) {
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 guard !Task.isCancelled, let self else { return }
                 let address = self.localCarPlayAddress
@@ -1707,7 +1751,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                       self.networkRestartCount < 2, UIApplication.shared.applicationState == .active else { continue }
                 self.networkRestartCount += 1
                 self.log("启动期间 Wi-Fi 已切换或恢复，使用当前地址重新连接 CarPlay")
-                self.stop()
+                self.stop(keepVehicleNavigation: true)
                 self.restartingAutomatically = true
                 self.toggleReceiver()
                 self.restartingAutomatically = false
@@ -1716,7 +1760,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         }
     }
 
-    private func stop() {
+    private func stop(keepVehicleNavigation: Bool = false) {
+        if !keepVehicleNavigation { stopVehicleProjection() }
         localStartupID = nil
         networkStartupTask?.cancel()
         networkStartupTask = nil
@@ -2188,7 +2233,7 @@ extension ReceiverViewController {
     }
 
     /// Shows settings and, when needed, takes the user to the relevant connection settings.
-    func revealSettings(wifi: Bool = false, output: Bool = false) {
+    func revealSettings(wifi: Bool = false, output: Bool = false, vehicle: Bool = false) {
         view.endEditing(true)
         if let navigation = settingsNavigation {
             if wifi, activeWiFiForm == nil {
@@ -2207,6 +2252,7 @@ extension ReceiverViewController {
         navigation.presentationController?.delegate = self
         if wifi { navigation.pushViewController(wifiPage(), animated: false) }
         if output { navigation.pushViewController(headUnitPage(), animated: false) }
+        if vehicle, supportsNinebotVehicle { navigation.pushViewController(ninebotVehiclePage(), animated: false) }
         settingsNavigation = navigation
         present(navigation, animated: true)
     }
@@ -2224,6 +2270,14 @@ extension ReceiverViewController {
     private func page(_ title: String, _ build: @escaping () -> [SettingsSection]) -> SettingsPageController {
         SettingsPageController(title: title, build: build)
     }
+    private func ninebotVehiclePage() -> UIViewController {
+        let controller = UIHostingController(rootView: NinebotVehiclePairingView(
+            connection: ninebotVehicle, locked: running || waitingForNetwork
+        ))
+        controller.title = "车辆配对"
+        return controller
+    }
+
     private func alert(_ title: String, _ message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "好", style: .default))
@@ -2379,6 +2433,11 @@ extension ReceiverViewController {
             }
             connection.append(.page("Wi-Fi 预设", icon: ("list.bullet", .systemBlue), detail: { WiFiPresetStore.selected()?.ssid ?? "未选择" }) { [unowned self] in self.presetsPage() })
             connection.append(.control("当前输出", icon: ("point.3.connected.trianglepath.dotted", .systemIndigo), headUnitOutput))
+            if supportsNinebotVehicle {
+                connection.append(.page("车辆配对", icon: ("scooter", .systemBlue), detail: { [unowned self] in
+                    self.ninebotVehicle.garage.selected?.name ?? "未选车辆"
+                }) { [unowned self] in self.ninebotVehiclePage() })
+            }
             connection.append(.page("输出设置", icon: ("slider.horizontal.3", .systemGray)) { [unowned self] in self.headUnitPage() })
             if outputMode == .browser {
                 connection.append(.page("HTTPS 设置", icon: ("lock.shield", .systemBlue)) { [unowned self] in self.httpsSettingsPage() })
@@ -2790,7 +2849,7 @@ extension ReceiverViewController {
                 rows.append(.note(zeehoStatus))
                 return [SettingsSection(name, footer: "让 iPhone 加入仪表 Wi-Fi，选择同名预设。结束其他投屏，打开仪表投屏后启动 CarPlay。声音由 iPhone 或蓝牙输出。", rows)]
             case .ninebot, .ninebotSeven, .ninebot43:
-                return [SettingsSection(headUnitOutput.selectedTitle, footer: outputMode == .ninebot ? ninebotInstructions : "\(ninebotInstructions) 切换 App 前请打开「锁屏与后台继续运行」。", [
+                return [SettingsSection(headUnitOutput.selectedTitle, footer: Self.ninebotInstructions, [
                     .field("仪表 IP 地址", activeNinebotAddressField, placeholder: outputMode == .ninebot43 ? "192.168.169.1" : "192.168.1.1"),
                     .note(ninebotStatus)
                 ])]
