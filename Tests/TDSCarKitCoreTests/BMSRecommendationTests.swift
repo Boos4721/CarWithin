@@ -69,7 +69,10 @@ final class BMSRecommendationTests: XCTestCase {
     }
     func testUnknownFieldsAndSingleCellDoNotClaimUnsupportedOrZeroDelta() {
         var caps = BMSFieldCapabilities(family: .mingtang)
-        caps.observe(reading(.mingtang, fields: ["voltage"], cells: [3.2], temperature: false))
+        let single = reading(.mingtang, fields: ["voltage"], cells: [3.2], temperature: false)
+        caps.observe(single)
+        XCTAssertNil(single.cellDelta)
+        XCTAssertEqual(ANTBMSCardConfiguration.Field.cellDelta.text(single), "压差 --mV")
         XCTAssertEqual(caps.availability(of: .current, reading: nil), .waiting)
         XCTAssertEqual(caps.availability(of: .cellDelta, reading: nil), .waiting)
         let previous = caps

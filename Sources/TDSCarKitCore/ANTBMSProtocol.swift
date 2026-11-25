@@ -36,7 +36,7 @@ public struct ANTBMSReading: Equatable {
     public var cellDelta: Double? {
         if let reportedCellDelta { return reportedCellDelta }
         let values = cells.compactMap { $0 }
-        guard let low = values.min(), let high = values.max() else { return nil }
+        guard values.count >= 2, let low = values.min(), let high = values.max() else { return nil }
         return high - low
     }
 
