@@ -312,6 +312,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let completedBMSCard = BMSRecordSummaryView()
     private let currentBMSCard = BMSRecordSummaryView()
     private var lastFinishedBMSRecord: BMSRideRecord?
+    private var showFinishedBMSSummary = false
     private let autoOpenBMSSummarySwitch = UISwitch()
     private let autoFullscreenSwitch = UISwitch()
     private var connectionTimeline: ConnectionTimeline?
@@ -2566,7 +2567,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         if !keepVehicleNavigation { stopVehicleProjection() }
         connectionFailure = nil
         if !preserveDiagnostics { recordConnection(.stopped, "连接已停止") }
-        let completedRecord = finishBMSSession()
+        let completedRecord = finishBMSSession(publishSummary: !preserveDiagnostics)
+        if preserveDiagnostics { showFinishedBMSSummary = false }
         connectionPhase = .stopped; instrumentPhase = .idle
         wiFiJoinID = nil
         wiFiJoinTask?.cancel()
@@ -3491,7 +3493,7 @@ extension ReceiverViewController {
     }
 
     private func refreshCompletedBMSCard() {
-        guard let record = lastFinishedBMSRecord else { completedBMSCard.isHidden = true; return }
+        guard showFinishedBMSSummary, let record = lastFinishedBMSRecord else { completedBMSCard.isHidden = true; return }
         let matchesVehicle = record.vehicleID.map { $0 == VehicleProfileStore.selectedID }
             ?? (record.vehicleName == currentVehicleName)
         completedBMSCard.update(title: "本次用电摘要", statistics: record.statistics, context: record.vehicleName)
@@ -3743,6 +3745,7 @@ extension ReceiverViewController {
         recoveryActions.isHidden = true
         statusLabel.textColor = .systemBlue
         lastReceiverMessage = nil
+        showFinishedBMSSummary = false
         connectionPhase = .starting; instrumentPhase = .idle
         connectionTimeline = ConnectionTimeline(output: headUnitOutput.selectedTitle,
             uptime: ProcessInfo.processInfo.systemUptime)
@@ -3836,6 +3839,7 @@ extension ReceiverViewController {
 
     private func beginBMSSessionIfNeeded() {
         guard bmsEnabledSwitch.isOn, !bmsClient.isConfirmingSelection, bmsSessionStartedAt == nil else { return }
+        showFinishedBMSSummary = false
         bmsSession = ANTBMSSessionStatistics(); bmsTrend.points = []
         bmsSessionMinimumUptime = ProcessInfo.processInfo.systemUptime
         bmsSession.startRecording(at: bmsSessionMinimumUptime)
@@ -3848,11 +3852,12 @@ extension ReceiverViewController {
     }
 
     @discardableResult
-    private func finishBMSSession() -> BMSRideRecord? {
+    private func finishBMSSession(publishSummary: Bool = true) -> BMSRideRecord? {
         guard bmsSessionStartedAt != nil else { return nil }
         let hasSamples = bmsSession.sampleCount > 0
         bmsSession.finishRecording(at: ProcessInfo.processInfo.systemUptime)
         if let record = currentBMSRecord {
+            showFinishedBMSSummary = publishSummary
             lastFinishedBMSRecord = BMSRideRecord(id: record.id, startedAt: record.startedAt, endedAt: record.endedAt,
                 vehicleName: record.vehicleName, statistics: record.statistics, completed: true,
                 vehicleID: record.vehicleID, bmsID: record.bmsID)
