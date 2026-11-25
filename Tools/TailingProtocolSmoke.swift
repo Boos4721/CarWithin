@@ -45,6 +45,10 @@ struct TailingTests {
         try simulatedInstrument(identity: stableIdentity)
         try simulatedInstrument(identity: stableIdentity, profile: .zeeho62)
         try simulatedInstrument(identity: stableIdentity, profile: .zeeho62)
+        try simulatedInstrument(identity: stableIdentity, profile: .zeehoSEPlus)
+        let alternate = InstrumentFrameSize(width: 854, height: 480)
+        try simulatedInstrument(identity: stableIdentity, profile: .zeehoSEPlus,
+                                reported: alternate, expected: alternate)
         try rejectedInstrument()
         try cancelledHandshake()
         print("PASS: 台铃拆包/合包、长度校验、RSA2048/type1、TCP取消、模拟仪表握手/逐帧拉取/保活/重启、错误型号拒绝、协商中停止")
@@ -111,7 +115,10 @@ struct TailingTests {
     }
 
     private static func simulatedInstrument(identity: TailingIdentity, idleControlFrames: Int = 0,
-                                            profile: TailingDisplayProfile = .tailing43) throws {
+                                            profile: TailingDisplayProfile = .tailing43,
+                                            reported: InstrumentFrameSize? = nil, expected: InstrumentFrameSize? = nil) throws {
+        let panel = reported ?? (profile == .zeeho62 ? InstrumentFrameSize(width: 1024, height: 488) : profile.preferredSize)
+        let expectedSize = expected ?? profile.preferredSize
         let announcement = try TailingSocket.listening(localIP: "127.0.0.1", port: 0)
         defer { announcement.close() }
         let reservations = try (0..<3).map { _ in try TailingSocket.listening(localIP: "127.0.0.1", port: 0) }
@@ -167,6 +174,17 @@ struct TailingTests {
                     try primary.write(TailingProtocol.control(0x10780, identifier: 21, payload: runningLog))
                     let logResponse = try TailingProtocol.readControl { try primary.readExactly($0) }
                     try expect(logResponse.command == 0x10781 && logResponse.identifier == 21, "仪表运行日志不得中断协商")
+                    if profile == .zeehoSEPlus {
+                    let notifications: [UInt32] = [0x103b0, 0x103a0, 0x10470, 0x104a0, 0x10020]
+                    for (index, command) in notifications.enumerated() {
+                        let identifier = UInt32(100 + index)
+                        try primary.write(TailingProtocol.control(command, identifier: identifier,
+                            payload: TailingProtocol.json(["test": true])))
+                        let receipt = try TailingProtocol.readControl { try primary.readExactly($0) }
+                        try expect(receipt.command == command + 1 && receipt.identifier == identifier && receipt.payload.isEmpty,
+                                   "MotoPlay 扩展通知不得终止控制通道")
+                    }
+                    }
                     let serialCheck = try TailingProtocol.json(["sn": "TEST-SERIAL"])
                     try primary.write(TailingProtocol.control(0x103e0, identifier: 24, payload: serialCheck))
                     let receipt = try TailingProtocol.readControl { try primary.readExactly($0) }
@@ -187,17 +205,23 @@ struct TailingTests {
                     }
                     try reverse.write(TailingProtocol.control(m.command == 0x205a0 ? 0x80000010 : m.command + 1, identifier: m.identifier))
                 }
+                if profile == .zeehoSEPlus {
+                    try reverse.write(TailingProtocol.control(0x103b0, identifier: 109))
+                    let receipt = try TailingProtocol.readControl { try reverse.readExactly($0) }
+                    try expect(receipt.command == 0x103b1 && receipt.identifier == 109 && receipt.payload.isEmpty,
+                               "反向控制通道应确认 0x103b0 并继续媒体协商")
+                }
                 let aux = try connect(ports.auxiliary)
                 var config = Data()
-                config.appendLE(UInt16(isZeeho ? 1024 : 480))
-                config.appendLE(UInt16(isZeeho ? 488 : 272))
+                config.appendLE(UInt16(panel.width))
+                config.appendLE(UInt16(panel.height))
                 config.append(Data(repeating: 0, count: 28)); config.append(Data(signature.base64EncodedString().utf8))
                 try aux.write(TailingProtocol.auxiliary(0x10, token: 57, payload: config))
                 let configured = try TailingProtocol.readAuxiliary { try aux.readExactly($0) }
                 try expect(configured.command == 0x11 && configured.token == 57 &&
                            configured.payload.uint32LE(0) == (isZeeho ? 2 : 1) &&
-                           configured.payload.uint16LE(4) == profile.width &&
-                           configured.payload.uint16LE(6) == profile.height, "媒体配置回应")
+                           configured.payload.uint16LE(4) == expectedSize.width &&
+                           configured.payload.uint16LE(6) == expectedSize.height, "媒体配置回应")
                 // 连续心跳、启动请求，验证不会丢弃配置后的消息。
                 try aux.write(TailingProtocol.auxiliary(0x40, token: 58) + TailingProtocol.auxiliary(0x70, token: 59))
                 try expect(try TailingProtocol.readAuxiliary { try aux.readExactly($0) }.token == 58, "媒体心跳回应")
@@ -239,7 +263,8 @@ struct TailingTests {
                 }
             } catch { result.set(error); sawFrame.signal(); gotHeartbeat.signal(); idleFramesReceived.signal() }
         }
-        try connection.start()
+        let sizeForEncoder = try connection.start()
+        try expect(sizeForEncoder == expectedSize, "编码端尺寸必须与媒体回应一致")
         if isZeeho {
             for _ in 0..<2 {
                 try connection.waitForH264Request()

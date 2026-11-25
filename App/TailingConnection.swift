@@ -1,12 +1,4 @@
 // Adapted from xmz28/ninebot_pro: NinebotPro/Networking/TailingConnection.swift
-struct TailingDisplayProfile {
-    let width: Int
-    let height: Int
-    let isZeeho: Bool
-    static let tailing43 = TailingDisplayProfile(width: 480, height: 272, isZeeho: false)
-    static let zeeho62 = TailingDisplayProfile(width: 1024, height: 480, isZeeho: true)
-}
-
 import Foundation
 
 struct TailingPhoneInfo {
@@ -37,7 +29,7 @@ struct TailingPorts {
 /// 台铃 JPEG 和极核 H.264 共用的 PXC 投屏会话。
 final class TailingConnection: @unchecked Sendable {
     private let localIP: String
-    private let targetIP: String
+    private var targetIP: String
     private let profile: TailingDisplayProfile
     private let phone: TailingPhoneInfo
     private let ports: TailingPorts
@@ -56,7 +48,7 @@ final class TailingConnection: @unchecked Sendable {
     private var reverseControl: TailingSocket?
     private var sentH264Prefix = false
     private var mediaStarted = false
-    private var configured = false
+    private var mediaSize: InstrumentFrameSize?
     private var isZeeho: Bool { profile.isZeeho }
     private var dashboard: String { profile.isZeeho ? "极核" : "台铃" }
 
@@ -67,9 +59,20 @@ final class TailingConnection: @unchecked Sendable {
         self.ports = ports; self.identityProvider = identityProvider; self.log = log
     }
 
-    func start() throws {
+    @discardableResult
+    func start() throws -> InstrumentFrameSize {
         let loaded = try identityProvider()
         condition.lock(); identity = loaded; condition.unlock()
+        var discoveredSocket: TailingSocket?
+        if targetIP.isEmpty && isZeeho {
+            log("极核正在自动查找仪表 IP，本机 Wi-Fi 地址 \(localIP)")
+            let discovered = try TailingDiscovery.connect(localIP: localIP, port: ports.announcement,
+                track: { [self] in try tracked($0) }, check: { [self] in try checkHealth() })
+            targetIP = discovered.address
+            discoveredSocket = discovered.socket
+            log("极核发现仪表候选地址 \(targetIP)，正在验证 PXC 投屏请求")
+        }
+        try checkHealth()
         // 先全部监听，再请求仪表反向连接；不使用所有网卡的通配地址。
         var listeners: [(UInt16, TailingSocket)] = []
         for port in [ports.control, ports.auxiliary, ports.video] {
@@ -81,9 +84,13 @@ final class TailingConnection: @unchecked Sendable {
             DispatchQueue.global(qos: .userInitiated).async { [self] in accept(server, port: port) }
         }
         log("\(dashboard) TCP 已监听 \(localIP):\(ports.control)/\(ports.auxiliary)/\(ports.video)，正在协商")
-        let announcement = try tracked(TailingSocket.create())
+        let announcement: TailingSocket
+        if let discoveredSocket { announcement = discoveredSocket }
+        else {
+            announcement = try tracked(TailingSocket.create())
+            try announcement.connect(localIP: localIP, remoteIP: targetIP, port: ports.announcement)
+        }
         defer { announcement.close() }
-        try announcement.connect(localIP: localIP, remoteIP: targetIP, port: ports.announcement)
         try announcement.write(TailingProtocol.control(0x70000010, payload: TailingProtocol.json([
             "phoneType": "iOS", "packageName": phone.package
         ])))
@@ -99,7 +106,13 @@ final class TailingConnection: @unchecked Sendable {
             if !condition.wait(until: deadline) { throw TailingError.timeout("媒体会话未就绪，请退出官方投屏并重新开启仪表投屏") }
         }
         try checkLocked()
+        guard let mediaSize else { throw TailingError.protocolFailure("仪表启动了视频但未协商画面尺寸") }
+        if isZeeho {
+            UserDefaults.standard.set(targetIP, forKey: TailingDiscovery.savedAddressKey)
+            log("极核仪表连接地址 \(targetIP)，PXC 握手及媒体协商通过")
+        }
         log("\(dashboard) 媒体协商完成，等待仪表逐帧请求")
+        return mediaSize
     }
 
     @discardableResult
@@ -297,6 +310,12 @@ final class TailingConnection: @unchecked Sendable {
             case 0x20021, 0x20031, 0x204c1, 0x20491, 0x20051, 0x20591, 0x205a1, 0x70000001:
                 continue // 回应不再回应，避免往返循环。
             default:
+                if let acknowledgement = try TailingProtocol.zeehoExtensionReply(to: request, profile: profile) {
+                    try socket.write(acknowledgement)
+                    log(String(format: "极核扩展通知 0x%08x（%d 字节），已回复 0x%08x 接收确认",
+                               request.command, request.payload.count, request.command + 1))
+                    continue
+                }
                 throw TailingError.protocolFailure(String(format: "未支持的协商命令 0x%08x", request.command))
             }
             try replyControl(socket, request, payload: payload)
@@ -375,12 +394,10 @@ final class TailingConnection: @unchecked Sendable {
                 guard request.payload.count >= 32 else {
                     throw TailingError.protocolFailure("媒体配置载荷不足 32 字节")
                 }
-                let width = request.payload.uint16LE(0)
-                let height = request.payload.uint16LE(2)
-                let validDimensions = isZeeho ? width == 1024 && (height == 480 || height == 488)
-                    : width == 480 && height == 272
-                guard validDimensions else {
-                    throw TailingError.protocolFailure("仪表媒体尺寸 \(width)×\(height) 与 \(dashboard) 配置不符")
+                let reported = InstrumentFrameSize(width: Int(request.payload.uint16LE(0)),
+                                                   height: Int(request.payload.uint16LE(2)))
+                guard let size = profile.outputSize(for: reported) else {
+                    throw TailingError.protocolFailure("仪表媒体尺寸 \(reported) 与 \(dashboard) 配置不符")
                 }
                 let deadline = Date().addingTimeInterval(5)
                 condition.lock()
@@ -393,14 +410,18 @@ final class TailingConnection: @unchecked Sendable {
                       let echoed = Data(base64Encoded: request.payload.dropFirst(32), options: .ignoreUnknownCharacters),
                       echoed == signature else { throw TailingError.protocolFailure("媒体身份回显不匹配") }
                 try identity.verify(echoed, huid: huid)
-                payload.appendLE(UInt32(isZeeho ? 2 : 1))
-                payload.appendLE(UInt16(profile.width))
-                payload.appendLE(UInt16(profile.height))
+                condition.lock()
+                if mediaStarted, mediaSize != size {
+                    condition.unlock()
+                    throw TailingError.protocolFailure("仪表已改为 \(size)，请重新连接以切换编码尺寸")
+                }
+                mediaSize = size
+                condition.unlock()
+                payload = TailingProtocol.mediaConfiguration(size: size, h264: isZeeho)
                 response = 0x11
-                condition.lock(); configured = true; condition.unlock()
-                log("媒体身份回显校验通过，仪表报告 \(width)×\(height)，回应 \(isZeeho ? "H.264" : "JPEG") / \(profile.width)×\(profile.height)")
+                log("媒体身份回显校验通过，仪表报告 \(reported)，回应 \(isZeeho ? "H.264" : "JPEG") / \(size)")
             case 0x70:
-                condition.lock(); let ready = configured; condition.unlock()
+                condition.lock(); let ready = mediaSize != nil; condition.unlock()
                 guard ready else { throw TailingError.protocolFailure("仪表在配置完成前请求媒体启动") }
                 try socket.write(TailingProtocol.auxiliary(0x71, token: request.token))
                 condition.lock(); mediaStarted = true; condition.broadcast(); condition.unlock()
