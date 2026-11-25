@@ -34,6 +34,8 @@ maibms 表格里的「蓝宝」为电量计，本实现沿用这一分类。此�
 
 真实新板和手机 BLE 联调仍未完成。解析测试和 iOS 编译不能证明所有品牌/固件均可连接；原 ANT 设备已有用户实际读取基础，其余应分别真机确认电压、电流方向、温度、容量及长期刷新。按用户要求不使用 iOS 模拟器。
 
+最终验证：功能提交 `00343487066880f42190e9edee7433d1b72c16ab`，构建 https://github.com/Boos4721/CarWithin/actions/runs/45605156875 成功。BMS 专项 44 项全部通过（含 18 项新增多品牌测试）；完整核心 128 项，126 项通过、2 项因云端无本地 MFi 材料跳过，0 失败。车辆预设迁移、极核/台铃集成和 5 项 MFi 打包回归通过。generic iOS / iphoneos arm64 Release 编译成功，未运行 iOS 模拟器。真实身份在本地加入并通过证书/私钥、证书链、ECDSA 和 IPA 完整性检查。
+
 ## 可核对来源
 
 - https://github.com/lswlc33/maibms/tree/6bbb5d64ef823385df5f5b8dd54580594a604ba5/composeApp/src/commonMain/kotlin/io/github/lswlc33/maibms/protocol
