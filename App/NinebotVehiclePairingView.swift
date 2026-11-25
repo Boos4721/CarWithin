@@ -57,19 +57,26 @@ struct NinebotVehiclePairingView: View {
     @ViewBuilder private var progressSection: some View {
         if !locked, let current = connection.presentation.step {
             Section("配对进度") {
-                ForEach(NinebotPairingPresentation.Step.allCases, id: \.rawValue) { step in
-                    HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Image(systemName: stepSymbol(step, current: current)).accessibilityHidden(true)
-                        Text(step.title)
-                        Spacer(minLength: 8)
-                        if step == .confirm, current.rawValue > step.rawValue,
-                           !connection.hasPairingAcknowledgement {
-                            Text("沿用已存配对").font(.caption).foregroundStyle(.secondary)
-                        } else if step == current { Text("当前").font(.caption).foregroundStyle(.secondary) }
+                Text("第 \(current.rawValue + 1) / 5 步 · " + current.title)
+                    .font(.subheadline.weight(.medium))
+                ProgressView(value: Double(current.rawValue + (current == .complete ? 1 : 0)), total: 5)
+                    .accessibilityLabel("配对步骤")
+                    .accessibilityValue(current.title)
+                DisclosureGroup("查看完整步骤") {
+                    ForEach(NinebotPairingPresentation.Step.allCases, id: \.rawValue) { step in
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Image(systemName: stepSymbol(step, current: current)).accessibilityHidden(true)
+                            Text(step.title)
+                            Spacer(minLength: 8)
+                            if step == .confirm, current.rawValue > step.rawValue,
+                               !connection.hasPairingAcknowledgement {
+                                Text("沿用已存配对").font(.caption).foregroundStyle(.secondary)
+                            } else if step == current { Text("当前").font(.caption).foregroundStyle(.secondary) }
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(step.rawValue > current.rawValue ? Color.secondary : Color.primary)
+                        .accessibilityElement(children: .combine)
                     }
-                    .font(.subheadline)
-                    .foregroundStyle(step.rawValue > current.rawValue ? Color.secondary : Color.primary)
-                    .accessibilityElement(children: .combine)
                 }
             }
         }
