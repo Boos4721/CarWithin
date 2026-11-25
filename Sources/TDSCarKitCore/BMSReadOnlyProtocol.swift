@@ -23,7 +23,7 @@ struct BMSBytes {
 /// Main-queue session engine. One request in flight; no setters, calibration or MOS commands.
 public final class BMSReadOnlyProtocol {
     public let family: BMSFamily
-    public private(set) var error: String?
+    public internal(set) var error: String?
     var ant = ANTBMSProtocol()
     var buffer: [UInt8] = []
     var pending: Int?
