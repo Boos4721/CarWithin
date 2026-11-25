@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		878C53DFB771A8B34DE36F21 /* App/TailingDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5981FAF46062A6323066CC1 /* App/TailingDiscovery.swift */; };
+		9DC61C66646BBB14BE84E746 /* App/TailingDisplayProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = D81C00A6973F944302FCC28C /* App/TailingDisplayProfile.swift */; };
+		9140DE44B47D11023645E54B /* App/Zeeho62Legacy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1DFF5C89446FB55ABE66E51 /* App/Zeeho62Legacy.swift */; };
         AAAAAAAA0000000000000001 /* ikcp.c in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAAAA0000000000000003; };
         AAAAAAAA0000000000000002 /* NinebotKCPVideo.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAAAA0000000000000004; };
         AAAAAAAA0000000000000005 /* KCP-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAA0000000000000006; };
@@ -104,6 +107,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		B5981FAF46062A6323066CC1 /* App/TailingDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/TailingDiscovery.swift; sourceTree = "<group>"; };
+		D81C00A6973F944302FCC28C /* App/TailingDisplayProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/TailingDisplayProfile.swift; sourceTree = "<group>"; };
+		F1DFF5C89446FB55ABE66E51 /* App/Zeeho62Legacy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/Zeeho62Legacy.swift; sourceTree = "<group>"; };
         AAAAAAAA0000000000000003 /* ikcp.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = App/ikcp.c; sourceTree = "<group>"; };
         AAAAAAAA0000000000000004 /* NinebotKCPVideo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/NinebotKCPVideo.swift; sourceTree = "<group>"; };
         AAAAAAAA0000000000000006 /* KCP-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "App/KCP-LICENSE.txt"; sourceTree = "<group>"; };
@@ -215,6 +221,10 @@
 		64292B1C2B2E13EAD8788FC8 = {
 			isa = PBXGroup;
 			children = (
+				B5981FAF46062A6323066CC1 /* App/TailingDiscovery.swift */,
+				D81C00A6973F944302FCC28C /* App/TailingDisplayProfile.swift */,
+				F1DFF5C89446FB55ABE66E51 /* App/Zeeho62Legacy.swift */,
+
 				5AE3FD3B152F054D10D2D79D /* App/ANTBMSClient.swift */,
 				75A37F601A1BC4418DBF5673 /* App/ANTBMSController.swift */,
 				4C1AE09B96606444A46AA132 /* App/BMSCardOrderViewController.swift */,
@@ -388,6 +398,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				878C53DFB771A8B34DE36F21 /* App/TailingDiscovery.swift in Sources */,
+				9DC61C66646BBB14BE84E746 /* App/TailingDisplayProfile.swift in Sources */,
+				9140DE44B47D11023645E54B /* App/Zeeho62Legacy.swift in Sources */,
+
 				958FF5BA17BA9021F5076BFC /* App/ANTBMSClient.swift in Sources */,
 				265C2C116740E45DFC9D9495 /* App/ANTBMSController.swift in Sources */,
 				BF8116F0ECCF3A7B5A7C0913 /* App/BMSCardOrderViewController.swift in Sources */,
