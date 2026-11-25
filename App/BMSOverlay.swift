@@ -19,6 +19,7 @@ final class BMSOverlayPresenter {
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.isHidden = true
         surface.addSubview(imageView)
+        cachedConfiguration = nil
     }
 
     func update(enabled: Bool, reading: ANTBMSReading?, status: String,
@@ -34,7 +35,7 @@ final class BMSOverlayPresenter {
         if let reading {
             text = configuration.lines(for: reading).joined(separator: "\n")
         } else {
-            text = "ANT BMS · 无实时数据\n" + (status.contains("过期") || status.contains("断开") || status.contains("重连")
+            text = "BMS · 无实时数据\n" + (status.contains("过期") || status.contains("断开") || status.contains("重连")
                 ? "连接失联，等待恢复" : "等待电池数据")
         }
         let previousLineCount = cachedText?.components(separatedBy: "\n").count

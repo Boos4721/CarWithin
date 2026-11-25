@@ -20,8 +20,8 @@ public struct ANTBMSSessionStatistics: Codable, Equatable {
     public private(set) var lastCharge: Int?
     public private(set) var minimumVoltage: Double?
     public private(set) var maximumVoltage: Double?
-    public private(set) var peakAbsoluteCurrent = 0.0
-    public private(set) var peakAbsolutePower = 0
+    public private(set) var peakAbsoluteCurrent: Double?
+    public private(set) var peakAbsolutePower: Int?
     public private(set) var maximumTemperature: Double?
     public private(set) var maximumCellDelta: Double?
     public private(set) var sampledSeconds: TimeInterval = 0
@@ -57,16 +57,21 @@ public struct ANTBMSSessionStatistics: Codable, Equatable {
         lastUptime = sample.uptime
         let reading = sample.reading
         sampleCount += 1
-        if firstCharge == nil { firstCharge = reading.stateOfCharge }
-        lastCharge = reading.stateOfCharge
-        minimumVoltage = min(minimumVoltage ?? reading.voltage, reading.voltage)
-        maximumVoltage = max(maximumVoltage ?? reading.voltage, reading.voltage)
-        peakAbsoluteCurrent = max(peakAbsoluteCurrent, abs(reading.current))
-        peakAbsolutePower = max(peakAbsolutePower, abs(reading.power))
+        if reading.available.contains("charge") {
+            if firstCharge == nil { firstCharge = reading.stateOfCharge }
+            lastCharge = reading.stateOfCharge
+        }
+        if reading.available.contains("voltage") {
+            minimumVoltage = min(minimumVoltage ?? reading.voltage, reading.voltage)
+            maximumVoltage = max(maximumVoltage ?? reading.voltage, reading.voltage)
+        }
+        if reading.available.contains("current") { peakAbsoluteCurrent = max(peakAbsoluteCurrent ?? 0, abs(reading.current)) }
+        if reading.available.contains("power") { peakAbsolutePower = max(peakAbsolutePower ?? 0, abs(reading.power)) }
         if let temperature = reading.maximumTemperature {
             maximumTemperature = max(maximumTemperature ?? temperature, temperature)
         }
         if let delta = reading.cellDelta { maximumCellDelta = max(maximumCellDelta ?? delta, delta) }
+        guard reading.available.contains("voltage") else { return true }
         let elapsed = sample.uptime - (firstUptime ?? sample.uptime)
         if let last = points.last, followsPrevious,
            Int(elapsed / 5) == Int(last.elapsed / 5), last.minimumVoltage != nil {

@@ -15,7 +15,7 @@ enum ExperienceStoreSmoke {
         let decoder = JSONDecoder(), encoder = JSONEncoder()
         var profile = try decoder.decode(VehicleProfile.self, from: JSONSerialization.data(withJSONObject: legacy))
         precondition(profile.cardBackground == nil)
-        precondition(profile.ninebotVehicleID == nil)
+        precondition(profile.ninebotVehicleID == nil && profile.bmsFamily == nil)
         precondition(profile.output == 4 && profile.zeehoAutomaticAddress == nil && profile.zeehoFrameRate == nil
             && profile.zeehoCanvas == nil && profile.zeehoVideoMode == nil)
         precondition(ANTBMSCardConfiguration(positionRawValue: profile.cardPosition,
@@ -31,8 +31,9 @@ enum ExperienceStoreSmoke {
         print("Vehicle profile migration: legacy schema and new card preferences passed")
         var paired = profile
         paired.ninebotVehicleID = UUID()
+        paired.bmsFamily = "jikong"
         let pairedRoundTrip = try decoder.decode(VehicleProfile.self, from: encoder.encode(paired))
-        precondition(pairedRoundTrip.ninebotVehicleID == paired.ninebotVehicleID)
+        precondition(pairedRoundTrip.ninebotVehicleID == paired.ninebotVehicleID && pairedRoundTrip.bmsFamily == "jikong")
         precondition(pairedRoundTrip.ssid == profile.ssid && pairedRoundTrip.bmsID == profile.bmsID)
         let pairedJSON = try JSONSerialization.jsonObject(with: encoder.encode(paired)) as! [String: Any]
         precondition(pairedJSON["key"] == nil && pairedJSON["password"] == nil)

@@ -295,6 +295,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private var bmsSessionStartedAt: Date?
     private var bmsSessionVehicle = ""
     private var bmsSessionVehicleID: UUID?
+    private var bmsSessionFamily: BMSFamily?
     private var bmsSessionDevice: UUID?
     private var bmsRecordFilter = BMSRecordFilter()
     private weak var liveBMSRecordSummary: StatusLabel?
@@ -1068,7 +1069,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
 
     private func refreshBMS() {
         let reading = bmsClient.freshReading
-        if bmsSessionStartedAt != nil, bmsSessionDevice != bmsClient.selectedID {
+        if bmsSessionStartedAt != nil, (bmsSessionDevice != bmsClient.selectedID || bmsSessionFamily != bmsClient.selectedFamily) {
             finishBMSSession()
             if running, bmsEnabledSwitch.isOn { beginBMSSessionIfNeeded() }
         }
@@ -1086,22 +1087,29 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         bmsStatus.text = bmsEnabledSwitch.isOn ? bmsClient.status : "BMS 显示已关闭"
         bmsLiveSummary.update(reading)
         if let reading {
+            let card = ANTBMSCardConfiguration.Field.allCases.map { $0.title + " " + $0.text(reading) }.joined(separator: " · ")
             let temperature = reading.maximumTemperature.map { String(format: "%.0f°C", $0) } ?? "--"
             let mos = reading.mosTemperature.map { String(format: "%.0f°C", $0) } ?? "--"
-            let delta = reading.cellDelta.map { String(format: "%.0f mV", $0 * 1000) } ?? "--"
+            let capacity = reading.available.contains("capacity") ? String(format: "%.2f Ah", reading.capacityAh) : "--"
+            let remaining = reading.available.contains("remaining") ? String(format: "%.2f Ah", reading.remainingAh) : "--"
             let states = [0: "无状态", 1: "静止", 2: "充电", 3: "待机", 4: "放电", 5: "异常"]
-            bmsDetails.text = String(format: "电量 %d%% · %.2f V · %+.1f A · %d W\n剩余 %.2f / %.2f Ah\n最高温度 %@ · MOS %@\n%d 串 · 单体压差 %@\n状态：%@\n保护位：0x%llX · 告警位：0x%llX",
-                reading.stateOfCharge, reading.voltage, reading.current, reading.power,
-                reading.remainingAh, reading.capacityAh, temperature, mos, reading.cells.count, delta,
-                states[reading.stateCode] ?? "未知", reading.protectionBits, reading.alarmBits)
+            let state = reading.available.contains("state") ? states[reading.stateCode] ?? "未知" : "未提供"
+            let protection = reading.available.contains("protection") ? String(format: "0x%llX", reading.protectionBits) : "未提供"
+            let warnings = reading.available.contains("warnings") ? String(format: "0x%llX", reading.alarmBits) : "未提供"
+            let cells = reading.cells.isEmpty ? "未提供逐串数据" : "电芯槽位 \(reading.cells.count) 串"
+            let extra = reading.extraDetails.sorted { $0.key < $1.key }.map { $0.key + "：" + $0.value }.joined(separator: "\n")
+            bmsDetails.text = card + "\n剩余 " + remaining + " / 容量 " + capacity +
+                "\n最高温度 " + temperature + " · MOS " + mos + "\n" + cells +
+                "\n状态：" + state + "\n保护位：" + protection + " · 告警位：" + warnings +
+                (extra.isEmpty ? "" : "\n" + extra)
         } else {
-            bmsDetails.text = "电量 -- · 电压 -- · 电流 -- · 功率 --\n等待校验有效的 ANT 实时数据。"
+            bmsDetails.text = "电量 -- · 电压 -- · 电流 -- · 功率 --\n等待所选板型的有效实时数据。"
         }
         bmsOverlay.update(enabled: bmsEnabledSwitch.isOn, reading: reading, status: bmsClient.status,
                           configuration: bmsCardConfiguration)
         bmsCardPreview.update(reading: reading, configuration: bmsCardConfiguration,
                              aspectRatio: outputMode == .ninebotSeven ? 1024 / 600 : 848 / 480)
-        bmsCardPreviewStatus.text = reading == nil ? "示例数据 · 当前没有实时读数" : "实时数据 · 当前连接的 ANT BMS"
+        bmsCardPreviewStatus.text = reading == nil ? "示例数据 · 当前没有实时读数" : "实时数据 · " + bmsClient.selectedFamily.title
         let ids = bmsClient.devices.map(\.id)
         if ids != bmsDeviceList {
             bmsDeviceList = ids
@@ -3273,7 +3281,8 @@ extension ReceiverViewController {
             zeehoCanvas: isZeehoSEPlus ? selectedZeehoCanvas.rawValue : nil,
             zeehoVideoMode: isZeehoSEPlus ? zeehoSEPlusVideoModeControl.selectedSegmentIndex : nil,
             zeehoFiveVariant: outputMode == .zeehoFive ? selectedZeehoFiveVariant.rawValue : nil,
-            ninebotVehicleID: outputMode.ninebotMode != nil ? ninebotVehicle.garage.selected?.id : nil)
+            ninebotVehicleID: outputMode.ninebotMode != nil ? ninebotVehicle.garage.selected?.id : nil,
+            bmsFamily: bmsClient.selectedID != nil ? bmsClient.selectedFamily.rawValue : nil)
     }
 
     private func saveActiveVehicleProfile() {
@@ -3400,7 +3409,7 @@ extension ReceiverViewController {
         }
         WiFiPresetStore.upsert(ssid: profile.ssid, channel: profile.channel, isOpen: profile.openNetwork)
         applyWiFiPreset(WiFiPreset(ssid: profile.ssid, channel: profile.channel, isOpen: profile.openNetwork))
-        bmsClient.restoreSelection(id: profile.bmsID, name: profile.bmsName)
+        bmsClient.restoreSelection(id: profile.bmsID, name: profile.bmsName, family: profile.bmsFamily)
         bmsEnabledSwitch.isOn = profile.bmsEnabled
         bmsCardConfiguration = ANTBMSCardConfiguration(savedFields: profile.cardFields, sizeRawValue: profile.cardSize,
             positionRawValue: profile.cardPosition, backgroundRawValue: profile.cardBackground)
@@ -3591,6 +3600,7 @@ extension ReceiverViewController {
         bmsSessionRecordID = UUID()
         bmsSessionStartedAt = Date(); bmsSessionVehicle = currentVehicleName
         bmsSessionVehicleID = VehicleProfileStore.selectedID; bmsSessionDevice = bmsClient.selectedID
+        bmsSessionFamily = bmsClient.selectedFamily
         bmsSessionStatus.text = "等待新的 BMS 实时数据"
     }
 
@@ -3649,11 +3659,16 @@ extension ReceiverViewController {
     private func bmsStatisticsText(_ statistics: ANTBMSSessionStatistics) -> String {
         guard statistics.sampleCount > 0 else { return "暂无有效样本。启动 CarPlay 且开启 BMS 后自动记录，也可手动开始。" }
         let charge = statistics.firstCharge.flatMap { first in statistics.lastCharge.map { "\(first)% → \($0)%" } } ?? "--"
-        return String(format: "有效采样 %.0f 秒 · %d 帧\n电量 %@\n全程电压 %.2f–%.2f V\n峰值电流 |I| %.1f A · 峰值功率 |P| %ld W\n最高温度 %@ · 最大压差 %@",
-            statistics.sampledSeconds, statistics.sampleCount, charge, statistics.minimumVoltage ?? 0, statistics.maximumVoltage ?? 0,
-            statistics.peakAbsoluteCurrent, statistics.peakAbsolutePower,
-            statistics.maximumTemperature.map { String(format: "%.0f°C", $0) } ?? "--",
-            statistics.maximumCellDelta.map { String(format: "%.0f mV", $0 * 1000) } ?? "--")
+        let voltage = statistics.minimumVoltage.flatMap { low in statistics.maximumVoltage.map {
+            String(format: "%.2f–%.2f V", low, $0)
+        } } ?? "未提供"
+        let current = statistics.peakAbsoluteCurrent.map { String(format: "%.1f A", $0) } ?? "未提供"
+        let power = statistics.peakAbsolutePower.map { "\($0) W" } ?? "未提供"
+        let temperature = statistics.maximumTemperature.map { String(format: "%.0f°C", $0) } ?? "--"
+        let delta = statistics.maximumCellDelta.map { String(format: "%.0f mV", $0 * 1000) } ?? "--"
+        return String(format: "有效采样 %.0f 秒 · %d 帧", statistics.sampledSeconds, statistics.sampleCount) +
+            "\n电量 " + charge + "\n全程电压 " + voltage + "\n峰值电流 |I| " + current +
+            " · 峰值功率 |P| " + power + "\n最高温度 " + temperature + " · 最大压差 " + delta
     }
 
     private func bmsStatisticsPage() -> SettingsPageController {
@@ -3845,9 +3860,12 @@ extension ReceiverViewController {
 
     private func bmsPage() -> SettingsPageController {
         page("电池与 BMS") { [unowned self] in
-            [SettingsSection("蚂蚁 ANT BMS", [
+            [SettingsSection("保护板与电量计", [
                 .control("读取并显示 BMS", self.bmsEnabledSwitch),
                 .note(self.bmsStatus),
+                .page("板型与支持范围", icon: ("cpu", .systemBlue), detail: { [unowned self] in
+                    self.bmsClient.selectedID == nil ? "选择设备后设置" : self.bmsClient.selectedFamily.title
+                }) { [unowned self] in self.bmsFamilyPage() },
                 .page("连接设备", icon: ("antenna.radiowaves.left.and.right", .systemBlue), detail: { [unowned self] in
                     self.bmsClient.selectedName
                 }) { [unowned self] in self.bmsDevicesPage() }
@@ -3860,7 +3878,7 @@ extension ReceiverViewController {
                 .page("本次统计与记录", icon: ("chart.xyaxis.line", .systemGreen)) { [unowned self] in self.bmsStatisticsPage() },
                 .page("电池详情", icon: ("list.bullet.rectangle", .systemGray)) { [unowned self] in
                     self.page("电池详情") { [unowned self] in
-                        [SettingsSection("实时参数", footer: "电流保留 ANT 原始符号。容量、温度、串数和状态由 BMS 上报。", [.note(self.bmsDetails)])]
+                        [SettingsSection("实时参数", footer: "按所选板型显示真实字段，未提供的值显示 --。ANT 与蓝宝保留原始符号，其他已确认板型按放电正、充电负显示；不推算未知容量或电量。", [.note(self.bmsDetails)])]
                     }
                 }
             ])]
@@ -3874,7 +3892,7 @@ extension ReceiverViewController {
                 .note(self.bmsStatus)
             ])]
             guard self.bmsEnabledSwitch.isOn else {
-                sections.append(SettingsSection(footer: "开启读取后搜索并选择自己的 ANT BMS。", [
+                sections.append(SettingsSection(footer: "开启读取后搜索并选择自己的保护板或电量计。", [
                     .action("开启读取并查找设备", icon: ("antenna.radiowaves.left.and.right", .systemBlue)) { [unowned self] in
                         self.bmsEnabledSwitch.setOn(true, animated: false)
                         self.bmsSettingsChanged()
@@ -3890,16 +3908,87 @@ extension ReceiverViewController {
                 }
             ]))
             let devices = self.bmsClient.devices.map { device in
-                var row = SettingsRow.action(device.name, detail: { "\(device.rssi) dBm" }) { [unowned self] in
-                    self.bmsClient.select(device.id)
+                var row = SettingsRow.action(device.name, detail: {
+                    let brand = device.family?.title ?? "未知板型，请手选"
+                    let soc = device.advertisedSOC.map { " · 广播电量 \($0)%" } ?? ""
+                    return brand + soc + " · \(device.rssi) dBm"
+                }) { [unowned self] in
+                    if let family = device.family {
+                        self.bmsClient.select(device.id, family: family)
+                        self.saveActiveVehicleProfile()
+                    } else {
+                        self.chooseBMSFamily(for: device.id)
+                    }
                 }
                 row.checked = { [weak self] in self?.bmsClient.selectedID == device.id }
                 return row
             }
-            sections.append(SettingsSection("附近设备", footer: "仅支持 ANT FFE0/FFE1 实时通道。扫描到 FFE0 不代表协议兼容，收到有效 ANT 数据后才确认连接。",
+            sections.append(SettingsSection("附近设备", footer: "名称和服务只用于识别候选。未知设备需手选板型；只有收到该协议的有效实时数据才确认连接。小哈仅广播电量，星恒星蓝、智霸和闪充目前只识别，不尝试未知协议。",
                 devices.isEmpty ? [.info("暂无设备", "点击上方扫描")] : devices))
             return sections
         }
+    }
+
+    private func bmsFamilyPage() -> SettingsPageController {
+        page("板型与支持范围") { [unowned self] in
+            var sections = [SettingsSection("当前设备", footer: self.bmsClient.selectedFamily.supportDescription, [
+                .info("设备", self.bmsClient.selectedName),
+                .note(self.bmsStatus)
+            ])]
+            if self.bmsClient.selectedID != nil {
+                if [.jbd, .lanbao].contains(self.bmsClient.selectedFamily) {
+                    sections.append(SettingsSection(footer: "只使用你已有的模块密码或匹配码，保存在本机 Keychain，不进入日志或导出。", [
+                        .action("设置模块登录信息", icon: ("key", .systemBlue)) { [unowned self] in self.configureBMSAccess() }
+                    ]))
+                }
+                let rows = BMSFamily.allCases.map { family -> SettingsRow in
+                    var row = SettingsRow.action(family.title) { [unowned self] in
+                        self.bmsClient.setFamily(family); self.saveActiveVehicleProfile(); self.reloadVisibleSettings()
+                    }
+                    row.checked = { [unowned self] in self.bmsClient.selectedFamily == family }
+                    row.subtitle = { family.supportDescription }
+                    return row
+                }
+                sections.append(SettingsSection("指定当前设备板型", footer: "更改后按所选协议重新连接。各品牌仅接入实时读取，不提供改参数、校准或 MOS 开关。新增板型仍需真机核验。", rows))
+            } else {
+                sections.append(SettingsSection("支持范围", BMSFamily.allCases.map {
+                    .info($0.title, $0.supportDescription)
+                }))
+            }
+            return sections
+        }
+    }
+
+    private func chooseBMSFamily(for id: UUID) {
+        let prompt = UIAlertController(title: "选择自己的板型", message: "通用串口服务不能确认品牌，请按实际保护板选择。", preferredStyle: .actionSheet)
+        for family in BMSFamily.allCases {
+            prompt.addAction(UIAlertAction(title: family.title, style: .default) { [weak self] _ in
+                self?.bmsClient.select(id, family: family)
+                self?.saveActiveVehicleProfile(); self?.reloadVisibleSettings()
+            })
+        }
+        prompt.addAction(UIAlertAction(title: "取消", style: .cancel))
+        let presenter: UIViewController = settingsNavigation ?? self
+        prompt.popoverPresentationController?.sourceView = presenter.view
+        prompt.popoverPresentationController?.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 1, height: 1)
+        presenter.present(prompt, animated: true)
+    }
+
+    private func configureBMSAccess() {
+        let jbd = bmsClient.selectedFamily == .jbd
+        let prompt = UIAlertController(title: jbd ? "JBD 模块登录" : "蓝宝匹配码",
+            message: jbd ? "先尝试普通读取；需登录时使用你已有的六位密码。真实 MAC 仅旧挑战模块需要，可留空。留空密码可清除本机凭据。" :
+                "填写已有的六位数字或十二位十六进制匹配码。留空使用协议默认匹配码；不会修改电量计。", preferredStyle: .alert)
+        prompt.addTextField { $0.placeholder = jbd ? "已有的六位密码" : "已有匹配码"; $0.isSecureTextEntry = true; $0.autocapitalizationType = .none }
+        if jbd { prompt.addTextField { $0.placeholder = "真实 MAC（可留空）"; $0.autocapitalizationType = .allCharacters } }
+        prompt.addAction(UIAlertAction(title: "取消", style: .cancel))
+        prompt.addAction(UIAlertAction(title: "保存并重连", style: .default) { [weak self, weak prompt] _ in
+            do {
+                try self?.bmsClient.saveAccess(password: prompt?.textFields?.first?.text ?? "", mac: jbd ? prompt?.textFields?.last?.text ?? "" : "")
+                self?.reloadVisibleSettings()
+            } catch { self?.alert("未保存", error.localizedDescription) }
+        })
+        (settingsNavigation ?? self).present(prompt, animated: true)
     }
 
     private func bmsCardPage() -> SettingsPageController {

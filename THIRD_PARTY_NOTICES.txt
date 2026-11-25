@@ -91,3 +91,7 @@ parameter writes, authentication elevation or battery control commands.
 Ninebot vehicle discovery, BLE authentication, Keychain records and navigation
 session handling are adapted from NineCast Link for iOS at c0696d3d1aad2de2d7657a238b5c7fb915f01658.
 https://github.com/Margele/NineCast-iOS
+
+Multibrand BMS family recognition and read-only Swift protocol implementations adapt
+lswlc33/maibms at 6bbb5d64ef823385df5f5b8dd54580594a604ba5 (MIT).
+See LICENSES/maibms-MIT.txt, bundled App/maibms-MIT.txt and docs/multibrand-bms.md.

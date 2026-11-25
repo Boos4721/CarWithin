@@ -30,6 +30,7 @@ struct VehicleProfile: Codable, Identifiable {
     var zeehoFiveVariant: Int? = nil
     /// Build 32 references a local BLE pairing; keys remain in Keychain.
     var ninebotVehicleID: UUID? = nil
+    var bmsFamily: String? = nil
 
     var migratedZeehoFive: VehicleProfile {
         var value = self

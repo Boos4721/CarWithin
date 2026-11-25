@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2AE030B914AB3EEFD7FB90F9 /* App/BMSAccessStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35AC37C3A96D5BCA42D4ABC8; };
+		DEDBC043F4DCEC7FFF5516AD /* Sources/TDSCarKitCore/BMSOtherBoards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D316597D5A282F6300A7F05; };
+		310CFE6B88A722787ACE1B04 /* Sources/TDSCarKitCore/BMSYanYang.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD66983B64BEC8DADD8923B; };
+		E2F31B51350741E76CBC4DA2 /* Sources/TDSCarKitCore/BMSJBDJK.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD74B9ADA42AB5190BABF2E0; };
+		C70EBB13A3C39F5BBDE1DE67 /* Sources/TDSCarKitCore/BMSReadOnlyProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1939436FECE25437CD60CE70; };
+		3990EE49B5F26A136F51FF7D /* Sources/TDSCarKitCore/BMSFamily.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D07B3D0A4D991604F15F108; };
 		1487E133716D8F9F747CC825 /* Sources/TDSCarKitCore/VehicleNavigationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAF705621FFD3715639DD39D; };
 		7336D7B16D57F0FF98604238 /* Sources/TDSCarKitCore/VehicleBLEFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B768A00E2B6A84702F2D49; };
 		DA7766BE1286DCDB1EF22675 /* Sources/TDSCarKitCore/VehicleAuthenticationAttempts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FDD82CF05C6EB37A51B866C; };
@@ -125,6 +131,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		35AC37C3A96D5BCA42D4ABC8 /* App/BMSAccessStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/BMSAccessStore.swift"; sourceTree = "<group>"; };
+		1D316597D5A282F6300A7F05 /* Sources/TDSCarKitCore/BMSOtherBoards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TDSCarKitCore/BMSOtherBoards.swift"; sourceTree = "<group>"; };
+		CAD66983B64BEC8DADD8923B /* Sources/TDSCarKitCore/BMSYanYang.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TDSCarKitCore/BMSYanYang.swift"; sourceTree = "<group>"; };
+		BD74B9ADA42AB5190BABF2E0 /* Sources/TDSCarKitCore/BMSJBDJK.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TDSCarKitCore/BMSJBDJK.swift"; sourceTree = "<group>"; };
+		1939436FECE25437CD60CE70 /* Sources/TDSCarKitCore/BMSReadOnlyProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TDSCarKitCore/BMSReadOnlyProtocol.swift"; sourceTree = "<group>"; };
+		5D07B3D0A4D991604F15F108 /* Sources/TDSCarKitCore/BMSFamily.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TDSCarKitCore/BMSFamily.swift"; sourceTree = "<group>"; };
 		EAF705621FFD3715639DD39D /* Sources/TDSCarKitCore/VehicleNavigationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TDSCarKitCore/VehicleNavigationPolicy.swift"; sourceTree = "<group>"; };
 		C8B768A00E2B6A84702F2D49 /* Sources/TDSCarKitCore/VehicleBLEFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TDSCarKitCore/VehicleBLEFrame.swift"; sourceTree = "<group>"; };
 		6FDD82CF05C6EB37A51B866C /* Sources/TDSCarKitCore/VehicleAuthenticationAttempts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TDSCarKitCore/VehicleAuthenticationAttempts.swift"; sourceTree = "<group>"; };
@@ -257,6 +269,12 @@
 		64292B1C2B2E13EAD8788FC8 = {
 			isa = PBXGroup;
 			children = (
+				35AC37C3A96D5BCA42D4ABC8 /* App/BMSAccessStore.swift */,
+				1D316597D5A282F6300A7F05 /* Sources/TDSCarKitCore/BMSOtherBoards.swift */,
+				CAD66983B64BEC8DADD8923B /* Sources/TDSCarKitCore/BMSYanYang.swift */,
+				BD74B9ADA42AB5190BABF2E0 /* Sources/TDSCarKitCore/BMSJBDJK.swift */,
+				1939436FECE25437CD60CE70 /* Sources/TDSCarKitCore/BMSReadOnlyProtocol.swift */,
+				5D07B3D0A4D991604F15F108 /* Sources/TDSCarKitCore/BMSFamily.swift */,
 				EAF705621FFD3715639DD39D /* Sources/TDSCarKitCore/VehicleNavigationPolicy.swift */,
 				C8B768A00E2B6A84702F2D49 /* Sources/TDSCarKitCore/VehicleBLEFrame.swift */,
 				6FDD82CF05C6EB37A51B866C /* Sources/TDSCarKitCore/VehicleAuthenticationAttempts.swift */,
@@ -451,6 +469,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2AE030B914AB3EEFD7FB90F9 /* App/BMSAccessStore.swift in Sources */,
+				DEDBC043F4DCEC7FFF5516AD /* Sources/TDSCarKitCore/BMSOtherBoards.swift in Sources */,
+				310CFE6B88A722787ACE1B04 /* Sources/TDSCarKitCore/BMSYanYang.swift in Sources */,
+				E2F31B51350741E76CBC4DA2 /* Sources/TDSCarKitCore/BMSJBDJK.swift in Sources */,
+				C70EBB13A3C39F5BBDE1DE67 /* Sources/TDSCarKitCore/BMSReadOnlyProtocol.swift in Sources */,
+				3990EE49B5F26A136F51FF7D /* Sources/TDSCarKitCore/BMSFamily.swift in Sources */,
 				1487E133716D8F9F747CC825 /* Sources/TDSCarKitCore/VehicleNavigationPolicy.swift in Sources */,
 				7336D7B16D57F0FF98604238 /* Sources/TDSCarKitCore/VehicleBLEFrame.swift in Sources */,
 				DA7766BE1286DCDB1EF22675 /* Sources/TDSCarKitCore/VehicleAuthenticationAttempts.swift in Sources */,
