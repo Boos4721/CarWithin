@@ -28,7 +28,11 @@ final class NinebotUDPSocket: @unchecked Sendable {
                     Darwin.bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
                 }
             }
-            guard bindResult == 0 else { throw NinebotSocketError.operation("绑定 \(localIP):\(localPort)", errno) }
+            guard bindResult == 0 else {
+                let code = errno
+                if code == EADDRINUSE { throw NinebotSocketError.portInUse(localIP, localPort) }
+                throw NinebotSocketError.operation("绑定 \(localIP):\(localPort)", code)
+            }
 
             var remoteAddress = try Self.address(ip: remoteIP, port: remotePort)
             let connectResult = withUnsafePointer(to: &remoteAddress) {
@@ -110,9 +114,15 @@ final class NinebotUDPSocket: @unchecked Sendable {
 
 enum NinebotSocketError: LocalizedError {
     case invalidAddress(String)
+    case portInUse(String, UInt16)
     case operation(String, Int32)
     case shortWrite(expected: Int, actual: Int)
     case closed
+
+    var isPortInUse: Bool {
+        if case .portInUse = self { return true }
+        return false
+    }
 
     /// 发送缓冲区满或对端端口暂不可达，丢弃当前数据即可，不需要结束会话
     var isTransient: Bool {
@@ -131,6 +141,8 @@ enum NinebotSocketError: LocalizedError {
         switch self {
         case .invalidAddress(let address):
             "IPv4 地址无效：\(address)"
+        case .portInUse(let address, let port):
+            "本机投屏端口 \(address):\(port) 被占用。请先结束九号出行的导航投屏；若仍占用，请从 App 切换器关闭九号出行及其他 CarWithin 实例，再重试。仅切到后台可能不会释放端口。"
         case .operation(let operation, let code):
             "\(operation)失败：\(String(cString: strerror(code))) (errno \(code))"
         case .shortWrite(let expected, let actual):
@@ -139,4 +151,24 @@ enum NinebotSocketError: LocalizedError {
             "UDP socket 已关闭"
         }
     }
+}
+
+/// Own both protocol ports as one transaction. A busy control port must not retain the video port.
+/// Ports stay exclusive: SO_REUSEPORT could route KCP/control replies to another app.
+final class NinebotUDPChannels {
+    let video: NinebotUDPSocket
+    let control: NinebotUDPSocket
+
+    init(localIP: String, remoteIP: String, videoPort: UInt16 = 5012, controlPort: UInt16 = 5013) throws {
+        let video = try NinebotUDPSocket(localIP: localIP, localPort: videoPort, remoteIP: remoteIP, remotePort: videoPort)
+        do {
+            control = try NinebotUDPSocket(localIP: localIP, localPort: controlPort, remoteIP: remoteIP, remotePort: controlPort)
+            self.video = video
+        } catch {
+            video.close()
+            throw error
+        }
+    }
+    func close() { control.close(); video.close() }
+    deinit { close() }
 }

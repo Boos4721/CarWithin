@@ -72,8 +72,13 @@ final class NinebotOutput {
         private var encoded: Result<H264EncodedFrame, Error>?
 
         private var timer: DispatchSourceTimer?
-        private var video: NinebotUDPSocket?
-        private var control: NinebotUDPSocket?
+        private var channels: NinebotUDPChannels?
+        private var video: NinebotUDPSocket? { channels?.video }
+        private var control: NinebotUDPSocket? { channels?.control }
+        private var startupRetry: DispatchWorkItem?
+        private var startupDeadline = 0.0
+        private var startupCompletion: ((Result<Void, Error>) -> Void)?
+        private var waitingForPorts = false
         private var localAddress = ""
         private var targetAddress = ""
         private var networkRecoverySince: Double?
@@ -124,22 +129,31 @@ final class NinebotOutput {
             self.requestKeyframe = requestKeyframe
         }
 
-        func start(_ local: String, _ target: String, onPrepared: (Result<Void, Error>) -> Void) {
+        func start(_ local: String, _ target: String, onPrepared: @escaping (Result<Void, Error>) -> Void) {
             guard active else { return }
             localAddress = local; targetAddress = target
+            startupDeadline = ProcessInfo.processInfo.systemUptime + 10
+            startupCompletion = onPrepared
+            prepareChannels()
+        }
+
+        private func prepareChannels() {
+            startupRetry = nil
+            guard active, startupCompletion != nil else { return }
             do {
-                let videoPort = NinebotH264Packetizer.videoPort
-                let controlPort = NinebotH264Packetizer.controlPort
-                video = try NinebotUDPSocket(localIP: local, localPort: videoPort, remoteIP: target, remotePort: videoPort)
-                control = try NinebotUDPSocket(localIP: local, localPort: controlPort, remoteIP: target, remotePort: controlPort)
+                // Keep partial binds local until both ports and the first send succeed.
+                let channels = try NinebotUDPChannels(localIP: localAddress, remoteIP: targetAddress)
                 // Prepare both sockets and send the first control packet before starting CarPlay.
                 // Local send success is not an acknowledgement that projection is enabled remotely.
                 counter &+= 1
                 let heartbeat = usesJPEG ? NinebotJPEGPacketizer.heartbeat(counter: counter)
                                          : NinebotH264Packetizer.heartbeat(counter: counter)
-                try control?.send(heartbeat)
+                try channels.control.send(heartbeat)
                 nextHeartbeat = ProcessInfo.processInfo.systemUptime + 1
-                guard active else { close(); return }
+                guard active else { channels.close(); close(); return }
+                self.channels = channels
+                if waitingForPorts { onLog("本机投屏端口已释放，继续启动 CarPlay") }
+                waitingForPorts = false
                 onLog("九号投屏端口 5012/5013 已就绪，已发送首个控制握手")
                 report("投屏通道已准备，等待仪表回应…")
                 switch mode {
@@ -152,10 +166,23 @@ final class NinebotOutput {
                 timer.setEventHandler { [weak self] in self?.tick() }
                 self.timer = timer
                 timer.resume()
-                onPrepared(.success(()))
+                let completion = startupCompletion; startupCompletion = nil
+                completion?(.success(()))
+            } catch let error as NinebotSocketError where error.isPortInUse && ProcessInfo.processInfo.systemUptime < startupDeadline {
+                guard active else { close(); return }
+                if !waitingForPorts {
+                    waitingForPorts = true
+                    onLog("本机投屏端口被占用，最多等待 10 秒释放。请结束九号出行导航投屏，必要时关闭其后台实例。")
+                }
+                report("投屏端口被占用，正在等待释放；请结束九号出行导航投屏…")
+                let retry = DispatchWorkItem { [weak self] in self?.prepareChannels() }
+                startupRetry = retry
+                queue.asyncAfter(deadline: .now() + 0.5, execute: retry)
             } catch {
+                guard active else { close(); return }
+                let completion = startupCompletion; startupCompletion = nil
                 fail(error)
-                onPrepared(.failure(error))
+                completion?(.failure(error))
             }
         }
 
@@ -316,8 +343,7 @@ final class NinebotOutput {
                 networkRecoverySince = now
                 networkRecoveryError = error
                 nextNetworkRecoveryAttempt = now + 0.5
-                control.close(); video.close()
-                self.control = nil; self.video = nil; kcp = nil
+                channels?.close(); channels = nil; kcp = nil
                 lastReply = nil; acknowledgedVideo = false; sentPicture = false
                 onLog("九号 Wi-Fi 暂不可用，最多等待 8 秒恢复投屏通道：\(error.localizedDescription)")
                 report("Wi-Fi 暂时中断，正在恢复投屏通道…")
@@ -335,25 +361,20 @@ final class NinebotOutput {
             // A different address is handled by the controller's startup monitor.
             guard ReceiverConfiguration.wifiIPv4Address() == localAddress else { return }
             do {
-                let nextVideo = try NinebotUDPSocket(localIP: localAddress,
-                    localPort: NinebotH264Packetizer.videoPort, remoteIP: targetAddress,
-                    remotePort: NinebotH264Packetizer.videoPort)
-                let nextControl = try NinebotUDPSocket(localIP: localAddress,
-                    localPort: NinebotH264Packetizer.controlPort, remoteIP: targetAddress,
-                    remotePort: NinebotH264Packetizer.controlPort)
+                let channels = try NinebotUDPChannels(localIP: localAddress, remoteIP: targetAddress)
                 counter &+= 1
                 let heartbeat = usesJPEG ? NinebotJPEGPacketizer.heartbeat(counter: counter)
                                          : NinebotH264Packetizer.heartbeat(counter: counter)
-                try nextControl.send(heartbeat)
+                try channels.control.send(heartbeat)
                 guard active else { return }
-                video = nextVideo; control = nextControl
+                self.channels = channels
                 networkRecoverySince = nil; networkRecoveryError = nil
                 nextHeartbeat = now + 1
                 fresh = true; lastKeyframe = -.infinity
                 onLog("九号 Wi-Fi 已恢复，已重建 UDP 5012/5013 通道并重新发送握手")
                 report("投屏通道已恢复，等待仪表回应…")
                 requestKeyframe()
-            } catch let error as NinebotSocketError where error.isNetworkUnavailable || error.isTransient {
+            } catch let error as NinebotSocketError where error.isNetworkUnavailable || error.isTransient || error.isPortInUse {
                 networkRecoveryError = error
             } catch { fail(error) }
         }
@@ -482,6 +503,7 @@ final class NinebotOutput {
 
         func close() {
             lock.withLock { acceptingFrames = false }
+            startupRetry?.cancel(); startupRetry = nil; startupCompletion = nil
             timer?.cancel()
             timer = nil
             if usesJPEG {
@@ -489,9 +511,9 @@ final class NinebotOutput {
             } else {
                 try? control?.send(NinebotH264Packetizer.bye)
             }
-            control = nil
+            // Close descriptors explicitly before releasing KCP/codec objects that can retain them.
+            channels?.close(); channels = nil
             kcp = nil
-            video = nil
             decoder?.invalidate()
             decoder = nil
             encoder?.invalidate()
