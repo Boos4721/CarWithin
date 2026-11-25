@@ -14,7 +14,7 @@ enum ExperienceStoreSmoke {
         ]
         let decoder = JSONDecoder(), encoder = JSONEncoder()
         var profile = try decoder.decode(VehicleProfile.self, from: JSONSerialization.data(withJSONObject: legacy))
-        precondition(profile.cardBackground == nil)
+        precondition(profile.cardBackground == nil && profile.cardMode == nil)
         precondition(profile.ninebotVehicleID == nil && profile.bmsFamily == nil)
         precondition(profile.output == 4 && profile.zeehoAutomaticAddress == nil && profile.zeehoFrameRate == nil
             && profile.zeehoCanvas == nil && profile.zeehoVideoMode == nil)
@@ -32,8 +32,9 @@ enum ExperienceStoreSmoke {
         var paired = profile
         paired.ninebotVehicleID = UUID()
         paired.bmsFamily = "jikong"
+        paired.cardMode = ANTBMSCardConfiguration.Mode.automatic.rawValue
         let pairedRoundTrip = try decoder.decode(VehicleProfile.self, from: encoder.encode(paired))
-        precondition(pairedRoundTrip.ninebotVehicleID == paired.ninebotVehicleID && pairedRoundTrip.bmsFamily == "jikong")
+        precondition(pairedRoundTrip.ninebotVehicleID == paired.ninebotVehicleID && pairedRoundTrip.bmsFamily == "jikong" && pairedRoundTrip.cardMode == 0)
         precondition(pairedRoundTrip.ssid == profile.ssid && pairedRoundTrip.bmsID == profile.bmsID)
         let pairedJSON = try JSONSerialization.jsonObject(with: encoder.encode(paired)) as! [String: Any]
         precondition(pairedJSON["key"] == nil && pairedJSON["password"] == nil)

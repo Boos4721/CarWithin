@@ -31,6 +31,8 @@ struct VehicleProfile: Codable, Identifiable {
     /// Build 32 references a local BLE pairing; keys remain in Keychain.
     var ninebotVehicleID: UUID? = nil
     var bmsFamily: String? = nil
+    /// Build 36: missing mode preserves existing custom layouts.
+    var cardMode: Int? = nil
 
     var migratedZeehoFive: VehicleProfile {
         var value = self

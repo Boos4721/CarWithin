@@ -314,6 +314,17 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let bmsCardSize = ChoiceMenu(items: ANTBMSCardConfiguration.Size.allCases.map(\.title))
     private let bmsCardBackground = ChoiceMenu(items: ANTBMSCardConfiguration.Background.allCases.map(\.title))
     private var bmsCardConfiguration = ANTBMSCardConfiguration()
+    private let bmsCardModeControl = ChoiceMenu(items: ANTBMSCardConfiguration.Mode.allCases.map(\.title))
+    private var bmsCapabilitiesByDevice: [String: BMSFieldCapabilities] = [:]
+    private var bmsCapabilitiesKey: String {
+        (bmsClient.selectedID?.uuidString ?? "none") + ":" + bmsClient.selectedFamily.rawValue
+    }
+    private var bmsCapabilities: BMSFieldCapabilities {
+        bmsCapabilitiesByDevice[bmsCapabilitiesKey] ?? BMSFieldCapabilities(family: bmsClient.selectedFamily)
+    }
+    private var effectiveBMSCardConfiguration: ANTBMSCardConfiguration {
+        bmsCardConfiguration.resolving(recommendedFields: bmsCapabilities.recommendedFields)
+    }
     private var bmsFieldSwitches: [ANTBMSCardConfiguration.Field: UISwitch] = [:]
     private let bmsCardPreview = BMSCardPreviewView()
     private let bmsCardPreviewStatus = StatusLabel()
@@ -999,7 +1010,15 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             savedFields: UserDefaults.standard.stringArray(forKey: "antBMSCardFields"),
             sizeRawValue: UserDefaults.standard.object(forKey: "antBMSCardSize") as? Int,
             positionRawValue: UserDefaults.standard.object(forKey: "antBMSPosition") as? Int,
-            backgroundRawValue: UserDefaults.standard.object(forKey: "antBMSCardBackground") as? Int)
+            backgroundRawValue: UserDefaults.standard.object(forKey: "antBMSCardBackground") as? Int,
+            modeRawValue: UserDefaults.standard.object(forKey: "antBMSCardMode") as? Int ??
+                (UserDefaults.standard.stringArray(forKey: "antBMSCardFields") == nil ? ANTBMSCardConfiguration.Mode.automatic.rawValue : ANTBMSCardConfiguration.Mode.custom.rawValue))
+        bmsCardModeControl.selectedSegmentIndex = bmsCardConfiguration.mode.rawValue
+        bmsCardModeControl.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            self.bmsCardConfiguration.mode = ANTBMSCardConfiguration.Mode(rawValue: self.bmsCardModeControl.selectedSegmentIndex) ?? .custom
+            self.saveBMSCardConfiguration()
+        }, for: .valueChanged)
         bmsCardSize.selectedSegmentIndex = bmsCardConfiguration.size.rawValue
         bmsPosition.selectedSegmentIndex = bmsCardConfiguration.position.rawValue
         bmsCardBackground.selectedSegmentIndex = bmsCardConfiguration.background.rawValue
@@ -1070,6 +1089,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     }
 
     private func saveBMSCardConfiguration() {
+        UserDefaults.standard.set(bmsCardConfiguration.mode.rawValue, forKey: "antBMSCardMode")
+        bmsCardModeControl.selectedSegmentIndex = bmsCardConfiguration.mode.rawValue
         UserDefaults.standard.set(bmsCardConfiguration.fields.map(\.rawValue), forKey: "antBMSCardFields")
         UserDefaults.standard.set(bmsCardConfiguration.size.rawValue, forKey: "antBMSCardSize")
         UserDefaults.standard.set(bmsCardConfiguration.position.rawValue, forKey: "antBMSPosition")
@@ -1090,6 +1111,17 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
 
     private func refreshBMS() {
         let reading = bmsClient.freshReading
+        if let reading {
+            var capabilities = bmsCapabilities
+            capabilities.observe(reading)
+            if bmsCapabilitiesByDevice.count >= 100, bmsCapabilitiesByDevice[bmsCapabilitiesKey] == nil { bmsCapabilitiesByDevice.removeAll() }
+            bmsCapabilitiesByDevice[bmsCapabilitiesKey] = capabilities
+        }
+        let cardConfiguration = effectiveBMSCardConfiguration
+        for (field, control) in bmsFieldSwitches {
+            control.isEnabled = bmsCardConfiguration.mode == .custom
+            control.isOn = cardConfiguration.fields.contains(field)
+        }
         if bmsSessionStartedAt != nil, (bmsSessionDevice != bmsClient.selectedID || bmsSessionFamily != bmsClient.selectedFamily) {
             finishBMSSession()
             if running, bmsEnabledSwitch.isOn { beginBMSSessionIfNeeded() }
@@ -1103,6 +1135,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                 reloadVisibleSettings()
             }
         }
+        if bmsSessionStartedAt != nil { bmsSession.advanceRecording(to: ProcessInfo.processInfo.systemUptime) }
         bmsSessionStatus.text = bmsStatisticsText(bmsSession)
         refreshLiveBMSRecord()
         bmsStatus.text = bmsEnabledSwitch.isOn ? bmsClient.status : "BMS 显示已关闭"
@@ -1135,12 +1168,12 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             bmsDetails.text = "电量 -- · 电压 -- · 电流 -- · 功率 --\n等待所选板型的有效实时数据。"
         }
         bmsOverlay.update(enabled: bmsEnabledSwitch.isOn, reading: reading, status: bmsClient.status,
-                          configuration: bmsCardConfiguration)
-        bmsCardPreview.update(reading: reading, configuration: bmsCardConfiguration,
-                             aspectRatio: outputMode == .ninebotSeven ? 1024 / 600 : 848 / 480)
+                          configuration: cardConfiguration)
+        bmsCardPreview.update(reading: reading, configuration: cardConfiguration,
+                             aspectRatio: outputMode == .ninebotSeven ? 1024 / 600 : 848 / 480, family: bmsClient.selectedFamily)
         bmsCardPreviewStatus.text = reading == nil ? "示例数据 · 当前没有实时读数" : "实时数据 · " + bmsClient.selectedFamily.title
         let ids = bmsClient.devices.map(\.id)
-        let structureKey = "\(bmsClient.selectedID?.uuidString ?? "")|\(bmsClient.selectedFamily.rawValue)|\(bmsClient.isConfirmingSelection)|\(bmsClient.isScanning)|\(bmsClient.presentation.action)"
+        let structureKey = "\(bmsClient.selectedID?.uuidString ?? "")|\(bmsClient.selectedFamily.rawValue)|\(bmsClient.isConfirmingSelection)|\(bmsClient.isScanning)|\(bmsClient.presentation.action)|\(cardConfiguration.fields.map(\.rawValue).joined(separator: ","))|\(bmsCapabilities.variant ?? "")"
         if ids != bmsDeviceList || structureKey != bmsStructureKey {
             bmsDeviceList = ids; bmsStructureKey = structureKey
             reloadVisibleSettings()
@@ -3318,7 +3351,7 @@ extension ReceiverViewController {
             zeehoVideoMode: isZeehoSEPlus ? zeehoSEPlusVideoModeControl.selectedSegmentIndex : nil,
             zeehoFiveVariant: outputMode == .zeehoFive ? selectedZeehoFiveVariant.rawValue : nil,
             ninebotVehicleID: outputMode.ninebotMode != nil ? ninebotVehicle.garage.selected?.id : nil,
-            bmsFamily: bmsClient.savedFamily?.rawValue)
+            bmsFamily: bmsClient.savedFamily?.rawValue, cardMode: bmsCardConfiguration.mode.rawValue)
     }
 
     private func saveActiveVehicleProfile() {
@@ -3448,7 +3481,7 @@ extension ReceiverViewController {
         bmsClient.restoreSelection(id: profile.bmsID, name: profile.bmsName, family: profile.bmsFamily)
         bmsEnabledSwitch.isOn = profile.bmsEnabled
         bmsCardConfiguration = ANTBMSCardConfiguration(savedFields: profile.cardFields, sizeRawValue: profile.cardSize,
-            positionRawValue: profile.cardPosition, backgroundRawValue: profile.cardBackground)
+            positionRawValue: profile.cardPosition, backgroundRawValue: profile.cardBackground, modeRawValue: profile.cardMode)
         bmsPosition.selectedSegmentIndex = bmsCardConfiguration.position.rawValue
         bmsCardBackground.selectedSegmentIndex = bmsCardConfiguration.background.rawValue
         bmsCardSize.selectedSegmentIndex = bmsCardConfiguration.size.rawValue
@@ -3632,6 +3665,7 @@ extension ReceiverViewController {
         guard bmsEnabledSwitch.isOn, !bmsClient.isConfirmingSelection, bmsSessionStartedAt == nil else { return }
         bmsSession = ANTBMSSessionStatistics(); bmsTrend.points = []
         bmsSessionMinimumUptime = ProcessInfo.processInfo.systemUptime
+        bmsSession.startRecording(at: bmsSessionMinimumUptime)
         lastBMSSaveUptime = bmsSessionMinimumUptime
         bmsSessionRecordID = UUID()
         bmsSessionStartedAt = Date(); bmsSessionVehicle = currentVehicleName
@@ -3642,6 +3676,7 @@ extension ReceiverViewController {
 
     private func finishBMSSession() {
         guard bmsSessionStartedAt != nil else { return }
+        bmsSession.finishRecording(at: ProcessInfo.processInfo.systemUptime)
         checkpointBMSSession(completed: true)
         bmsSessionStartedAt = nil
         reloadVisibleSettings()
@@ -3689,11 +3724,24 @@ extension ReceiverViewController {
             String(format: "\n全程 %.2f–%.2f V", low, $0)
         } } ?? ""
         let seconds = Int(statistics.sampledSeconds)
-        return "\(state) · 有效 \(seconds / 60) 分 \(seconds % 60) 秒\(charge)\(voltage)"
+        let coverage = statistics.coverageRatio.map { String(format: " · 覆盖 %.0f%%", $0 * 100) } ?? ""
+        let interruptions = statistics.coverage.map { " · 中断 \($0.interruptionCount) 次" } ?? ""
+        return "\(state) · 有效 \(seconds / 60) 分 \(seconds % 60) 秒\(coverage)\(interruptions)\(charge)\(voltage)"
+    }
+
+    private func bmsCoverageText(_ statistics: ANTBMSSessionStatistics) -> String {
+        guard let coverage = statistics.coverage else { return "旧记录未保存数据完整度" }
+        let duration = max(0, Int(coverage.recordingSeconds))
+        let ratio = statistics.coverageRatio.map { String(format: "%.0f%%", $0 * 100) } ?? "--"
+        let longest = coverage.longestInterruption > 0 ? Int(ceil(coverage.longestInterruption)) : 0
+        return "记录时长 \(duration / 60) 分 \(duration % 60) 秒 · 有效覆盖 \(ratio)" +
+            "\n数据中断 \(coverage.interruptionCount) 次 · 最长 \(longest) 秒"
     }
 
     private func bmsStatisticsText(_ statistics: ANTBMSSessionStatistics) -> String {
-        guard statistics.sampleCount > 0 else { return "暂无有效样本。启动 CarPlay 且开启 BMS 后自动记录，也可手动开始。" }
+        guard statistics.sampleCount > 0 else {
+            return (statistics.coverage == nil ? "" : bmsCoverageText(statistics) + "\n") + "暂无有效样本。开启 BMS 并连接电池后等待数据，也可手动开始记录。"
+        }
         let charge = statistics.firstCharge.flatMap { first in statistics.lastCharge.map { "\(first)% → \($0)%" } } ?? "--"
         let voltage = statistics.minimumVoltage.flatMap { low in statistics.maximumVoltage.map {
             String(format: "%.2f–%.2f V", low, $0)
@@ -3702,7 +3750,7 @@ extension ReceiverViewController {
         let power = statistics.peakAbsolutePower.map { "\($0) W" } ?? "未提供"
         let temperature = statistics.maximumTemperature.map { String(format: "%.0f°C", $0) } ?? "--"
         let delta = statistics.maximumCellDelta.map { String(format: "%.0f mV", $0 * 1000) } ?? "--"
-        return String(format: "有效采样 %.0f 秒 · %d 帧", statistics.sampledSeconds, statistics.sampleCount) +
+        return bmsCoverageText(statistics) + "\n" + String(format: "有效采样 %.0f 秒 · %d 帧", statistics.sampledSeconds, statistics.sampleCount) +
             "\n电量 " + charge + "\n全程电压 " + voltage + "\n峰值电流 |I| " + current +
             " · 峰值功率 |P| " + power + "\n最高温度 " + temperature + " · 最大压差 " + delta
     }
@@ -3724,7 +3772,7 @@ extension ReceiverViewController {
         }, for: .valueChanged)
         return page("BMS 统计与记录") { [unowned self] in
             var sections = [SettingsSection(self.bmsSessionStartedAt == nil ? "本次统计" : "正在记录", footer:
-                "有效采样时长不计入断线间隔；峰值取绝对值。记录电池读数，不计算里程或预计续航。", [.note(self.bmsSessionStatus), .view(self.bmsTrend)])]
+                "覆盖率按有效连续采样时间 / 记录时长计算，初次等待也计入记录时长。超过 5 秒未收到有效数据计为中断，中断时长从过期时起算，不推断失联原因。峰值取绝对值。", [.note(self.bmsSessionStatus), .view(self.bmsTrend)])]
             var controls: [SettingsRow] = []
             if self.bmsSessionStartedAt != nil {
                 controls.append(.action("结束并保存本次记录", icon: ("stop.circle", .systemBlue)) { [unowned self] in
@@ -3908,7 +3956,7 @@ extension ReceiverViewController {
             sections.append(SettingsSection("查看与管理", [
                 .page("电池详情", icon: ("battery.100percent", .systemGreen)) { [unowned self] in self.bmsDetailsPage() },
                 .page("显示设置", icon: ("rectangle.topthird.inset.filled", .systemBlue), detail: { [unowned self] in
-                    "\(self.bmsCardConfiguration.fields.count) 项 · \(self.bmsCardConfiguration.size.title)号"
+                    "\(self.bmsCardConfiguration.mode.title) · \(self.effectiveBMSCardConfiguration.fields.count) 项"
                 }) { [unowned self] in self.bmsCardPage() },
                 .page("本次与历史记录", icon: ("chart.xyaxis.line", .systemGreen)) { [unowned self] in self.bmsStatisticsPage() },
                 .page("设备管理", icon: ("antenna.radiowaves.left.and.right", .systemBlue), detail: { [unowned self] in
@@ -3942,6 +3990,7 @@ extension ReceiverViewController {
     private func bmsDetailsPage() -> SettingsPageController {
         page("电池详情") { [unowned self] in
             [SettingsSection("单体电压", [.view(self.bmsCellGrid)]),
+             SettingsSection([.page("字段能力与来源", icon: ("list.bullet.rectangle", .systemBlue)) { [unowned self] in self.bmsCapabilitiesPage() }]),
              SettingsSection("实时参数与设备信息", footer: "按板型显示真实字段。ANT 与蓝宝保留原始电流符号，其他已确认板型按放电正、充电负显示；未提供的字段显示 --。", [.note(self.bmsDetails)])]
         }
     }
@@ -4042,6 +4091,7 @@ extension ReceiverViewController {
         page("板型与支持范围") { [unowned self] in
             var sections = [SettingsSection("当前设备", footer: self.bmsClient.selectedFamily.supportDescription, [
                 .info("设备", self.bmsClient.selectedName),
+                .info("协议型号", self.bmsClient.freshReading?.extraDetails["协议"] ?? self.bmsClient.selectedFamily.protocolDescription),
                 .note(self.bmsStatus)
             ])]
             if self.bmsClient.selectedID != nil {
@@ -4112,19 +4162,18 @@ extension ReceiverViewController {
     }
 
     private func bmsCardPage() -> SettingsPageController {
-        bmsCardPreview.update(reading: bmsClient.freshReading, configuration: bmsCardConfiguration,
-                             aspectRatio: outputMode == .ninebotSeven ? 1024 / 600 : 848 / 480)
+        bmsCardPreview.update(reading: bmsClient.freshReading, configuration: effectiveBMSCardConfiguration,
+                             aspectRatio: outputMode == .ninebotSeven ? 1024 / 600 : 848 / 480, family: bmsClient.selectedFamily)
         return page("BMS 卡片显示") { [unowned self] in
-            var sections = [SettingsSection("布局", footer: "修改后立即同步到手机和九号五寸、七寸投屏，并自动保存。卡片最多两行；减少显示项可留出更多地图空间。", [
+            var sections = [SettingsSection("内容模式", footer: "自动推荐最多四项有效字段，短时缺失时保留位置。自定义保留你的字段与顺序，随车辆配置保存。旧版布局继续使用自定义模式。", [
+                .control("显示内容", self.bmsCardModeControl),
+                .page("字段能力与来源", icon: ("list.bullet.rectangle", .systemBlue)) { [unowned self] in self.bmsCapabilitiesPage() }
+            ]), SettingsSection("布局", footer: "修改后立即同步到手机和仪表投屏，并自动保存。卡片最多两行。", [
                 .control("字号", self.bmsCardSize),
                 .control("显示位置", self.bmsPosition),
                 .control("背景", self.bmsCardBackground),
-                .page("字段顺序", icon: ("arrow.up.arrow.down", .systemBlue)) { [unowned self] in
-                    BMSCardOrderViewController(fields: self.bmsCardConfiguration.fields) { [weak self] field, destination in
-                        guard let self else { return }
-                        self.bmsCardConfiguration.move(field, to: destination)
-                        self.saveBMSCardConfiguration()
-                    }
+                .page(self.bmsCardConfiguration.mode == .automatic ? "自定义字段顺序" : "字段顺序", icon: ("arrow.up.arrow.down", .systemBlue)) { [unowned self] in
+                    self.bmsCardOrderPage()
                 }
             ])]
             sections.append(SettingsSection("布局预览", footer: "背景为布局示意，比例随所选仪表变化。没有实时读数时使用示例数据，示例不会写入电池记录或投屏画面。", [
@@ -4140,10 +4189,46 @@ extension ReceiverViewController {
             ]))
             let fields = ANTBMSCardConfiguration.Field.allCases.compactMap { field -> SettingsRow? in
                 guard let control = self.bmsFieldSwitches[field] else { return nil }
-                return .control(field.title, control)
+                var row = SettingsRow.control(field.title, control)
+                row.subtitle = { [unowned self] in
+                    let caps = self.bmsCapabilities, reading = self.bmsClient.freshReading
+                    return caps.availability(of: field, reading: reading).title + " · " + caps.explanation(of: field, reading: reading)
+                }
+                return row
             }
-            sections.append(SettingsSection("显示内容", footer: "至少保留一项。单体压差以 mV 显示；未知读数显示 --，BMS 告警会保留提示。", fields))
+            sections.append(SettingsSection("字段选择", footer: self.bmsCardConfiguration.mode == .automatic
+                ? "正在自动推荐。切换至自定义后可调整字段；缺失字段保持 --。" : "至少保留一项。手动选择的字段不会因设备暂时缺失数据而被删除。", fields))
             return sections
+        }
+    }
+
+    private func bmsCardOrderPage() -> UIViewController {
+        bmsCardConfiguration = effectiveBMSCardConfiguration
+        bmsCardConfiguration.mode = .custom
+        saveBMSCardConfiguration()
+        return BMSCardOrderViewController(fields: bmsCardConfiguration.fields) { [weak self] field, destination in
+            guard let self else { return }
+            self.bmsCardConfiguration.move(field, to: destination)
+            self.saveBMSCardConfiguration()
+        }
+    }
+
+    private func bmsCapabilitiesPage() -> SettingsPageController {
+        page("字段能力与来源") { [unowned self] in
+            let reading = self.bmsClient.freshReading, caps = self.bmsCapabilities
+            let rows = ANTBMSCardConfiguration.Field.allCases.map { field -> SettingsRow in
+                var row = SettingsRow.info(field.title, "")
+                row.subtitle = { [unowned self] in
+                    let current = self.bmsCapabilities, data = self.bmsClient.freshReading
+                    return current.availability(of: field, reading: data).title + "\n" + current.explanation(of: field, reading: data)
+                }
+                return row
+            }
+            return [SettingsSection("当前设备", [
+                .info("板型", self.bmsClient.selectedID == nil ? "未选择" : self.bmsClient.selectedFamily.title),
+                .info("协议型号", reading?.extraDetails["协议"] ?? self.bmsClient.selectedFamily.protocolDescription),
+                .info("自动推荐", caps.recommendedFields.map(\.title).joined(separator: "、"))
+            ]), SettingsSection("字段状态", footer: "仅根据已确认的协议和有效数据判断。暂未读到与协议未提供分别标注，未知值不填成零。", rows)]
         }
     }
 

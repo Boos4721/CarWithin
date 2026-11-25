@@ -52,6 +52,11 @@ public struct ANTBMSCardConfiguration: Equatable, Sendable {
         public var opacity: Double { [0.45, 0.86, 1][rawValue] }
     }
 
+    public enum Mode: Int, CaseIterable, Sendable {
+        case automatic, custom
+        public var title: String { self == .automatic ? "自动推荐" : "自定义" }
+    }
+    public var mode: Mode
     public static let compactFields: [Field] = [.charge, .voltage, .cellDelta]
     public private(set) var fields: [Field]
     public var size: Size
@@ -60,7 +65,8 @@ public struct ANTBMSCardConfiguration: Equatable, Sendable {
 
     /// Missing/invalid saved preferences preserve the original six-field card.
     public init(savedFields: [String]? = nil, sizeRawValue: Int? = nil,
-                positionRawValue: Int? = nil, backgroundRawValue: Int? = nil) {
+                positionRawValue: Int? = nil, backgroundRawValue: Int? = nil, modeRawValue: Int? = nil) {
+        mode = modeRawValue.flatMap(Mode.init(rawValue:)) ?? .custom
         var seen = Set<Field>()
         let normalized = (savedFields?.compactMap(Field.init(rawValue:)) ?? Field.allCases)
             .filter { seen.insert($0).inserted }
@@ -70,10 +76,19 @@ public struct ANTBMSCardConfiguration: Equatable, Sendable {
         background = backgroundRawValue.flatMap(Background.init(rawValue:)) ?? .standard
     }
 
+    /// Resolve a temporary render layout without changing the saved custom fields.
+    public func resolving(recommendedFields: [Field]) -> Self {
+        guard mode == .automatic, !recommendedFields.isEmpty else { return self }
+        var result = self
+        result.fields = recommendedFields
+        return result
+    }
+
     /// Keep at least one metric visible, preserving the user's preferred order.
     @discardableResult
     public mutating func set(_ field: Field, visible: Bool) -> Bool {
         if !visible, fields == [field] { return false }
+        mode = .custom
         if visible {
             if !fields.contains(field) { fields.append(field) }
         } else { fields.removeAll { $0 == field } }
@@ -82,6 +97,7 @@ public struct ANTBMSCardConfiguration: Equatable, Sendable {
 
     public mutating func move(_ field: Field, to destination: Int) {
         guard let index = fields.firstIndex(of: field), fields.indices.contains(destination) else { return }
+        mode = .custom
         fields.remove(at: index)
         fields.insert(field, at: destination)
     }

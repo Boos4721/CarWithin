@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		CA489F012425FC11B66E8129 /* Sources/TDSCarKitCore/BMSFieldCapabilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 623E748ACDB32B46F1EF2D64; };
 		C7BDFD07D58F971294CBEDB9 /* Sources/TDSCarKitCore/BMSExperience.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F88476143CBFB20B9DD4DF; };
 		25AA28D16CCA25DD4CD71E19 /* App/BMSStatusCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A988D03F970B24DDCB47A0; };
 		B2743A0C977CC4265A303D7B /* App/BMSCellGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 446F935457D66BF91D5EB34F; };
@@ -134,6 +135,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		623E748ACDB32B46F1EF2D64 /* Sources/TDSCarKitCore/BMSFieldCapabilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TDSCarKitCore/BMSFieldCapabilities.swift"; sourceTree = "<group>"; };
 		42F88476143CBFB20B9DD4DF /* Sources/TDSCarKitCore/BMSExperience.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TDSCarKitCore/BMSExperience.swift"; sourceTree = "<group>"; };
 		C7A988D03F970B24DDCB47A0 /* App/BMSStatusCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/BMSStatusCardView.swift"; sourceTree = "<group>"; };
 		446F935457D66BF91D5EB34F /* App/BMSCellGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/BMSCellGridView.swift"; sourceTree = "<group>"; };
@@ -275,6 +277,7 @@
 		64292B1C2B2E13EAD8788FC8 = {
 			isa = PBXGroup;
 			children = (
+				623E748ACDB32B46F1EF2D64 /* Sources/TDSCarKitCore/BMSFieldCapabilities.swift */,
 				42F88476143CBFB20B9DD4DF /* Sources/TDSCarKitCore/BMSExperience.swift */,
 				C7A988D03F970B24DDCB47A0 /* App/BMSStatusCardView.swift */,
 				446F935457D66BF91D5EB34F /* App/BMSCellGridView.swift */,
@@ -478,6 +481,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CA489F012425FC11B66E8129 /* Sources/TDSCarKitCore/BMSFieldCapabilities.swift in Sources */,
 				C7BDFD07D58F971294CBEDB9 /* Sources/TDSCarKitCore/BMSExperience.swift in Sources */,
 				25AA28D16CCA25DD4CD71E19 /* App/BMSStatusCardView.swift in Sources */,
 				B2743A0C977CC4265A303D7B /* App/BMSCellGridView.swift in Sources */,

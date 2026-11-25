@@ -9,9 +9,11 @@ fi
 bms_test_dir="$(mktemp -d "${TMPDIR:-/tmp}/carwithin-bms-tests.XXXXXX")"
 trap 'rm -rf "$bms_test_dir"' EXIT
 mkdir -p "$bms_test_dir/Sources/TDSCarKitCore" "$bms_test_dir/Tests/TDSCarKitCoreTests"
-for name in BMSFamily BMSExperience BMSReadOnlyProtocol BMSJBDJK BMSYanYang BMSOtherBoards; do
+for name in BMSFamily BMSFieldCapabilities BMSExperience BMSReadOnlyProtocol BMSJBDJK BMSYanYang BMSOtherBoards; do
     cp "$project_root/Sources/TDSCarKitCore/$name.swift" "$bms_test_dir/Sources/TDSCarKitCore/"
 done
+cp "$project_root/Tests/TDSCarKitCoreTests/BMSRecommendationTests.swift" "$bms_test_dir/Tests/TDSCarKitCoreTests/"
+cp "$project_root/Tests/TDSCarKitCoreTests/BMSRecordingCoverageTests.swift" "$bms_test_dir/Tests/TDSCarKitCoreTests/"
 cp "$project_root/Tests/TDSCarKitCoreTests/BMSExperienceTests.swift" "$bms_test_dir/Tests/TDSCarKitCoreTests/"
 cp "$project_root/Tests/TDSCarKitCoreTests/MultibrandBMSTests.swift" "$bms_test_dir/Tests/TDSCarKitCoreTests/"
 cp "$project_root/Sources/TDSCarKitCore/ANTBMSProtocol.swift" "$bms_test_dir/Sources/TDSCarKitCore/"

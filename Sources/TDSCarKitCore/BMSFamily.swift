@@ -5,26 +5,38 @@ public enum BMSFamily: String, CaseIterable, Codable {
     case ant, yanyang, jikong, lanbao, jbd, yadi, mingtang, xiaoha
     public var title: String {
         switch self {
-        case .ant: return "蚂蚁 ANT"
-        case .yanyang: return "彦阳 YYBMS B / 旧 A"
-        case .jikong: return "极空 JK02 / JK04"
+        case .ant: return "蚂蚁保护板"
+        case .yanyang: return "彦阳保护板"
+        case .jikong: return "极空保护板"
         case .lanbao: return "蓝宝电量计"
-        case .jbd: return "嘉佰达 JBD 经典 BLE"
-        case .yadi: return "亚迪智电 FD / F403"
-        case .mingtang: return "明唐 FA00 / E1"
+        case .jbd: return "嘉佰达保护板"
+        case .yadi: return "亚迪保护板"
+        case .mingtang: return "明唐保护板"
         case .xiaoha: return "小哈锂电（广播电量）"
         }
     }
     public var shortName: String {
         switch self {
-        case .ant: "ANT"
-        case .yanyang: "YY"
-        case .jikong: "JK"
+        case .ant: "蚂蚁"
+        case .yanyang: "彦阳"
+        case .jikong: "极空"
         case .lanbao: "蓝宝"
-        case .jbd: "JBD"
+        case .jbd: "嘉佰达"
         case .yadi: "亚迪"
         case .mingtang: "明唐"
         case .xiaoha: "小哈"
+        }
+    }
+    public var protocolDescription: String {
+        switch self {
+        case .ant: "ANT · FFE0/FFE1"
+        case .yanyang: "YYBMS B / 旧 A"
+        case .jikong: "JK02 24S / 32S、JK04"
+        case .lanbao: "FA50 双表"
+        case .jbd: "JBD 经典 BLE / DD"
+        case .yadi: "FD / F403"
+        case .mingtang: "FA00 / E1"
+        case .xiaoha: "HBB 名称广播电量"
         }
     }
     public var supportsGATT: Bool { self != .xiaoha }
