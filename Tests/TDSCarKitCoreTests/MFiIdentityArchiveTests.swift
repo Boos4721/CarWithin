@@ -77,4 +77,40 @@ final class MFiIdentityArchiveTests: XCTestCase {
         archive[30] = 0x58
         XCTAssertThrowsError(try MFiIdentityArchive.extract(from: archive))
     }
+
+    func testBundledIdentitySupportsFlatAndFolderResourcesWithoutMixing() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let nested = directory.appendingPathComponent("BundledIdentity", isDirectory: true)
+        try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+        let fixture = try MFiIdentityArchive.extract(from: stored)
+        let files = ["certificate.p7b": fixture.certificateChain,
+                     "leaf.cer": fixture.leafCertificate, "private.x963": fixture.privateKey]
+        // A split set must not combine unrelated locations.
+        for (name, data) in files {
+            try data.write(to: (name == "private.x963" ? nested : directory).appendingPathComponent(name))
+        }
+        XCTAssertThrowsError(try MFiIdentityFiles.bundled(in: directory))
+        for (name, data) in files { try data.write(to: nested.appendingPathComponent(name)) }
+        XCTAssertEqual(try MFiIdentityFiles.bundled(in: directory).privateKey, fixture.privateKey)
+        for (name, data) in files { try data.write(to: directory.appendingPathComponent(name)) }
+        try FileManager.default.removeItem(at: nested)
+        XCTAssertEqual(try MFiIdentityFiles.bundled(in: directory).certificateChain, fixture.certificateChain)
+    }
+
+    func testBundledIdentityRejectsEmptyOversizedAndSymlinkedResources() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        for name in MFiIdentityFiles.names { try Data([1]).write(to: directory.appendingPathComponent(name)) }
+        let key = directory.appendingPathComponent("private.x963")
+        for invalid in [Data(), Data(repeating: 1, count: 65_537)] {
+            try invalid.write(to: key)
+            XCTAssertThrowsError(try MFiIdentityFiles.bundled(in: directory))
+        }
+        try FileManager.default.removeItem(at: key)
+        try FileManager.default.createSymbolicLink(at: key, withDestinationURL: directory.appendingPathComponent("leaf.cer"))
+        XCTAssertThrowsError(try MFiIdentityFiles.bundled(in: directory))
+    }
 }

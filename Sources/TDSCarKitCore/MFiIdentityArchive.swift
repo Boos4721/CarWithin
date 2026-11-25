@@ -18,6 +18,27 @@ public struct MFiIdentityFiles {
         leafCertificate = files["leaf.cer"]!
         privateKey = files["private.x963"]!
     }
+
+    /// Read one complete set, never combining files from different locations.
+    /// Xcode can flatten resources or preserve the BundledIdentity folder.
+    public static func bundled(in resourceDirectory: URL) throws -> Self {
+        for directory in [resourceDirectory,
+                          resourceDirectory.appendingPathComponent("BundledIdentity", isDirectory: true)] {
+            let urls = names.map { directory.appendingPathComponent($0) }
+            guard urls.allSatisfy({ FileManager.default.fileExists(atPath: $0.path) }) else { continue }
+            var files: [String: Data] = [:]
+            for url in urls {
+                let values = try url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey, .isSymbolicLinkKey])
+                guard values.isRegularFile == true, values.isSymbolicLink != true,
+                      let size = values.fileSize, (1...65_536).contains(size) else {
+                    throw MFiIdentityArchive.Failure.invalidEntry
+                }
+                files[url.lastPathComponent] = try Data(contentsOf: url, options: [.uncached])
+            }
+            return try Self(files: files)
+        }
+        throw MFiIdentityArchive.Failure.missingFiles
+    }
 }
 
 /// Reads only the expected identity resources from one app inside a user-chosen

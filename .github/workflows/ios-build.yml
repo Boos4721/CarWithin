@@ -66,6 +66,14 @@ jobs:
           bash Tools/test_zeeho_control.sh 2>&1 | tee artifacts/zeeho-control-tests.log
           bash Tools/test_tailing.sh 2>&1 | tee artifacts/tailing-media-tests.log
 
+      - name: Verify local identity packaging with generated test keys
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 -m venv "$RUNNER_TEMP/CarWithinIdentityTools"
+          "$RUNNER_TEMP/CarWithinIdentityTools/bin/python" -m pip install 'cryptography>=42,<51'
+          "$RUNNER_TEMP/CarWithinIdentityTools/bin/python" Tools/test_package_identity.py 2>&1 | tee artifacts/identity-package-tests.log
+
       - name: Build iPhone and iPad app
         shell: bash
         run: |
@@ -99,8 +107,11 @@ jobs:
           shasum -a 256 artifacts/CarWithin-ninebot-ant-bms-unsigned.ipa > artifacts/SHA256SUMS.txt
           git rev-parse HEAD > artifacts/source-commit.txt
           cp App/TDSCarKit.entitlements artifacts/required-entitlements.plist
+          cp Tools/package_identity.py artifacts/
           printf '%s\n' 'Unsigned iOS build. Re-sign with your provisioning profile before installing.' \
-            'CarPlay requires a valid accessory identity configured separately.' \
+            'This CI IPA has NO bundled MFi identity. Re-signing alone does not add one.' \
+            'Use the separately prepared bundled-identity IPA, or import your own working identity in the app.' \
+            'Local packaging: python3 package_identity.py SOURCE.ipa --identity-directory LOCAL_FOLDER --output bundled-identity-unsigned.ipa (requires cryptography).' \
             'Wi-Fi features require Hotspot Configuration and Access WiFi Information signing capabilities.' \
             > artifacts/INSTALL.txt
 

@@ -19,17 +19,17 @@ enum AccessoryIdentityStore {
 
     /// Loads an MFi identity bundled inside the app (certificate.p7b, leaf.cer, private.x963).
     /// Used so a sideloaded build works without a per-device import step.
-    static func loadFromBundle() throws -> AccessoryIdentity {
-        guard let chainURL = Bundle.main.url(forResource: "certificate", withExtension: "p7b"),
-              let leafURL = Bundle.main.url(forResource: "leaf", withExtension: "cer"),
-              let keyURL = Bundle.main.url(forResource: "private", withExtension: "x963") else {
-            throw StoreError.identityMissing
-        }
-        let chain = try readBounded(chainURL)
-        let leaf = try readBounded(leafURL)
-        var keyData = try readBounded(keyURL)
-        defer { keyData.resetBytes(in: 0..<keyData.count) }
-        return try AccessoryIdentity(certificateChain: chain, leafCertificate: leaf, privateKeyX963: keyData)
+    static func loadFromBundle(onPersistenceFailure: (Error) -> Void = { _ in }) throws -> AccessoryIdentity {
+        guard let directory = Bundle.main.resourceURL else { throw StoreError.identityMissing }
+        var material = try MFiIdentityFiles.bundled(in: directory)
+        defer { material.privateKey.resetBytes(in: 0..<material.privateKey.count) }
+        let identity = try AccessoryIdentity(certificateChain: material.certificateChain,
+            leafCertificate: material.leafCertificate, privateKeyX963: material.privateKey)
+        // A signing/access-group change may hide an earlier Keychain identity.
+        // Keep the validated in-memory identity usable even if caching fails.
+        do { _ = try storeValidated(material) }
+        catch { onPersistenceFailure(error) }
+        return identity
     }
 
     static func importFromDocuments() throws -> AccessoryIdentity {

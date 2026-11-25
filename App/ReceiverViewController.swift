@@ -1841,12 +1841,17 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                 identity = try AccessoryIdentityStore.importFromDocuments()
                 log("MFi 身份验证通过并已保存到本机 Keychain")
                 saveIdentityImportResult("success: MFi 身份已验证并保存到 Keychain")
-            } else if let keychainIdentity = try? AccessoryIdentityStore.load() {
-                identity = keychainIdentity
-                log("已从 Keychain 载入 MFi 身份，ECDSA 自检通过")
             } else {
-                identity = try AccessoryIdentityStore.loadFromBundle()
-                log("已从内置资源载入 MFi 身份，ECDSA 自检通过")
+                do {
+                    identity = try AccessoryIdentityStore.load()
+                    log("已从 Keychain 载入 MFi 身份，ECDSA 自检通过")
+                } catch {
+                    log("本机 Keychain 身份不可用：\(error.localizedDescription)；正在检查内置身份")
+                    identity = try AccessoryIdentityStore.loadFromBundle { [weak self] error in
+                        self?.log("内置 MFi 身份有效，但暂未保存到 Keychain：\(error.localizedDescription)；本次仍可启动")
+                    }
+                    log("已从内置资源载入 MFi 身份，ECDSA 自检通过")
+                }
             }
             startButton.isEnabled = true
             identitySetupButton.isHidden = true
@@ -1857,7 +1862,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             identitySetupButton.isHidden = false
             identityImportStatus.text = "此安装包未载入身份。若原版可以启动，请从原版 IPA 导入；仅重新签名不能补齐身份。"
             statusLabel.text = "尚未导入有效的 MFi 身份"; startButton.isEnabled = false
-            log("请通过 Documents/IdentityImport 导入 certificate.p7b、leaf.cer 和 private.x963。错误：\(error.localizedDescription)")
+            log("MFi 身份加载失败：\(error.localizedDescription)。请使用带身份安装包，或在配置身份中从原版 IPA 导入。")
             if importing { saveIdentityImportResult("failure: \(error.localizedDescription)") }
         }
     }
