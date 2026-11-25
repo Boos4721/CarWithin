@@ -12,6 +12,15 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
         let family: BMSFamily?
         let advertisedSOC: Int?
     }
+    private struct Selection { let id: UUID; let name: String; let family: BMSFamily }
+    private var pendingSelection: Selection?
+    private var lastReadingUptime: TimeInterval?
+    private(set) var phase: BMSConnectionPhase = .idle
+    var isConfirmingSelection: Bool { pendingSelection != nil }
+    var isScanning: Bool { central?.isScanning == true }
+    var savedID: UUID? { defaults.string(forKey: "antBMSPeripheral").flatMap(UUID.init(uuidString:)) }
+    var savedName: String { defaults.string(forKey: "antBMSName") ?? "未选择" }
+    var savedFamily: BMSFamily? { savedID.flatMap { rememberedFamily(for: $0) } }
     private struct Link { let writer: CBCharacteristic; let reader: CBCharacteristic }
     private let defaults: UserDefaults
     private var central: CBCentralManager?
@@ -43,12 +52,34 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
     private(set) var sample: ANTBMSSample?
     var onChange: (() -> Void)?
     var onLog: ((String) -> Void)?
-    var devices: [Device] { found.values.sorted { $0.rssi > $1.rssi } }
-    var selectedID: UUID? { defaults.string(forKey: "antBMSPeripheral").flatMap(UUID.init(uuidString:)) }
-    var selectedName: String { defaults.string(forKey: "antBMSName") ?? "未选择" }
+    var devices: [Device] {
+        found.values.map { device in
+            Device(id: device.id, name: device.name, rssi: device.rssi,
+                family: device.id == pendingSelection?.id ? pendingSelection?.family :
+                    BMSSelectionPolicy.family(saved: defaults.string(forKey: "bmsFamily." + device.id.uuidString), inferred: device.family),
+                advertisedSOC: device.advertisedSOC)
+        }.sorted {
+            let left = rememberedFamily(for: $0.id) != nil, right = rememberedFamily(for: $1.id) != nil
+            if left != right { return left }
+            if $0.id == $1.id { return false }
+            if $0.id == selectedID { return true }
+            if $1.id == selectedID { return false }
+            return $0.rssi == $1.rssi ? $0.id.uuidString < $1.id.uuidString : $0.rssi > $1.rssi
+        }
+    }
+    var selectedID: UUID? { pendingSelection?.id ?? savedID }
+    var selectedName: String { pendingSelection?.name ?? savedName }
+    func rememberedFamily(for id: UUID) -> BMSFamily? {
+        if let raw = defaults.string(forKey: "bmsFamily." + id.uuidString) { return BMSFamily(rawValue: raw) }
+        return savedID == id ? .ant : nil // Legacy ANT selections had no family field.
+    }
+    var presentation: BMSConnectionPresentation {
+        BMSConnectionPresentation(enabled: enabled, hasSelection: selectedID != nil, family: selectedFamily,
+            phase: phase, hasFreshData: freshReading != nil,
+            lastReadingAge: lastReadingUptime.map { ProcessInfo.processInfo.systemUptime - $0 }, reason: status)
+    }
     var selectedFamily: BMSFamily {
-        guard let id = selectedID else { return .ant }
-        return defaults.string(forKey: "bmsFamily." + id.uuidString).flatMap(BMSFamily.init(rawValue:)) ?? .ant
+        pendingSelection?.family ?? savedFamily ?? .ant
     }
     var freshReading: ANTBMSReading? {
         guard let sample, sample.isFresh(at: ProcessInfo.processInfo.systemUptime) else { return nil }
@@ -66,7 +97,7 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
         defaults.removeObject(forKey: "antBMSPeripheral")
         defaults.removeObject(forKey: "antBMSName")
         sample = nil
-        update("原板型已不再支持，请重新选择设备与板型")
+        update("原板型已不再支持，请重新选择设备与板型", phase: .needsFamily)
         return true
     }
     deinit { timer?.invalidate(); reconnectWork?.cancel(); scanTimeout?.cancel() }
@@ -76,33 +107,65 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
         automaticReconnect = true
         if central == nil { central = CBCentralManager(delegate:self,queue:.main) }
         else if central?.state == .poweredOn { connectRememberedOrScan() }
-        else { update("等待蓝牙可用") }
+        else { update("等待蓝牙可用", phase: .bluetoothUnavailable) }
         let timer = Timer(timeInterval:0.25,repeats:true) { [weak self] _ in self?.tick() }
         self.timer=timer;RunLoop.main.add(timer,forMode:.common)
     }
     func stop() {
         enabled=false;scanRequested=false;timer?.invalidate();timer=nil
         reconnectWork?.cancel();reconnectWork=nil;scanTimeout?.cancel();scanTimeout=nil
-        central?.stopScan();clearConnection();update("未连接 BMS")
+        central?.stopScan();pendingSelection=nil;lastReadingUptime=nil;clearConnection();update("未连接 BMS", phase: .idle)
     }
     func scan() {
         guard enabled else { return }
         scanRequested=true;found.removeAll();discovered.removeAll();beginScan()
     }
-    func select(_ id:UUID, family: BMSFamily? = nil) {
-        guard enabled,let device=found[id],let family=family ?? device.family else { return }
+    func select(_ id:UUID, family: BMSFamily? = nil, requiresConfirmation: Bool = false) {
+        guard enabled,let device=found[id],let family=family ?? rememberedFamily(for: id) ?? device.family else { return }
         automaticReconnect = true
-        if selectedID != id { sample=nil }
-        defaults.set(id.uuidString,forKey:"antBMSPeripheral");defaults.set(device.name,forKey:"antBMSName")
-        defaults.set(family.rawValue,forKey:"bmsFamily."+id.uuidString)
+        sample=nil;lastReadingUptime=nil
+        let selection = Selection(id: id, name: device.name, family: family)
+        if requiresConfirmation { pendingSelection = selection }
+        else { pendingSelection = nil; persist(selection) }
         reconnectWork?.cancel();reconnectWork=nil;scanTimeout?.cancel();scanTimeout=nil
         central?.stopScan();scanRequested=false;clearConnection();retryDelay=2
         connectRememberedOrScan()
     }
+    private func persist(_ selection: Selection) {
+        defaults.set(selection.id.uuidString, forKey: "antBMSPeripheral")
+        defaults.set(selection.name, forKey: "antBMSName")
+        defaults.set(selection.family.rawValue, forKey: "bmsFamily." + selection.id.uuidString)
+    }
+    @discardableResult
+    func confirmSelection() -> Bool {
+        guard let pendingSelection, freshReading != nil else { return false }
+        persist(pendingSelection); self.pendingSelection = nil; onChange?(); return true
+    }
+    func cancelSelection() {
+        guard pendingSelection != nil else { return }
+        pendingSelection=nil;lastReadingUptime=nil
+        reconnectWork?.cancel();reconnectWork=nil;scanTimeout?.cancel();central?.stopScan();clearConnection()
+        automaticReconnect=true
+        if enabled { connectRememberedOrScan() }
+        else { update("已取消添加电池", phase: .idle) }
+    }
+    func retry() {
+        guard enabled else { start(); return }
+        automaticReconnect=true;retryDelay=2
+        reconnectWork?.cancel();reconnectWork=nil;scanTimeout?.cancel();central?.stopScan();clearConnection()
+        connectRememberedOrScan()
+    }
+    func cancelConnection() {
+        automaticReconnect=false;scanRequested=false
+        reconnectWork?.cancel();reconnectWork=nil;scanTimeout?.cancel();central?.stopScan();clearConnection()
+        update("连接已暂停，可手动重试", phase: .idle)
+    }
     func setFamily(_ family:BMSFamily) {
         guard let id=selectedID else { return }
         automaticReconnect = true
-        defaults.set(family.rawValue,forKey:"bmsFamily."+id.uuidString)
+        if let pendingSelection { self.pendingSelection = Selection(id: id, name: pendingSelection.name, family: family) }
+        else { defaults.set(family.rawValue,forKey:"bmsFamily."+id.uuidString) }
+        lastReadingUptime=nil
         reconnectWork?.cancel();reconnectWork=nil;central?.stopScan();clearConnection()
         if enabled { connectRememberedOrScan() } else { update(family.supportDescription) }
     }
@@ -128,6 +191,7 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
     }
     func forget() {
         let id=selectedID
+        pendingSelection=nil;lastReadingUptime=nil
         central?.stopScan();scanTimeout?.cancel();clearConnection();reconnectWork?.cancel();reconnectWork=nil
         if let id { BMSAccessStore.remove(id);defaults.removeObject(forKey:"bmsFamily."+id.uuidString) }
         defaults.removeObject(forKey:"antBMSPeripheral");defaults.removeObject(forKey:"antBMSName")
@@ -135,6 +199,7 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
     }
     func restoreSelection(id:UUID?,name:String?,family:String? = nil) {
         automaticReconnect = true
+        pendingSelection=nil;lastReadingUptime=nil
         clearConnection();reconnectWork?.cancel();reconnectWork=nil
         central?.stopScan();scanTimeout?.cancel()
         if let id {
@@ -152,15 +217,15 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
             reconnectWork?.cancel();reconnectWork=nil;scanTimeout?.cancel();scanTimeout=nil
             clearConnection();disconnecting.removeAll()
             switch central.state {
-            case .unauthorized:update("蓝牙权限未允许，请在系统设置中开启")
-            case .poweredOff:update("蓝牙已关闭")
-            case .unsupported:update("此设备不支持 BMS 蓝牙读取")
-            default:update("等待蓝牙可用")
+            case .unauthorized:update("蓝牙权限未允许，请在系统设置中开启", phase: .bluetoothUnavailable)
+            case .poweredOff:update("蓝牙已关闭，请在系统设置中开启", phase: .bluetoothUnavailable)
+            case .unsupported:update("此设备不支持 BMS 蓝牙读取", phase: .bluetoothUnavailable)
+            default:update("等待蓝牙可用", phase: .bluetoothUnavailable)
             }
         }
     }
     private func connectRememberedOrScan() {
-        guard enabled,let central,central.state == .poweredOn,peripheral==nil else{return}
+        guard enabled,automaticReconnect,let central,central.state == .poweredOn,peripheral==nil else{return}
         guard let id=selectedID else{scan();return}
         let family=selectedFamily
         if !family.supportsGATT {
@@ -169,12 +234,12 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
             return
         }
         guard !disconnecting.contains(id) else{scheduleReconnect();return}
-        do {access=try BMSAccessStore.load(id)} catch {update(error.localizedDescription);return}
+        do {access=try BMSAccessStore.load(id)} catch {update(error.localizedDescription, phase: .needsAccess);return}
         if let target=discovered[id] ?? central.retrievePeripherals(withIdentifiers:[id]).first {
             central.stopScan();scanTimeout?.cancel();peripheral=target;target.delegate=self
             parser=BMSReadOnlyProtocol(family:family,password:access?.password,mac:access?.mac)
             connectedAt=ProcessInfo.processInfo.systemUptime
-            update("正在连接 \(selectedName)（\(family.shortName)）…");central.connect(target)
+            update("正在连接 \(selectedName)（\(family.shortName)）…", phase: .connecting);central.connect(target)
         } else {scanRequested=true;beginScan()}
     }
     private func beginScan() {
@@ -183,12 +248,12 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
         let services=Array(Set(BMSFamily.allCases.flatMap { $0.channels.map(\.service) })).map(CBUUID.init(string:))
         central.scanForPeripherals(withServices:UIApplication.shared.applicationState == .active || selectedFamily == .xiaoha ? nil:services,
             options:[CBCentralManagerScanOptionAllowDuplicatesKey:true])
-        update(selectedFamily == .xiaoha && selectedID != nil ? "正在监听小哈广播电量…":"正在扫描 BMS 与电量计…")
+        update(selectedFamily == .xiaoha && selectedID != nil ? "正在监听小哈广播电量…":"正在扫描 BMS 与电量计…", phase: .scanning)
         let timeout=DispatchWorkItem { [weak self] in
             guard let self,self.enabled else{return}
             self.central?.stopScan();self.scanRequested=false
             if self.peripheral==nil {
-                if self.selectedFamily != .xiaoha || self.freshReading==nil {self.update(self.found.isEmpty ? "未找到 BMS，请确认蓝牙模块已开启":"请选择自己的设备与板型")}
+                if self.selectedFamily != .xiaoha || self.freshReading==nil {self.update(self.found.isEmpty ? "未找到 BMS，请确认蓝牙模块已开启":"请选择自己的设备与板型", phase: self.selectedID == nil ? .idle : .reconnecting)}
                 if self.selectedID != nil {self.scheduleReconnect()}
             }
         }
@@ -210,8 +275,9 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
         found[item.identifier]=Device(id:item.identifier,name:name,rssi:RSSI.intValue,family:family,advertisedSOC:soc)
         if selectedID==item.identifier,selectedFamily == .xiaoha,let soc {
             var values=BMSValues();values.soc=soc;values.details["数据来源"]="HBB 名称广播，只有电量"
-            sample=ANTBMSSample(reading:values.reading(.xiaoha),uptime:ProcessInfo.processInfo.systemUptime)
-            update("小哈广播电量已更新；无 GATT 直连")
+            let now=ProcessInfo.processInfo.systemUptime
+            sample=ANTBMSSample(reading:values.reading(.xiaoha),uptime:now);lastReadingUptime=now
+            update("小哈广播电量已更新；无 GATT 直连", phase: .receiving)
         } else {
             onChange?()
             if selectedID==item.identifier,peripheral==nil,selectedFamily.supportsGATT {connectRememberedOrScan()}
@@ -220,7 +286,7 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
     func centralManager(_ central:CBCentralManager,didConnect item:CBPeripheral) {
         guard enabled,item === peripheral else{return}
         connectedAt=ProcessInfo.processInfo.systemUptime
-        update("已连接蓝牙，正在发现 \(selectedFamily.shortName) 通道…")
+        update("已连接蓝牙，正在发现 \(selectedFamily.shortName) 通道…", phase: .discovering)
         item.discoverServices(Array(Set(selectedFamily.channels.map(\.service))).map(CBUUID.init(string:)))
     }
     func centralManager(_ central:CBCentralManager,didFailToConnect item:CBPeripheral,error:Error?) {disconnected(item,"BMS 连接失败")}
@@ -228,13 +294,13 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
     private func disconnected(_ item:CBPeripheral,_ reason:String) {
         if disconnecting.remove(item.identifier) != nil {if enabled,peripheral==nil{scheduleReconnect()};return}
         guard item === peripheral else{return}
-        clearConnection();guard enabled else{return};update(reason+"，等待重连");scheduleReconnect()
+        clearConnection();guard enabled else{return};update(reason+"，等待重连", phase: .reconnecting);scheduleReconnect()
     }
     func peripheral(_ item:CBPeripheral,didDiscoverServices error:Error?) {
         guard enabled,item === peripheral else{return}
         let wanted=selectedFamily.channels.map{CBUUID(string:$0.service)}
         let services=(item.services ?? []).filter{wanted.contains($0.uuid)}
-        guard error==nil,!services.isEmpty else{failConnection("未找到所选板型的服务，请核对板型");return}
+        guard error==nil,!services.isEmpty else{failConnection("未找到所选板型的服务，请核对板型", phase: .needsFamily);return}
         links=[];remainingServices=services.count
         for service in services {item.discoverCharacteristics(nil,for:service)}
     }
@@ -261,25 +327,25 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
         guard let item=peripheral,item.state == .connected else{return}
         if let reader,reader.isNotifying {item.setNotifyValue(false,for:reader)}
         linkIndex+=1
-        guard links.indices.contains(linkIndex) else{failConnection("所有候选通道均未收到有效 \(selectedFamily.shortName) 数据，请核对板型、登录信息或结束其他 App 连接");return}
+        guard links.indices.contains(linkIndex) else{failConnection("所有候选通道均未收到有效 \(selectedFamily.shortName) 数据，请核对板型、登录信息或结束其他 App 连接", phase: .needsFamily);return}
         writer=links[linkIndex].writer;reader=links[linkIndex].reader
         sendQueue=[];writePending=false;sample=nil;lastValidAt=nil
         parser=BMSReadOnlyProtocol(family:selectedFamily,password:access?.password,mac:access?.mac)
         channelAt=ProcessInfo.processInfo.systemUptime
-        update("正在订阅 \(selectedFamily.shortName) 候选通道 \(linkIndex+1)/\(links.count)…")
+        update("正在订阅 \(selectedFamily.shortName) 候选通道 \(linkIndex+1)/\(links.count)…", phase: .subscribing)
         item.setNotifyValue(true,for:links[linkIndex].reader)
     }
     func peripheral(_ item:CBPeripheral,didUpdateNotificationStateFor characteristic:CBCharacteristic,error:Error?) {
         guard enabled,item === peripheral,characteristic === reader else{return}
         guard error==nil,characteristic.isNotifying else{nextChannel();return}
-        update("等待校验有效的 \(selectedFamily.shortName) 实时数据…");poll()
+        update("等待校验有效的 \(selectedFamily.shortName) 实时数据…", phase: .waitingForData);poll()
     }
     func peripheral(_ item:CBPeripheral,didUpdateValueFor characteristic:CBCharacteristic,error:Error?) {
         guard enabled,item === peripheral,characteristic === reader,error==nil,let data=characteristic.value else{return}
         let now=ProcessInfo.processInfo.systemUptime
         for reading in parser.append(data,now:now) {
-            sample=ANTBMSSample(reading:reading,uptime:now);lastValidAt=now;retryDelay=2
-            update("\(selectedFamily.shortName) 实时数据已连接")
+            sample=ANTBMSSample(reading:reading,uptime:now);lastValidAt=now;lastReadingUptime=now;retryDelay=2
+            update("\(selectedFamily.shortName) 实时数据已连接", phase: .receiving)
         }
         poll()
     }
@@ -295,7 +361,7 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
         if parser.halted {
             let message = parser.error ?? "所选板型协议不兼容，请核对配置后重试"
             automaticReconnect = false
-            clearConnection(); update(message)
+            clearConnection(); update(message, phase: selectedFamily == .jbd ? .needsAccess : .needsFamily)
             return
         }
         if selectedFamily == .xiaoha {
@@ -337,7 +403,7 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
             if writePending{return}
         }
     }
-    private func failConnection(_ message:String){clearConnection();update(message);scheduleReconnect()}
+    private func failConnection(_ message:String, phase: BMSConnectionPhase = .reconnecting){clearConnection();update(message, phase: phase);scheduleReconnect()}
     private func clearConnection() {
         let previous=peripheral
         peripheral=nil;writer=nil;reader=nil;sample=nil;connectedAt=nil;channelAt=nil;lastValidAt=nil
@@ -351,5 +417,9 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
         let retry=DispatchWorkItem{[weak self] in guard let self else{return};self.reconnectWork=nil;self.connectRememberedOrScan()}
         reconnectWork=retry;DispatchQueue.main.asyncAfter(deadline:.now()+retryDelay,execute:retry);retryDelay=min(30,retryDelay*2)
     }
-    private func update(_ message:String){if message != status{status=message;onLog?(message)};onChange?()}
+    private func update(_ message:String, phase: BMSConnectionPhase? = nil) {
+        if let phase { self.phase = phase }
+        if message != status { status=message;onLog?(message) }
+        onChange?()
+    }
 }

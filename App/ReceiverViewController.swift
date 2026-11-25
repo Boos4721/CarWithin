@@ -320,6 +320,12 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let bmsStatus = StatusLabel()
     private let bmsDetails = StatusLabel()
     private let bmsLiveSummary = BMSLiveSummaryView()
+    private let bmsStatusCard = BMSStatusCardView()
+    private let bmsSetupStatusCard = BMSStatusCardView()
+    private let bmsSetupSummary = BMSLiveSummaryView()
+    private let bmsCellGrid = BMSCellGridView()
+    private let bmsConfirmButton = UIButton(type: .system)
+    private var bmsStructureKey = ""
     private var bmsDeviceList: [UUID] = []
     private let inlineVideoContainer = UIView()
     private var inlineVideoConstraints: [NSLayoutConstraint] = []
@@ -1012,6 +1018,21 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             }, for: .valueChanged)
             bmsFieldSwitches[field] = control
         }
+        bmsStatusCard.onAction = { [weak self] in self?.performBMSStatusAction() }
+        bmsSetupStatusCard.onAction = { [weak self] in self?.performBMSStatusAction() }
+        var confirmConfiguration = UIButton.Configuration.filled()
+        confirmConfiguration.title = "读数正常，保存到当前车辆"
+        confirmConfiguration.cornerStyle = .medium
+        bmsConfirmButton.configuration = confirmConfiguration
+        bmsConfirmButton.titleLabel?.numberOfLines = 0
+        bmsConfirmButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        bmsConfirmButton.addAction(UIAction { [weak self] _ in
+            guard let self, self.bmsClient.confirmSelection() else { return }
+            self.saveActiveVehicleProfile()
+            if self.running { self.beginBMSSessionIfNeeded() }
+            self.settingsNavigation?.popViewController(animated: true)
+            self.reloadVisibleSettings()
+        }, for: .touchUpInside)
         bmsDetails.numberOfLines = 0
         bmsDetails.font = .monospacedDigitSystemFont(ofSize: 14, weight: .regular)
         bmsOverlay.attach(to: videoSurface)
@@ -1073,7 +1094,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             finishBMSSession()
             if running, bmsEnabledSwitch.isOn { beginBMSSessionIfNeeded() }
         }
-        if bmsSessionStartedAt != nil, let sample = bmsClient.sample, sample.uptime >= bmsSessionMinimumUptime,
+        if !bmsClient.isConfirmingSelection, bmsSessionStartedAt != nil, let sample = bmsClient.sample, sample.uptime >= bmsSessionMinimumUptime,
            bmsSession.append(sample, now: ProcessInfo.processInfo.systemUptime) {
             bmsTrend.points = bmsSession.points
             if sample.uptime - lastBMSSaveUptime >= 15 {
@@ -1086,6 +1107,14 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         refreshLiveBMSRecord()
         bmsStatus.text = bmsEnabledSwitch.isOn ? bmsClient.status : "BMS 显示已关闭"
         bmsLiveSummary.update(reading)
+        bmsSetupSummary.update(reading)
+        bmsCellGrid.update(reading)
+        let presentation = bmsClient.presentation
+        let family = bmsClient.selectedID == nil ? nil : bmsClient.selectedFamily
+        let name = bmsClient.selectedID == nil ? "尚未添加电池" : bmsClient.selectedName
+        bmsStatusCard.update(name: name, family: family, presentation: presentation)
+        bmsSetupStatusCard.update(name: name, family: family, presentation: presentation)
+        bmsConfirmButton.isEnabled = bmsClient.isConfirmingSelection && reading != nil
         if let reading {
             let card = ANTBMSCardConfiguration.Field.allCases.map { $0.title + " " + $0.text(reading) }.joined(separator: " · ")
             let temperature = reading.maximumTemperature.map { String(format: "%.0f°C", $0) } ?? "--"
@@ -1111,8 +1140,9 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                              aspectRatio: outputMode == .ninebotSeven ? 1024 / 600 : 848 / 480)
         bmsCardPreviewStatus.text = reading == nil ? "示例数据 · 当前没有实时读数" : "实时数据 · " + bmsClient.selectedFamily.title
         let ids = bmsClient.devices.map(\.id)
-        if ids != bmsDeviceList {
-            bmsDeviceList = ids
+        let structureKey = "\(bmsClient.selectedID?.uuidString ?? "")|\(bmsClient.selectedFamily.rawValue)|\(bmsClient.isConfirmingSelection)|\(bmsClient.isScanning)|\(bmsClient.presentation.action)"
+        if ids != bmsDeviceList || structureKey != bmsStructureKey {
+            bmsDeviceList = ids; bmsStructureKey = structureKey
             reloadVisibleSettings()
         } else {
             (settingsNavigation?.topViewController as? SettingsPageController)?.refreshDetails()
@@ -2927,6 +2957,10 @@ extension ReceiverViewController {
 
     fileprivate func settingsDismissed() {
         view.endEditing(true)
+        if bmsClient.isConfirmingSelection {
+            bmsClient.cancelSelection()
+            if running { beginBMSSessionIfNeeded() }
+        }
         UserDefaults.standard.set(nameField.text ?? "CarWithin", forKey: "receiverName")
         saveHeadUnitOutput()
         saveActiveVehicleProfile()
@@ -3272,7 +3306,7 @@ extension ReceiverViewController {
         }
         return VehicleProfile(id: id, name: name, output: outputMode.rawValue, ssid: ssidField.text ?? "",
             channel: UInt8(channelField.text ?? "") ?? 36, openNetwork: openNetworkSwitch.isOn,
-            instrumentAddress: address, bmsID: bmsClient.selectedID, bmsName: bmsClient.selectedName,
+            instrumentAddress: address, bmsID: bmsClient.savedID, bmsName: bmsClient.savedName,
             bmsEnabled: bmsEnabledSwitch.isOn, cardFields: bmsCardConfiguration.fields.map(\.rawValue),
             cardSize: bmsCardConfiguration.size.rawValue, cardPosition: bmsPosition.selectedSegmentIndex,
             autoConnect: ninebotAutoConnectSwitch.isOn, currentWiFiExperiment: ninebotCurrentWiFiSwitch.isOn,
@@ -3284,7 +3318,7 @@ extension ReceiverViewController {
             zeehoVideoMode: isZeehoSEPlus ? zeehoSEPlusVideoModeControl.selectedSegmentIndex : nil,
             zeehoFiveVariant: outputMode == .zeehoFive ? selectedZeehoFiveVariant.rawValue : nil,
             ninebotVehicleID: outputMode.ninebotMode != nil ? ninebotVehicle.garage.selected?.id : nil,
-            bmsFamily: bmsClient.selectedID != nil ? bmsClient.selectedFamily.rawValue : nil)
+            bmsFamily: bmsClient.savedFamily?.rawValue)
     }
 
     private func saveActiveVehicleProfile() {
@@ -3595,7 +3629,7 @@ extension ReceiverViewController {
     }
 
     private func beginBMSSessionIfNeeded() {
-        guard bmsEnabledSwitch.isOn, bmsSessionStartedAt == nil else { return }
+        guard bmsEnabledSwitch.isOn, !bmsClient.isConfirmingSelection, bmsSessionStartedAt == nil else { return }
         bmsSession = ANTBMSSessionStatistics(); bmsTrend.points = []
         bmsSessionMinimumUptime = ProcessInfo.processInfo.systemUptime
         lastBMSSaveUptime = bmsSessionMinimumUptime
@@ -3862,74 +3896,138 @@ extension ReceiverViewController {
 
     private func bmsPage() -> SettingsPageController {
         page("电池与 BMS") { [unowned self] in
-            [SettingsSection("保护板与电量计", [
-                .control("读取并显示 BMS", self.bmsEnabledSwitch),
-                .note(self.bmsStatus),
-                .page("板型与支持范围", icon: ("cpu", .systemBlue), detail: { [unowned self] in
-                    self.bmsClient.selectedID == nil ? "选择设备后设置" : self.bmsClient.selectedFamily.title
-                }) { [unowned self] in self.bmsFamilyPage() },
-                .page("连接设备", icon: ("antenna.radiowaves.left.and.right", .systemBlue), detail: { [unowned self] in
-                    self.bmsClient.selectedName
-                }) { [unowned self] in self.bmsDevicesPage() }
-            ]),
-            SettingsSection("实时电池", footer: "只显示最近 5 秒内的有效数据，断开后自动清空旧值。", [.view(self.bmsLiveSummary)]),
-            SettingsSection("显示与记录", [
-                .page("卡片显示", icon: ("rectangle.topthird.inset.filled", .systemBlue), detail: { [unowned self] in
+            var sections = [SettingsSection("当前电池", footer: "仅显示最近 5 秒内的有效数据，过期后清空读数。", [
+                .view(self.bmsStatusCard), .view(self.bmsLiveSummary)
+            ])]
+            if self.bmsClient.isConfirmingSelection {
+                sections.append(SettingsSection([.page("继续核对新电池", icon: ("checkmark.circle", .systemBlue)) { [unowned self] in self.bmsSetupPage() }]))
+            }
+            sections.append(SettingsSection("查看与管理", [
+                .page("电池详情", icon: ("battery.100percent", .systemGreen)) { [unowned self] in self.bmsDetailsPage() },
+                .page("显示设置", icon: ("rectangle.topthird.inset.filled", .systemBlue), detail: { [unowned self] in
                     "\(self.bmsCardConfiguration.fields.count) 项 · \(self.bmsCardConfiguration.size.title)号"
                 }) { [unowned self] in self.bmsCardPage() },
-                .page("本次统计与记录", icon: ("chart.xyaxis.line", .systemGreen)) { [unowned self] in self.bmsStatisticsPage() },
-                .page("电池详情", icon: ("list.bullet.rectangle", .systemGray)) { [unowned self] in
-                    self.page("电池详情") { [unowned self] in
-                        [SettingsSection("实时参数", footer: "按所选板型显示真实字段，未提供的值显示 --。ANT 与蓝宝保留原始符号，其他已确认板型按放电正、充电负显示；不推算未知容量或电量。", [.note(self.bmsDetails)])]
-                    }
-                }
-            ])]
+                .page("本次与历史记录", icon: ("chart.xyaxis.line", .systemGreen)) { [unowned self] in self.bmsStatisticsPage() },
+                .page("设备管理", icon: ("antenna.radiowaves.left.and.right", .systemBlue), detail: { [unowned self] in
+                    self.bmsClient.selectedID == nil ? "添加电池" : self.bmsClient.selectedFamily.shortName
+                }) { [unowned self] in self.bmsDevicesPage() }
+            ]))
+            sections.append(SettingsSection("读取设置", [.control("读取并显示 BMS", self.bmsEnabledSwitch)]))
+            return sections
+        }
+    }
+
+    private func performBMSStatusAction() {
+        switch bmsClient.presentation.action {
+        case .enable:
+            bmsEnabledSwitch.setOn(true, animated: true); bmsSettingsChanged()
+            settingsNavigation?.pushViewController(bmsDevicesPage(), animated: true)
+        case .scan:
+            settingsNavigation?.pushViewController(bmsDevicesPage(), animated: true)
+            bmsClient.scan()
+        case .retry: bmsClient.retry()
+        case .access: configureBMSAccess()
+        case .family: settingsNavigation?.pushViewController(bmsFamilyPage(), animated: true)
+        case .settings:
+            if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+        case .none: break
+        }
+    }
+
+    private func bmsDetailsPage() -> SettingsPageController {
+        page("电池详情") { [unowned self] in
+            [SettingsSection("单体电压", [.view(self.bmsCellGrid)]),
+             SettingsSection("实时参数与设备信息", footer: "按板型显示真实字段。ANT 与蓝宝保留原始电流符号，其他已确认板型按放电正、充电负显示；未提供的字段显示 --。", [.note(self.bmsDetails)])]
         }
     }
 
     private func bmsDevicesPage() -> SettingsPageController {
-        page("BMS 连接设备") { [unowned self] in
+        page("设备管理") { [unowned self] in
             var sections = [SettingsSection("当前设备", [
-                .info("已记住的设备", self.bmsClient.selectedName),
+                .info(self.bmsClient.isConfirmingSelection ? "正在核对" : "已保存设备", self.bmsClient.selectedName),
                 .note(self.bmsStatus)
             ])]
             guard self.bmsEnabledSwitch.isOn else {
                 sections.append(SettingsSection(footer: "开启读取后搜索并选择自己的保护板或电量计。", [
                     .action("开启读取并查找设备", icon: ("antenna.radiowaves.left.and.right", .systemBlue)) { [unowned self] in
-                        self.bmsEnabledSwitch.setOn(true, animated: false)
-                        self.bmsSettingsChanged()
+                        self.bmsEnabledSwitch.setOn(true, animated: false); self.bmsSettingsChanged(); self.bmsClient.scan()
                     }
                 ]))
                 return sections
             }
-            sections.append(SettingsSection(footer: "选定后会记住并自动重连。连接不上时，先断开其他 BMS App。", [
-                .action("扫描附近 BMS", icon: ("antenna.radiowaves.left.and.right", .systemBlue)) { [unowned self] in self.bmsClient.scan() },
-                .action("忘记当前 BMS", destructive: true) { [unowned self] in
-                    self.bmsClient.forget()
-                    self.reloadVisibleSettings()
+            var actions: [SettingsRow] = [
+                .action(self.bmsClient.isScanning ? "重新扫描附近设备" : "添加电池 / 扫描附近设备", icon: ("plus.circle", .systemBlue)) { [unowned self] in self.bmsClient.scan() }
+            ]
+            if self.bmsClient.selectedID != nil {
+                actions.append(.action("重新连接当前设备", icon: ("arrow.clockwise", .systemBlue)) { [unowned self] in self.bmsClient.retry() })
+                actions.append(.page("板型与登录信息", icon: ("cpu", .systemBlue), detail: { [unowned self] in self.bmsClient.selectedFamily.title }) { [unowned self] in self.bmsFamilyPage() })
+                actions.append(.action("暂停连接", icon: ("pause.circle", .systemGray)) { [unowned self] in self.bmsClient.cancelConnection() })
+                if !self.bmsClient.isConfirmingSelection {
+                    actions.append(.action("忘记当前设备", destructive: true) { [unowned self] in
+                        self.bmsClient.forget(); self.saveActiveVehicleProfile(); self.reloadVisibleSettings()
+                    })
                 }
-            ]))
-            let devices = self.bmsClient.devices.map { device in
-                var row = SettingsRow.action(device.name, detail: { [weak self] in
-                    let current = self?.bmsClient.devices.first { $0.id == device.id } ?? device
-                    let brand = current.family?.title ?? "未知板型，请手选"
-                    let soc = current.advertisedSOC.map { " · 广播电量 \($0)%" } ?? ""
-                    return brand + soc + " · \(current.rssi) dBm"
-                }) { [unowned self] in
-                    if let family = device.family {
-                        self.bmsClient.select(device.id, family: family)
-                        self.saveActiveVehicleProfile()
-                    } else {
-                        self.chooseBMSFamily(for: device.id)
-                    }
-                }
-                row.checked = { [weak self] in self?.bmsClient.selectedID == device.id }
-                return row
+            } else {
+                actions.append(.page("支持的板型", icon: ("cpu", .systemBlue)) { [unowned self] in self.bmsFamilyPage() })
             }
-            sections.append(SettingsSection("附近设备", footer: "名称和服务只用于识别候选。未知设备需手选板型；只有收到该协议的有效实时数据才确认连接。小哈仅广播电量。",
-                devices.isEmpty ? [.info("暂无设备", "点击上方扫描")] : devices))
+            sections.append(SettingsSection(footer: "首次添加：选择设备 → 确认板型 → 核对读数 → 保存。已保存设备沿用确认过的板型。", actions))
+            let devices = self.bmsClient.devices
+            let saved = devices.filter { self.bmsClient.rememberedFamily(for: $0.id) != nil }
+            let nearby = devices.filter { self.bmsClient.rememberedFamily(for: $0.id) == nil }
+            if !saved.isEmpty { sections.append(SettingsSection("已保存设备", saved.map { self.bmsDeviceRow($0) })) }
+            sections.append(SettingsSection("附近设备", footer: "名称与服务仅提供板型提示，收到有效实时数据后才确认数据连接。小哈仅接收广播电量。连接失败时可先结束其他 BMS App 的连接。",
+                nearby.isEmpty ? [.info(self.bmsClient.isScanning ? "正在扫描…" : "暂无其他设备", "")] : nearby.map { self.bmsDeviceRow($0) }))
             return sections
         }
+    }
+
+    private func bmsDeviceRow(_ device: ANTBMSClient.Device) -> SettingsRow {
+        var row = SettingsRow.action(device.name) { [unowned self] in
+            if let family = self.bmsClient.rememberedFamily(for: device.id) {
+                self.bmsClient.select(device.id, family: family); self.saveActiveVehicleProfile()
+                if self.running { self.beginBMSSessionIfNeeded() }
+            } else { self.chooseBMSFamily(for: device.id) }
+        }
+        row.subtitle = { [weak self] in
+            let current = self?.bmsClient.devices.first { $0.id == device.id } ?? device
+            let saved = self?.bmsClient.rememberedFamily(for: device.id)
+            let brand = (saved ?? current.family)?.title ?? "未知板型，请手选"
+            let soc = current.advertisedSOC.map { " · 广播电量 \($0)%" } ?? ""
+            return (saved == nil ? "板型提示：" : "已确认：") + brand + soc + " · \(current.rssi) dBm"
+        }
+        row.checked = { [weak self] in self?.bmsClient.selectedID == device.id }
+        return row
+    }
+
+    private func bmsSetupPage() -> SettingsPageController {
+        let controller = page("核对并保存电池") { [unowned self] in
+            var sections = [SettingsSection("3 · 核对首批读数", footer: "确认总压、电量等与实际电池一致。只有收到有效实时数据才能保存；核对中的数据不写入骑行记录。", [
+                .view(self.bmsSetupStatusCard), .view(self.bmsSetupSummary)
+            ])]
+            var settings: [SettingsRow] = [.page("调整板型", icon: ("cpu", .systemBlue), detail: { [unowned self] in self.bmsClient.selectedFamily.title }) { [unowned self] in self.bmsFamilyPage() }]
+            if [.jbd, .lanbao].contains(self.bmsClient.selectedFamily) {
+                settings.append(.action("模块登录信息", icon: ("key", .systemBlue)) { [unowned self] in self.configureBMSAccess() })
+            }
+            sections.append(SettingsSection(settings))
+            sections.append(SettingsSection("4 · 保存", [.view(self.bmsConfirmButton),
+                .action("取消添加", destructive: true) { [unowned self] in
+                    self.bmsClient.cancelSelection()
+                    if self.running { self.beginBMSSessionIfNeeded() }
+                    self.settingsNavigation?.popViewController(animated: true)
+                }
+            ]))
+            return sections
+        }
+        controller.onLeave = { [weak self, weak controller] in
+            guard let self, let controller, self.bmsClient.isConfirmingSelection else { return }
+            // Navigating into family settings keeps setup alive; Back or dismiss cancels it.
+            let stillInStack = self.settingsNavigation?.viewControllers.contains { $0 === controller } ?? false
+            if !stillInStack || self.settingsNavigation?.presentingViewController == nil {
+                self.bmsClient.cancelSelection()
+                if self.running { self.beginBMSSessionIfNeeded() }
+            }
+        }
+        return controller
     }
 
     private func bmsFamilyPage() -> SettingsPageController {
@@ -3963,11 +4061,20 @@ extension ReceiverViewController {
     }
 
     private func chooseBMSFamily(for id: UUID) {
-        let prompt = UIAlertController(title: "选择自己的板型", message: "通用串口服务不能确认品牌，请按实际保护板选择。", preferredStyle: .actionSheet)
-        for family in BMSFamily.allCases {
-            prompt.addAction(UIAlertAction(title: family.title, style: .default) { [weak self] _ in
-                self?.bmsClient.select(id, family: family)
-                self?.saveActiveVehicleProfile(); self?.reloadVisibleSettings()
+        let suggested = bmsClient.devices.first { $0.id == id }?.family
+        let prompt = UIAlertController(title: "2 · 确认保护板型号", message: "名称和服务只能提供提示，请按实际保护板选择。连接后核对读数，再保存到当前车辆。", preferredStyle: .actionSheet)
+        let families = BMSFamily.allCases.sorted { left, right in
+            if left == right { return false }
+            if left == suggested { return true }
+            if right == suggested { return false }
+            return BMSFamily.allCases.firstIndex(of: left)! < BMSFamily.allCases.firstIndex(of: right)!
+        }
+        for family in families {
+            let title = family.title + (family == suggested ? "（设备提示）" : "")
+            prompt.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
+                guard let self else { return }
+                self.bmsClient.select(id, family: family, requiresConfirmation: true)
+                self.settingsNavigation?.pushViewController(self.bmsSetupPage(), animated: true)
             })
         }
         prompt.addAction(UIAlertAction(title: "取消", style: .cancel))
