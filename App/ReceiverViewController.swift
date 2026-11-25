@@ -1114,6 +1114,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         if ids != bmsDeviceList {
             bmsDeviceList = ids
             reloadVisibleSettings()
+        } else {
+            (settingsNavigation?.topViewController as? SettingsPageController)?.refreshDetails()
         }
     }
     private func applyWiFiPreset(_ preset: WiFiPreset) {
@@ -3908,10 +3910,11 @@ extension ReceiverViewController {
                 }
             ]))
             let devices = self.bmsClient.devices.map { device in
-                var row = SettingsRow.action(device.name, detail: {
-                    let brand = device.family?.title ?? "未知板型，请手选"
-                    let soc = device.advertisedSOC.map { " · 广播电量 \($0)%" } ?? ""
-                    return brand + soc + " · \(device.rssi) dBm"
+                var row = SettingsRow.action(device.name, detail: { [weak self] in
+                    let current = self?.bmsClient.devices.first { $0.id == device.id } ?? device
+                    let brand = current.family?.title ?? "未知板型，请手选"
+                    let soc = current.advertisedSOC.map { " · 广播电量 \($0)%" } ?? ""
+                    return brand + soc + " · \(current.rssi) dBm"
                 }) { [unowned self] in
                     if let family = device.family {
                         self.bmsClient.select(device.id, family: family)

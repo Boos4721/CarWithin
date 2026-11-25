@@ -214,7 +214,13 @@ public final class BMSReadOnlyProtocol {
         for byte in data.suffix(8192) {
             if buffer.count >= 4096 { buffer.removeFirst(); error = "接收缓冲已满" }
             buffer.append(byte)
-            result += drain(now: now)
+            // A rejected frame can leave noise before the next valid header.
+            // Drain all proven-invalid prefixes now, even at the end of a notification.
+            while !buffer.isEmpty {
+                let previousCount = buffer.count
+                result += drain(now: now)
+                if buffer.count == previousCount { break }
+            }
         }
         return result
     }
