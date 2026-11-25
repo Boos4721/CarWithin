@@ -4,6 +4,7 @@
 Requires Python's cryptography package. Run before re-signing the IPA.
 """
 import argparse
+import copy
 import hashlib
 import json
 import os
@@ -82,7 +83,9 @@ def package(source, identity_directory, output):
         try:
             with zipfile.ZipFile(temporary, "w") as target:
                 for entry in archive.infolist():
-                    target.writestr(entry, archive.read(entry.filename))
+                    # writestr mutates offsets/flags on ZipInfo. Keep the source
+                    # directory intact so verification can re-read ditto's ZIPs.
+                    target.writestr(copy.copy(entry), archive.read(entry.filename))
                 for name, data in files.items():
                     path = prefix + name
                     if path in names:

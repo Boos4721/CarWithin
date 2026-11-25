@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Packaging regressions use newly generated test keys, never a real MFi identity."""
 from datetime import datetime, timedelta, timezone
+import io
 from pathlib import Path
 import plistlib
 import struct
@@ -106,6 +107,23 @@ class PackagingTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 package(self.source, self.identity, self.output)
             self.assertFalse(self.output.exists())
+
+    def test_streaming_zip_descriptors_do_not_corrupt_source_entry_offsets(self):
+        class StreamingBuffer(io.BytesIO):
+            def seek(self, *args):
+                raise io.UnsupportedOperation("streaming ZIP fixture")
+
+        buffer = StreamingBuffer()
+        with zipfile.ZipFile(self.source) as source, zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as target:
+            for entry in source.infolist():
+                target.writestr(entry.filename, source.read(entry.filename))
+        self.source.write_bytes(buffer.getvalue())
+        with zipfile.ZipFile(self.source) as source:
+            self.assertTrue(all(entry.flag_bits & 8 for entry in source.infolist()))
+        package(self.source, self.identity, self.output)
+        with zipfile.ZipFile(self.source) as source, zipfile.ZipFile(self.output) as target:
+            for name in source.namelist():
+                self.assertEqual(source.read(name), target.read(name))
 
 
 if __name__ == "__main__":
