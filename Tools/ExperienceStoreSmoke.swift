@@ -15,6 +15,7 @@ enum ExperienceStoreSmoke {
         let decoder = JSONDecoder(), encoder = JSONEncoder()
         var profile = try decoder.decode(VehicleProfile.self, from: JSONSerialization.data(withJSONObject: legacy))
         precondition(profile.cardBackground == nil)
+        precondition(profile.ninebotVehicleID == nil)
         precondition(profile.output == 4 && profile.zeehoAutomaticAddress == nil && profile.zeehoFrameRate == nil
             && profile.zeehoCanvas == nil && profile.zeehoVideoMode == nil)
         precondition(ANTBMSCardConfiguration(positionRawValue: profile.cardPosition,
@@ -28,6 +29,14 @@ enum ExperienceStoreSmoke {
         let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
         precondition(json["password"] == nil)
         print("Vehicle profile migration: legacy schema and new card preferences passed")
+        var paired = profile
+        paired.ninebotVehicleID = UUID()
+        let pairedRoundTrip = try decoder.decode(VehicleProfile.self, from: encoder.encode(paired))
+        precondition(pairedRoundTrip.ninebotVehicleID == paired.ninebotVehicleID)
+        precondition(pairedRoundTrip.ssid == profile.ssid && pairedRoundTrip.bmsID == profile.bmsID)
+        let pairedJSON = try JSONSerialization.jsonObject(with: encoder.encode(paired)) as! [String: Any]
+        precondition(pairedJSON["key"] == nil && pairedJSON["password"] == nil)
+        print("Ninebot vehicle profiles: optional BLE pairing reference and legacy decoding passed")
         var zeeho = profile
         zeeho.output = 8; zeeho.instrumentAddress = "192.168.2.1"
         zeeho.zeehoAutomaticAddress = false; zeeho.zeehoFrameRate = 60

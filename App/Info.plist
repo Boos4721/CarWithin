@@ -17,7 +17,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.0.4</string>
 	<key>CFBundleVersion</key>
-	<string>31</string>
+	<string>32</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
@@ -26,7 +26,7 @@
 		<true/>
 	</dict>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>CarWithin 需要使用蓝牙来连接 CarPlay 设备，并在你开启 BMS 显示时读取电池实时信息。</string>
+	<string>CarWithin 使用蓝牙连接 CarPlay 设备、配对所选九号车辆并开启仪表导航，以及读取已选 ANT BMS 的电池状态。</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_airplay._tcp</string>

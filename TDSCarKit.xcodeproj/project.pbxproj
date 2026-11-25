@@ -7,6 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1487E133716D8F9F747CC825 /* Sources/TDSCarKitCore/VehicleNavigationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAF705621FFD3715639DD39D; };
+		7336D7B16D57F0FF98604238 /* Sources/TDSCarKitCore/VehicleBLEFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B768A00E2B6A84702F2D49; };
+		DA7766BE1286DCDB1EF22675 /* Sources/TDSCarKitCore/VehicleAuthenticationAttempts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FDD82CF05C6EB37A51B866C; };
+		7122E8DC9AADD5D6872C8F9D /* Sources/TDSCarKitCore/V2Crypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 628D8A061D4436A93C79A6B2; };
+		970E396ECBF0930F4759910B /* Sources/TDSCarKitCore/NinebotVehicleSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98FF31CE96596741B0A7A233; };
+		EDC6BD7E515D6B2527A50752 /* Sources/TDSCarKitCore/DiscoveryEvidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F0CD187C5DB6C728E0F7AE; };
+		7036F64842CC09961F46F758 /* Sources/TDSCarKitCore/Advertisement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D5DFF775EA46C6E23AA28B5; };
+		D744F7E2D389F2EDD11BB55F /* App/NinebotVehicleKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 446985517F2000438E8369C2; };
+		55A7E0B7940EAEF2E0237322 /* App/NinebotVehiclePairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A6CDF4C2209C45D2B9ABED0; };
+		CD4250E1A7179BD83AB266F0 /* App/NinebotVehicleConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEC19CAD520E08B9025FBBEF; };
 		4BAE9BD8B0499B80AB53221C /* App/BMSLiveSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEA5EA14F4F25876D95A1285; };
 		BF8116F0ECCF3A7B5A7C0913 /* App/BMSCardOrderViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C1AE09B96606444A46AA132; };
 		8ED8630B5F751E9E253B8A33 /* App/BMSCardPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B7CC79EFBED7594F84DBD37; };
@@ -115,6 +125,16 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		EAF705621FFD3715639DD39D /* Sources/TDSCarKitCore/VehicleNavigationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TDSCarKitCore/VehicleNavigationPolicy.swift"; sourceTree = "<group>"; };
+		C8B768A00E2B6A84702F2D49 /* Sources/TDSCarKitCore/VehicleBLEFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TDSCarKitCore/VehicleBLEFrame.swift"; sourceTree = "<group>"; };
+		6FDD82CF05C6EB37A51B866C /* Sources/TDSCarKitCore/VehicleAuthenticationAttempts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TDSCarKitCore/VehicleAuthenticationAttempts.swift"; sourceTree = "<group>"; };
+		628D8A061D4436A93C79A6B2 /* Sources/TDSCarKitCore/V2Crypto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TDSCarKitCore/V2Crypto.swift"; sourceTree = "<group>"; };
+		98FF31CE96596741B0A7A233 /* Sources/TDSCarKitCore/NinebotVehicleSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TDSCarKitCore/NinebotVehicleSelection.swift"; sourceTree = "<group>"; };
+		80F0CD187C5DB6C728E0F7AE /* Sources/TDSCarKitCore/DiscoveryEvidence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TDSCarKitCore/DiscoveryEvidence.swift"; sourceTree = "<group>"; };
+		8D5DFF775EA46C6E23AA28B5 /* Sources/TDSCarKitCore/Advertisement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TDSCarKitCore/Advertisement.swift"; sourceTree = "<group>"; };
+		446985517F2000438E8369C2 /* App/NinebotVehicleKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/NinebotVehicleKeyStore.swift"; sourceTree = "<group>"; };
+		8A6CDF4C2209C45D2B9ABED0 /* App/NinebotVehiclePairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/NinebotVehiclePairingView.swift"; sourceTree = "<group>"; };
+		DEC19CAD520E08B9025FBBEF /* App/NinebotVehicleConnection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/NinebotVehicleConnection.swift"; sourceTree = "<group>"; };
 		EEA5EA14F4F25876D95A1285 /* App/BMSLiveSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/BMSLiveSummaryView.swift; sourceTree = "<group>"; };
 		4C1AE09B96606444A46AA132 /* App/BMSCardOrderViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/BMSCardOrderViewController.swift; sourceTree = "<group>"; };
 		1B7CC79EFBED7594F84DBD37 /* App/BMSCardPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/BMSCardPreviewView.swift; sourceTree = "<group>"; };
@@ -237,6 +257,16 @@
 		64292B1C2B2E13EAD8788FC8 = {
 			isa = PBXGroup;
 			children = (
+				EAF705621FFD3715639DD39D /* Sources/TDSCarKitCore/VehicleNavigationPolicy.swift */,
+				C8B768A00E2B6A84702F2D49 /* Sources/TDSCarKitCore/VehicleBLEFrame.swift */,
+				6FDD82CF05C6EB37A51B866C /* Sources/TDSCarKitCore/VehicleAuthenticationAttempts.swift */,
+				628D8A061D4436A93C79A6B2 /* Sources/TDSCarKitCore/V2Crypto.swift */,
+				98FF31CE96596741B0A7A233 /* Sources/TDSCarKitCore/NinebotVehicleSelection.swift */,
+				80F0CD187C5DB6C728E0F7AE /* Sources/TDSCarKitCore/DiscoveryEvidence.swift */,
+				8D5DFF775EA46C6E23AA28B5 /* Sources/TDSCarKitCore/Advertisement.swift */,
+				446985517F2000438E8369C2 /* App/NinebotVehicleKeyStore.swift */,
+				8A6CDF4C2209C45D2B9ABED0 /* App/NinebotVehiclePairingView.swift */,
+				DEC19CAD520E08B9025FBBEF /* App/NinebotVehicleConnection.swift */,
 				FC00429E874A32E7B49FC280 /* Sources/TDSCarKitCore/MFiIdentityArchive.swift */,
 				20713B3F12BAE41349E87E21 /* maibms-MIT.txt */,
 				1C1816364EE73AD87BF627E7 /* Sources/TDSCarKitCore/ANTBMSProtocol.swift */,
@@ -421,6 +451,16 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1487E133716D8F9F747CC825 /* Sources/TDSCarKitCore/VehicleNavigationPolicy.swift in Sources */,
+				7336D7B16D57F0FF98604238 /* Sources/TDSCarKitCore/VehicleBLEFrame.swift in Sources */,
+				DA7766BE1286DCDB1EF22675 /* Sources/TDSCarKitCore/VehicleAuthenticationAttempts.swift in Sources */,
+				7122E8DC9AADD5D6872C8F9D /* Sources/TDSCarKitCore/V2Crypto.swift in Sources */,
+				970E396ECBF0930F4759910B /* Sources/TDSCarKitCore/NinebotVehicleSelection.swift in Sources */,
+				EDC6BD7E515D6B2527A50752 /* Sources/TDSCarKitCore/DiscoveryEvidence.swift in Sources */,
+				7036F64842CC09961F46F758 /* Sources/TDSCarKitCore/Advertisement.swift in Sources */,
+				D744F7E2D389F2EDD11BB55F /* App/NinebotVehicleKeyStore.swift in Sources */,
+				55A7E0B7940EAEF2E0237322 /* App/NinebotVehiclePairingView.swift in Sources */,
+				CD4250E1A7179BD83AB266F0 /* App/NinebotVehicleConnection.swift in Sources */,
 				1F4734136E969BDFC161129C /* Sources/TDSCarKitCore/MFiIdentityArchive.swift in Sources */,
 				5731981ECDAF108184A64D8B /* Sources/TDSCarKitCore/ANTBMSProtocol.swift in Sources */,
 				E930864F8105F55C8A988836 /* App/BMSOverlay.swift in Sources */,

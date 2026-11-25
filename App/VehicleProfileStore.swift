@@ -28,6 +28,8 @@ struct VehicleProfile: Codable, Identifiable {
     var zeehoVideoMode: Int? = nil
     /// Build 30 combines outputs 8/9; 0 = SE+, 1 = AE2 Pro.
     var zeehoFiveVariant: Int? = nil
+    /// Build 32 references a local BLE pairing; keys remain in Keychain.
+    var ninebotVehicleID: UUID? = nil
 
     var migratedZeehoFive: VehicleProfile {
         var value = self

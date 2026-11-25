@@ -87,3 +87,7 @@ Copyright (c) 2026 lswlc33. MIT license; full text in LICENSES/maibms-MIT.txt
 and bundled as App/maibms-MIT.txt.
 The BLE client uses only the realtime query on FFE0/FFE1; it does not port
 parameter writes, authentication elevation or battery control commands.
+
+Ninebot vehicle discovery, BLE authentication, Keychain records and navigation
+session handling are adapted from NineCast Link for iOS at c0696d3d1aad2de2d7657a238b5c7fb915f01658.
+https://github.com/Margele/NineCast-iOS
