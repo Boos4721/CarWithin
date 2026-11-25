@@ -4,6 +4,7 @@ import UIKit
 final class BMSLiveSummaryView: UIView {
     private var values: [ANTBMSCardConfiguration.Field: UILabel] = [:]
     private var tiles: [ANTBMSCardConfiguration.Field: UIView] = [:]
+    private var rows: [UIStackView] = []
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -19,9 +20,9 @@ final class BMSLiveSummaryView: UIView {
             for field in fields[offset..<(offset + 2)] {
                 let label = UILabel(); label.text = field.title
                 label.font = .preferredFont(forTextStyle: .caption1); label.textColor = .secondaryLabel
-                label.adjustsFontForContentSizeCategory = true
+                label.adjustsFontForContentSizeCategory = true; label.numberOfLines = 0
                 let value = UILabel(); value.text = "--"; value.font = .preferredFont(forTextStyle: .title3)
-                value.adjustsFontForContentSizeCategory = true
+                value.adjustsFontForContentSizeCategory = true; value.numberOfLines = 0
                 value.adjustsFontSizeToFitWidth = true; value.minimumScaleFactor = 0.65
                 let tile = UIStackView(arrangedSubviews: [label, value])
                 tile.axis = .vertical; tile.spacing = 4
@@ -31,10 +32,24 @@ final class BMSLiveSummaryView: UIView {
                 tile.isAccessibilityElement = true; tile.accessibilityLabel = field.title
                 values[field] = value; tiles[field] = tile; row.addArrangedSubview(tile)
             }
-            grid.addArrangedSubview(row)
+            grid.addArrangedSubview(row); rows.append(row)
         }
+        updateLayoutForTextSize()
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if previousTraitCollection?.preferredContentSizeCategory != traitCollection.preferredContentSizeCategory {
+            updateLayoutForTextSize()
+        }
+    }
+    private func updateLayoutForTextSize() {
+        let accessible = traitCollection.preferredContentSizeCategory.isAccessibilityCategory
+        for row in rows { row.axis = accessible ? .vertical : .horizontal }
+        for value in values.values { value.adjustsFontSizeToFitWidth = !accessible }
+        NotificationCenter.default.post(name: StatusLabel.didChange, object: self)
+    }
 
     func update(_ reading: ANTBMSReading?) {
         for (field, label) in values {

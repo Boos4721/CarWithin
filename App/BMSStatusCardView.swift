@@ -52,7 +52,7 @@ final class BMSStatusCardView: UIView {
         case .attention: color = .systemOrange; icon = "exclamationmark.circle.fill"
         case .neutral: color = .secondaryLabel; icon = "battery.100percent"
         }
-        state.textColor = color; symbol.tintColor = color; symbol.image = UIImage(systemName: icon)
+        state.textColor = .label; symbol.tintColor = color; symbol.image = UIImage(systemName: icon)
         button.configuration?.title = presentation.actionTitle
         button.isHidden = presentation.actionTitle == nil
         // Re-measure only when wrapping or button visibility may change, not on every BLE callback.
