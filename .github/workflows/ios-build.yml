@@ -1,0 +1,57 @@
+name: Build iOS IPA
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: macos-15-intel
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Inspect tools
+        run: |
+          mkdir -p artifacts
+          xcodebuild -version
+          swift --version
+          git rev-parse HEAD > artifacts/validation-commit.txt
+          git rev-parse HEAD^ > artifacts/feature-commit.txt
+      - name: Validate ANT protocol, cards, statistics and records
+        shell: bash
+        run: |
+          set -o pipefail
+          bash Tools/test_bms.sh 2>&1 | tee artifacts/bms-tests.log
+      - name: Validate complete core
+        shell: bash
+        run: |
+          set -o pipefail
+          bash Tools/test.sh 2>&1 | tee artifacts/core-tests.log
+      - name: Generate project and build iOS arm64 Release
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 Tools/generate_project.py
+          xcodebuild -project TDSCarKit.xcodeproj -scheme TDSCarKit \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/CarWithinBMSValidation" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
+            build 2>&1 | tee artifacts/ios-build.log
+      - name: Upload verification logs
+        id: upload
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ant-bms-enhancements-validation
+          path: artifacts/
+          retention-days: 14
+      - name: Retry uploading verification logs
+        if: always() && steps.upload.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ant-bms-enhancements-validation
+          path: artifacts/
+          overwrite: true
+          retention-days: 14
