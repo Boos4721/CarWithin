@@ -1,8 +1,8 @@
 import Foundation
 
-/// Support levels mirror maibms 6bbb5d6 (2026-11-20); identification is not protocol validation.
+/// Selected support levels follow maibms 6bbb5d6 (2026-11-20); identification is not protocol validation.
 public enum BMSFamily: String, CaseIterable, Codable {
-    case ant, yanyang, jikong, lanbao, jbd, yadi, mingtang, xiaoha, xingheng, zhiba, shanchong
+    case ant, yanyang, jikong, lanbao, jbd, yadi, mingtang, xiaoha
     public var title: String {
         switch self {
         case .ant: return "蚂蚁 ANT"
@@ -13,9 +13,6 @@ public enum BMSFamily: String, CaseIterable, Codable {
         case .yadi: return "亚迪智电 FD / F403"
         case .mingtang: return "明唐 FA00 / E1"
         case .xiaoha: return "小哈锂电（广播电量）"
-        case .xingheng: return "星恒星蓝（识别）"
-        case .zhiba: return "智霸锂电（识别）"
-        case .shanchong: return "闪充智行（识别）"
         }
     }
     public var shortName: String {
@@ -28,12 +25,9 @@ public enum BMSFamily: String, CaseIterable, Codable {
         case .yadi: "亚迪"
         case .mingtang: "明唐"
         case .xiaoha: "小哈"
-        case .xingheng: "星恒"
-        case .zhiba: "智霸"
-        case .shanchong: "闪充"
         }
     }
-    public var supportsGATT: Bool { ![.xiaoha, .xingheng, .zhiba, .shanchong].contains(self) }
+    public var supportsGATT: Bool { self != .xiaoha }
     public var supportDescription: String {
         switch self {
         case .ant: return "只读实时帧；沿用已验证的 ANT 通道。"
@@ -44,7 +38,6 @@ public enum BMSFamily: String, CaseIterable, Codable {
         case .yadi: return "Nordic UART F403 分块读取；仅确认总压、SOC、循环与单体。待真机验证。"
         case .mingtang: return "FA00 stateread / E1；字段按帧提供，总压倍率与型号范围仍待真机验证。"
         case .xiaoha: return "仅 HBB…SOCxxx 广播电量；没有已确认的 GATT 直连协议。"
-        default: return "目前仅识别品牌，没有已确认的 BLE 直连协议，不发送猜测命令。"
         }
     }
     public struct Channel: Equatable {
@@ -83,7 +76,7 @@ public enum BMSFamily: String, CaseIterable, Codable {
         let prefixes: [(Self, [String])] = [(.ant,["ANT"]),(.yanyang,["YYBMS","YY-","彦阳"]),
             (.jikong,["JK-","JK_","极空"]),(.jbd,["JBD","SP","DB","嘉佰达","XIAOXIANG","DP04S","GJ-"]),
             (.lanbao,["BLUEBABE","BLUE","LB"]),(.yadi,["亚迪智电"]),(.mingtang,["明唐","MINGTANG"]),
-            (.xiaoha,["小哈锂电","小哈智电"]),(.xingheng,["星恒","XINGHENG"]),(.zhiba,["智霸"]),(.shanchong,["闪充智行"])]
+            (.xiaoha,["小哈锂电","小哈智电"])]
         if let match = prefixes.first(where: { $0.1.contains { n.hasPrefix($0) } }) { return match.0 }
         if n.range(of: "^AP2[0-9]S", options: .regularExpression) != nil { return .jbd }
         let services = services.map { $0.uppercased().replacingOccurrences(of: "0000-1000-8000-00805F9B34FB", with: "") }

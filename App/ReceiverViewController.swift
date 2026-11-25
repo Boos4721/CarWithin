@@ -3926,7 +3926,7 @@ extension ReceiverViewController {
                 row.checked = { [weak self] in self?.bmsClient.selectedID == device.id }
                 return row
             }
-            sections.append(SettingsSection("附近设备", footer: "名称和服务只用于识别候选。未知设备需手选板型；只有收到该协议的有效实时数据才确认连接。小哈仅广播电量，星恒星蓝、智霸和闪充目前只识别，不尝试未知协议。",
+            sections.append(SettingsSection("附近设备", footer: "名称和服务只用于识别候选。未知设备需手选板型；只有收到该协议的有效实时数据才确认连接。小哈仅广播电量。",
                 devices.isEmpty ? [.info("暂无设备", "点击上方扫描")] : devices))
             return sections
         }

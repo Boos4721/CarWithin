@@ -54,7 +54,21 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
         guard let sample, sample.isFresh(at: ProcessInfo.processInfo.systemUptime) else { return nil }
         return sample.reading
     }
-    init(defaults: UserDefaults = .standard) { self.defaults = defaults; super.init() }
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults; super.init()
+        clearUnsupportedSelection()
+    }
+    @discardableResult
+    private func clearUnsupportedSelection() -> Bool {
+        guard let id = selectedID,
+              let raw = defaults.string(forKey: "bmsFamily." + id.uuidString),
+              BMSFamily(rawValue: raw) == nil else { return false }
+        defaults.removeObject(forKey: "antBMSPeripheral")
+        defaults.removeObject(forKey: "antBMSName")
+        sample = nil
+        update("原板型已不再支持，请重新选择设备与板型")
+        return true
+    }
     deinit { timer?.invalidate(); reconnectWork?.cancel(); scanTimeout?.cancel() }
     func start() {
         guard !enabled else { return }
@@ -125,8 +139,9 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
         central?.stopScan();scanTimeout?.cancel()
         if let id {
             defaults.set(id.uuidString,forKey:"antBMSPeripheral");defaults.set(name ?? "BMS",forKey:"antBMSName")
-            if let family,BMSFamily(rawValue:family) != nil { defaults.set(family,forKey:"bmsFamily."+id.uuidString) }
+            if let family { defaults.set(family,forKey:"bmsFamily."+id.uuidString) }
         } else { defaults.removeObject(forKey:"antBMSPeripheral");defaults.removeObject(forKey:"antBMSName") }
+        if clearUnsupportedSelection() { return }
         if enabled { connectRememberedOrScan() } else { update("已恢复车辆 BMS 配置") }
     }
     func centralManagerDidUpdateState(_ central:CBCentralManager) {

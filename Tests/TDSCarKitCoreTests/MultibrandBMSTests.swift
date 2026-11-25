@@ -22,7 +22,7 @@ final class MultibrandBMSTests: XCTestCase {
     private func setBE16(_ b:inout [UInt8],_ index:Int,_ value:Int){b[index]=UInt8(truncatingIfNeeded:value>>8);b[index+1]=UInt8(truncatingIfNeeded:value)}
 
     func testBrandNamesAndWeakServiceHintsDoNotSelectANTForUnknownDevice() {
-        for (name,family) in [("ANT@BLE",BMSFamily.ant),("YY-NiuM",.yanyang),("BT372",.yanyang),("JBD001",.jbd),("JK-BMS",.jikong),("BlueBabe123",.lanbao),("FD0123AB",.yadi),("明唐1",.mingtang),("HBB123SOC078",.xiaoha),("星恒星蓝",.xingheng),("智霸1",.zhiba),("闪充智行1",.shanchong)] {
+        for (name,family) in [("ANT@BLE",BMSFamily.ant),("YY-NiuM",.yanyang),("BT372",.yanyang),("JBD001",.jbd),("JK-BMS",.jikong),("BlueBabe123",.lanbao),("FD0123AB",.yadi),("明唐1",.mingtang),("HBB123SOC078",.xiaoha)] {
             XCTAssertEqual(BMSFamily.identify(name:name),family,name)
         }
         XCTAssertNil(BMSFamily.identify(name:"UART",services:["FFE0"]))
@@ -33,8 +33,8 @@ final class MultibrandBMSTests: XCTestCase {
         XCTAssertNil(BMSFamily.identify(name:"",services:[],manufacturerID:0x0b65))
         XCTAssertEqual(BMSFamily.identify(name:"ANTnamed",services:["FF00"]),.ant)
     }
-    func testBroadcastOnlyAndRecognitionOnlyFamiliesNeverEmitGATTCommands() {
-        for family in [BMSFamily.xiaoha,.xingheng,.zhiba,.shanchong] {
+    func testBroadcastOnlyFamilyNeverEmitsGATTCommands() {
+        for family in [BMSFamily.xiaoha] {
             let parser=BMSReadOnlyProtocol(family:family)
             XCTAssertNil(parser.nextRequest(now:0))
             XCTAssertFalse(BMSReadOnlyProtocol.permits(ANTBMSProtocol.realtimeRequest,family:family))
