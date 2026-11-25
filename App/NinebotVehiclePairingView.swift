@@ -7,6 +7,13 @@ struct NinebotVehiclePairingView: View {
     @Environment(\.openURL) private var openURL
     @State private var vehicleToForget: NinebotVehicle?
     @State private var confirmsRemoval = false
+    @State private var deviceToConfirm: NinebotVehicleConnection.Device?
+    @State private var confirmsConnection = false
+    @State private var pairingToConfirm: NinebotPairingTarget?
+    @State private var confirmsPairing = false
+    @State private var vehicleToRename: NinebotVehicle?
+    @State private var showsRename = false
+    @State private var editedName = ""
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { _ in
@@ -15,16 +22,37 @@ struct NinebotVehiclePairingView: View {
         .onDisappear { if !locked { connection.cancelPairing() } }
         .confirmationDialog("删除本机配对记录？", isPresented: $confirmsRemoval, titleVisibility: .visible,
                             presenting: vehicleToForget) { vehicle in
-            Button("删除 \(vehicle.name)", role: .destructive) { connection.forgetVehicle(vehicle.id) }
+            Button("删除 \(vehicle.title)", role: .destructive) { connection.forgetVehicle(vehicle.id) }
         } message: { _ in
             Text("仅删除这台设备上的车辆记录和蓝牙密钥，不删除车辆官方账号绑定；其他车辆的记录保留。")
         }
+        .alert("核对连接目标", isPresented: $confirmsConnection, presenting: deviceToConfirm) { device in
+            Button("确认并连接") { if !locked { connection.connectForPairing(device) } }
+            Button("取消", role: .cancel) {}
+        } message: { device in
+            Text("蓝牙名称：\(device.name)\n本机识别码：\(device.shortID)\n请先与自己的车辆核对。名称、信号和广播识别只能辅助判断；识别码不是车架号或蓝牙 MAC 地址。")
+        }
+        .alert("向这台车发送配对请求？", isPresented: $confirmsPairing, presenting: pairingToConfirm) { target in
+            Button("发送请求") { if !locked { connection.beginPairing(confirmedTarget: target) } }
+            Button("取消", role: .cancel) {}
+        } message: { target in
+            Text("蓝牙名称：\(target.bluetoothName)\n本机识别码：\(target.id.uuidString.suffix(6))\n确认后只按自己车辆上的 P 键，再等待身份认证完成。")
+        }
+        .alert("车辆显示名称", isPresented: $showsRename) {
+            TextField("最多 40 字，留空恢复蓝牙名称", text: $editedName)
+            Button("保存") {
+                if !locked, let vehicle = vehicleToRename { connection.renameVehicle(vehicle.id, to: editedName) }
+            }
+            Button("取消", role: .cancel) {}
+        } message: { Text("仅修改本机显示名称，原蓝牙名称继续用于车辆认证。") }
+
     }
 
     private func content(now: TimeInterval) -> some View {
         Form {
             statusSection
             progressSection
+            finderSection
             successSection
             pairingControls(now: now)
             savedVehiclesSection
@@ -85,7 +113,7 @@ struct NinebotVehiclePairingView: View {
     @ViewBuilder private var successSection: some View {
         if !locked, connection.phase == .paired, let vehicle = connection.pairedVehicle {
             Section {
-                Label(vehicle.name, systemImage: "checkmark.shield.fill")
+                Label(vehicle.title, systemImage: "checkmark.shield.fill")
                 if connection.garage.selected?.id == vehicle.id {
                     Text("这台车已用于当前车辆配置。")
                 } else {
@@ -105,7 +133,10 @@ struct NinebotVehiclePairingView: View {
         if !locked {
             Section {
                 if connection.canBeginPairing {
-                    Button("发送配对请求") { connection.beginPairing() }
+                    Button("发送配对请求") {
+                        pairingToConfirm = connection.pairingTarget
+                        confirmsPairing = pairingToConfirm != nil
+                    }
                         .buttonStyle(.borderedProminent)
                     Text("点击后再按一下车上的 P 键，等待车辆确认。")
                         .font(.footnote).foregroundStyle(.secondary)
@@ -126,7 +157,7 @@ struct NinebotVehiclePairingView: View {
                     Button(connection.isScanning ? "停止扫描" : "取消配对", role: .cancel) { connection.cancelPairing() }
                 } else {
                     Button(connection.devices.isEmpty ? "扫描附近车辆（30 秒）" : "重新扫描（30 秒）") { connection.startScan() }
-                        .disabled(!connection.canScan)
+                        .disabled(!connection.canScan || connection.finder.stage != .idle)
                 }
             } header: {
                 Text("添加与检查")
@@ -152,13 +183,56 @@ struct NinebotVehiclePairingView: View {
         }
     }
 
+    @ViewBuilder private var finderSection: some View {
+        if !locked, connection.canScan {
+            Section {
+                switch connection.finder.stage {
+                case .idle:
+                    Button("帮我找自己的车") { connection.beginFindingVehicle() }
+                    Text("先核对九号出行中的蓝牙名称；仍分不清时，用断电与通电两轮扫描找候选设备。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                case .prepareOff:
+                    Text("1 · 先给自己的车辆断电")
+                    Text("车辆静止后操作，等附近广播稳定，再开始第一轮扫描。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    Button("已断电，开始第一轮扫描") { connection.scanFinderRound() }
+                case .scanningOff:
+                    Text("1 · 正在记录断电时的附近设备")
+                    Text("请保持自己的车辆断电，等待这一轮 30 秒扫描结束。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                case .prepareOn:
+                    Text("2 · 给自己的车辆通电")
+                    Text("第一轮已完成。保持位置不变，等车辆启动后再扫描。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    Button("已通电，开始第二轮扫描") { connection.scanFinderRound() }
+                case .scanningOn:
+                    Text("2 · 正在记录通电后的附近设备")
+                    Text("请保持车辆通电，等待这一轮扫描结束。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                case .results:
+                    Text(connection.finder.suggestions.isEmpty ? "没有找到明显新增的候选设备" : "发现 \(connection.finder.suggestions.count) 个新增候选，请在下方核对")
+                    Text("有些车断电后仍广播；其他车辆靠近也会新增。请对照名称和信号，选中后继续 P 键确认与身份认证。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    Button("重新做两轮对比") { connection.beginFindingVehicle() }
+                }
+                if connection.finder.stage != .idle {
+                    Button("结束找车引导", role: .cancel) { connection.cancelFindingVehicle() }
+                }
+            } header: {
+                Text("确认自己的车辆")
+            } footer: {
+                Text("找车结果只用于辅助核对，不自动连接或证明车辆归属。")
+            }
+        }
+    }
+
     private var savedVehiclesSection: some View {
         Section {
             vehicleRow("不启用车辆蓝牙自动连接", detail: "保留已有配对，启动时不自动连接车辆蓝牙。",
                        selected: connection.garage.selected == nil) { connection.selectVehicle(nil) }
             ForEach(connection.garage.vehicles) { vehicle in
                 VStack(alignment: .leading, spacing: 8) {
-                    vehicleRow(vehicle.name, detail: "本机识别码 " + String(vehicle.id.uuidString.suffix(6)),
+                    vehicleRow(vehicle.title, detail: "蓝牙名称 " + vehicle.name + " · 本机识别码 " + String(vehicle.id.uuidString.suffix(6)),
                                selected: vehicle.id == connection.garage.selected?.id) { connection.selectVehicle(vehicle.id) }
                     if !locked {
                         Button { connection.checkPairedVehicle(vehicle.id) } label: {
@@ -166,6 +240,11 @@ struct NinebotVehiclePairingView: View {
                                 .font(.subheadline).frame(minHeight: 44)
                         }
                         .buttonStyle(.borderless)
+                        Button("修改显示名称") {
+                            vehicleToRename = vehicle; editedName = vehicle.displayName ?? ""; showsRename = true
+                        }
+                        .buttonStyle(.borderless)
+                        .frame(minHeight: 44)
                     }
                 }
                 .swipeActions(allowsFullSwipe: false) {
@@ -184,16 +263,22 @@ struct NinebotVehiclePairingView: View {
 
     private func nearbyRow(_ device: NinebotVehicleConnection.Device, now: TimeInterval) -> some View {
         let fresh = connection.isFresh(device, at: now)
-        return Button { connection.connectForPairing(device) } label: {
+        return Button {
+            deviceToConfirm = device; confirmsConnection = true
+        } label: {
             VStack(alignment: .leading, spacing: 5) {
-                Text(device.name).foregroundStyle(.primary)
+                Text(connection.garage.vehicles.first(where: { $0.id == device.id })?.title ?? device.name).foregroundStyle(.primary)
+                if connection.finder.suggestions.contains(device.id) {
+                    Label("通电后新发现 · 建议核对", systemImage: "magnifyingglass")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 Text("本机识别码 \(device.shortID) · \(NinebotPairingWindow.signal(device.rssi))")
                     .font(.footnote).foregroundStyle(.secondary)
                 Text(fresh ? device.detail : "广播已过期，请重新扫描。")
                     .font(.footnote).foregroundStyle(.secondary)
-                if connection.garage.vehicles.contains(where: { $0.id == device.id }) {
-                    Text("已在本机配对").font(.caption).foregroundStyle(.secondary)
-                }
+                Text(connection.garage.vehicles.contains(where: { $0.id == device.id })
+                     ? "已在本机配对 · 连接后验证身份" : "尚未验证车辆身份")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .contentShape(Rectangle())

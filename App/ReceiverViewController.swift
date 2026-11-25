@@ -768,7 +768,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         ninebotVehicle.onSelectionChanged = { [weak self] in self?.saveActiveVehicleProfile() }
         ninebotVehicleObservation = ninebotVehicle.$status.combineLatest(ninebotVehicle.$garage).sink { [weak self] status, garage in
             guard let self else { return }
-            self.ninebotVehicleButton.configuration?.subtitle = garage.selected?.name ?? "尚未选择车辆"
+            self.ninebotVehicleButton.configuration?.subtitle = garage.selected?.title ?? "尚未选择车辆"
             self.ninebotVehicleStatus.text = status
             self.ninebotVehicleStatus.isHidden = garage.selected == nil
             // @Published sends before mutation; render instructions on the next turn.
@@ -3336,7 +3336,7 @@ extension ReceiverViewController {
             ]
             if self.supportsNinebotVehicle {
                 rows.append(.page("九号车辆配对", icon: ("scooter", .systemBlue), detail: { [unowned self] in
-                    self.ninebotVehicle.garage.selected?.name ?? "未选择"
+                    self.ninebotVehicle.garage.selected?.title ?? "未选择"
                 }) { [unowned self] in self.ninebotVehiclePage() })
             }
             if self.needsNetworkDetails {

@@ -17,6 +17,7 @@ final class NinebotVehicleConnection: NSObject, ObservableObject {
         var shortID: String { String(id.uuidString.suffix(6)) }
     }
 
+    @Published private(set) var finder = NinebotVehicleFinder()
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var status = "请扫描并选择车辆。"
     @Published private(set) var devices: [Device] = []
@@ -51,7 +52,8 @@ final class NinebotVehicleConnection: NSObject, ObservableObject {
     var retryTargetName: String? { lastPairingVehicle?.name }
 
     func canConnect(_ device: Device, at now: TimeInterval = ProcessInfo.processInfo.systemUptime) -> Bool {
-        guard canScan, let current = devices.first(where: { $0.id == device.id }) else { return false }
+        guard canScan, finder.stage == .idle || finder.stage == .results,
+              let current = devices.first(where: { $0.id == device.id }) else { return false }
         return current.isConnectable && isFresh(current, at: now)
     }
 
@@ -130,8 +132,9 @@ final class NinebotVehicleConnection: NSObject, ObservableObject {
                                    options: [CBCentralManagerOptionShowPowerAlertKey: true])
     }
 
-    func startScan() {
+    func startScan(preservingFinder: Bool = false) {
         guard canScan else { return }
+        if !preservingFinder { finder.cancel() }
         scanRequested = true
         prepareCentral()
         guard central.state == .poweredOn else {
@@ -151,6 +154,8 @@ final class NinebotVehicleConnection: NSObject, ObservableObject {
         scanTimeoutTask?.cancel()
         let timeout = DispatchWorkItem { [weak self] in
             guard let self, self.scanEpoch == scanID, self.isScanning else { return }
+            let ids = Set(self.devices.filter { $0.isConnectable && self.isFresh($0, at: ProcessInfo.processInfo.systemUptime) }.map(\.id))
+            self.finder.completeRound(ids: ids)
             self.stopScan()
             self.transition(.idle, self.devices.isEmpty
                 ? "扫描结束，未发现已验证的九号车辆。请给车辆通电、靠近车辆后重新扫描。"
@@ -162,6 +167,33 @@ final class NinebotVehicleConnection: NSObject, ObservableObject {
         central.scanForPeripherals(withServices: nil, options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
         isScanning = true
         transition(.scanning, "正在扫描九号车辆…")
+    }
+
+    func beginFindingVehicle() {
+        guard canScan else { return }
+        stopScan()
+        finder.begin()
+    }
+
+    func scanFinderRound() {
+        guard canChooseVehicle, finder.startRound() else { return }
+        startScan(preservingFinder: true)
+    }
+
+    func cancelFindingVehicle() {
+        guard finder.stage != .idle else { return }
+        stopScan(); finder.cancel()
+    }
+
+    func renameVehicle(_ id: UUID, to name: String) {
+        guard canChooseVehicle else { return }
+        updateGarage { $0.rename(id, to: name) }
+        onSelectionChanged?()
+    }
+
+    var pairingTarget: NinebotPairingTarget? {
+        guard canBeginPairing, let vehicle = attemptVehicle else { return nil }
+        return NinebotPairingTarget(id: vehicle.id, bluetoothName: vehicle.name, epoch: epoch)
     }
 
     func stopScan() {
@@ -176,7 +208,7 @@ final class NinebotVehicleConnection: NSObject, ObservableObject {
 
     func connectForPairing(_ device: Device) {
         guard canScan else { return }
-        guard canConnect(device), central?.state == .poweredOn, let evidence = scanDetails[device.id], evidence.isEligible,
+        guard canConnect(device), central?.state == .poweredOn, let evidence = scanDetails[device.id], evidence.isEligible, evidence.localName == device.name,
               let advertisement = evidence.advertisement, let found = peripherals[device.id] else {
             transition(.failed, "尚未收到可连接的车辆广播，请重新扫描。")
             return
@@ -185,6 +217,7 @@ final class NinebotVehicleConnection: NSObject, ObservableObject {
                                      protocolVersion: advertisement.protocolVersion,
                                      serialLength: advertisement.serialNumberLength)
         stopScan()
+        finder.cancel()
         lastPairingVehicle = vehicle
         begin(.pairing, vehicle: vehicle)
         connectPeripheral(found)
@@ -208,9 +241,10 @@ final class NinebotVehicleConnection: NSObject, ObservableObject {
     }
 
     private func begin(_ purpose: Purpose, vehicle: NinebotVehicle) {
+        finder.cancel()
         self.purpose = purpose
         attemptVehicle = vehicle
-        attemptName = vehicle.name
+        attemptName = vehicle.title
         hasPairingAcknowledgement = false
         pairedVehicle = nil
         confirmationWindow = nil
@@ -221,8 +255,8 @@ final class NinebotVehicleConnection: NSObject, ObservableObject {
 
     /// Explicit UI action only. Neither state restoration nor authentication failure
     /// is permitted to call SET_PWD or generate a replacement key automatically.
-    func beginPairing() {
-        guard canBeginPairing, let selection = attemptVehicle, let authParameter else { return }
+    func beginPairing(confirmedTarget: NinebotPairingTarget) {
+        guard pairingTarget == confirmedTarget, canBeginPairing, let selection = attemptVehicle, let authParameter else { return }
         do {
             let key = try keyStore.prepareCandidate(for: selection.id)
             authenticationAttempts = VehicleAuthenticationAttempts()
@@ -273,6 +307,7 @@ final class NinebotVehicleConnection: NSObject, ObservableObject {
     }
 
     func cancelPairing() {
+        finder.cancel()
         stopScan()
         guard purpose == .pairing else { return }
         reconnectTask?.cancel()
@@ -797,6 +832,10 @@ final class NinebotVehicleConnection: NSObject, ObservableObject {
 extension NinebotVehicleConnection: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         guard central.state == .poweredOn else {
+            if central.state != .unknown, (finder.stage == .scanningOff || finder.stage == .scanningOn) {
+                finder.cancel()
+                scanRequested = false
+            }
             isScanning = false
             scanTimeoutTask?.cancel(); scanTimeoutTask = nil
             scanWindow = nil
@@ -808,7 +847,7 @@ extension NinebotVehicleConnection: @preconcurrency CBCentralManagerDelegate {
             reportBluetoothState()
             return
         }
-        if scanRequested { startScan() }
+        if scanRequested { startScan(preservingFinder: true) }
         else if wantsSession, peripheral == nil { reconnectVehicle() }
         else if pendingProjection != nil { startPendingProjection() }
         else if phase == .unavailable { transition(.idle, "蓝牙已就绪。") }

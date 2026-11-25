@@ -5,6 +5,8 @@ struct NinebotVehicle: Codable, Equatable, Identifiable {
     let name: String
     let protocolVersion: UInt8
     let serialLength: Int?
+    var displayName: String? = nil
+    var title: String { displayName ?? name }
 }
 
 /// Only confirmed vehicles are listed. Pairing a new vehicle leaves the current
@@ -17,10 +19,18 @@ struct NinebotVehicleSelection: Codable, Equatable {
 
     mutating func save(_ vehicle: NinebotVehicle) {
         if let index = vehicles.firstIndex(where: { $0.id == vehicle.id }) {
-            vehicles[index] = vehicle
+            var updated = vehicle
+            updated.displayName = vehicles[index].displayName
+            vehicles[index] = updated
         } else {
             vehicles.append(vehicle)
         }
+    }
+
+    mutating func rename(_ id: UUID, to name: String) {
+        guard let index = vehicles.firstIndex(where: { $0.id == id }) else { return }
+        let value = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+        vehicles[index].displayName = value.isEmpty ? nil : value
     }
 
     mutating func select(_ id: UUID?) {
