@@ -61,6 +61,13 @@ struct ZeehoSEPlusSizeSmoke {
         precondition(Array(response) == [2, 0, 0, 0, 0x56, 0x03, 0xe0, 0x01])
         let legacyResponse = TailingProtocol.mediaConfiguration(size: jpeg, h264: TailingDisplayProfile.tailing43.isZeeho)
         precondition(Array(legacyResponse) == [1, 0, 0, 0, 0xe0, 0x01, 0x10, 0x01])
+        let ae2 = TailingDisplayProfile.zeehoAE2
+        for size in [InstrumentFrameSize(width: 800, height: 480), InstrumentFrameSize(width: 480, height: 800), InstrumentFrameSize(width: 1920, height: 1080)] {
+            precondition(ae2.outputSize(for: size) == size)
+        }
+        precondition(ae2.outputSize(for: InstrumentFrameSize(width: 855, height: 481)) == InstrumentFrameSize(width: 854, height: 480))
+        precondition(ae2.outputSize(for: InstrumentFrameSize(width: 0, height: 480)) == nil)
+        precondition(ae2.outputSize(for: InstrumentFrameSize(width: 800, height: 65535)) == nil)
         let source = CGSize(width: 800, height: 480)
         precondition(sePlus.preferredSize.fittedRect(for: source) == CGRect(x: 0, y: 0, width: 800, height: 480))
         precondition(nonDefault.fittedRect(for: source) == CGRect(x: 27, y: 0, width: 800, height: 480))

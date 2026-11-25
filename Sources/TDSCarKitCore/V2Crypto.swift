@@ -10,11 +10,11 @@ public enum V2CryptoError: Error, LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidAuthParameter: return "蓝牙认证参数必须为 16 字节"
-        case .authenticationFailed: return "蓝牙消息认证失败"
-        case .staleSerial: return "蓝牙消息序号过期或重复"
-        case .serialExhausted: return "蓝牙消息序号已用尽，请重新连接"
-        case .cipherFailure(let code): return "蓝牙加密失败（\(code)）"
+        case .invalidAuthParameter: return CWL("蓝牙认证参数必须为 16 字节")
+        case .authenticationFailed: return CWL("蓝牙消息认证失败")
+        case .staleSerial: return CWL("蓝牙消息序号过期或重复")
+        case .serialExhausted: return CWL("蓝牙消息序号已用尽，请重新连接")
+        case .cipherFailure(let code): return CWL("蓝牙加密失败（{1}）", [String(code)])
         }
     }
 }

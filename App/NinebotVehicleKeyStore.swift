@@ -22,8 +22,8 @@ struct NinebotVehicleKeyStore {
         case invalidRecord
         var errorDescription: String? {
             switch self {
-            case .system(let code): return "钥匙串无法访问（\(code)）；请先解锁 iPhone。"
-            case .invalidRecord: return "保存的蓝牙密钥记录无效；原记录未修改。"
+            case .system(let code): return CWL("钥匙串无法访问（{1}）；请先解锁 iPhone。", [String(code)])
+            case .invalidRecord: return CWL("保存的蓝牙密钥记录无效；原记录未修改。")
             }
         }
     }

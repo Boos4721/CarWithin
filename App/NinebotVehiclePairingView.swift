@@ -15,7 +15,7 @@ struct NinebotVehiclePairingView: View {
             }
 
             Section {
-                vehicleRow("不自动连接", selected: connection.garage.selected == nil) {
+                vehicleRow(CWL("不自动连接"), selected: connection.garage.selected == nil) {
                     connection.selectVehicle(nil)
                 }
                 ForEach(connection.garage.vehicles) { vehicle in
@@ -23,28 +23,28 @@ struct NinebotVehiclePairingView: View {
                         connection.selectVehicle(vehicle.id)
                     }
                     .swipeActions(allowsFullSwipe: false) {
-                        Button("删除", role: .destructive) {
+                        Button(CWL("删除"), role: .destructive) {
                             vehicleToForget = vehicle
                             confirmsRemoval = true
                         }
                     }
                 }
             } header: {
-                Text("已配对车辆")
+                Text(CWL("已配对车辆"))
             } footer: {
-                if locked { Text("停止投屏后可添加或更换车辆。") }
+                if locked { Text(CWL("停止投屏后可添加或更换车辆。")) }
             }
             .disabled(locked || !connection.canChooseVehicle)
 
             if !locked {
                 Section {
                     if connection.canBeginPairing {
-                        Button("建立本机配对") { connection.beginPairing() }
+                        Button(CWL("建立本机配对")) { connection.beginPairing() }
                     }
                     if connection.isPairing {
-                        Button(connection.isScanning ? "停止扫描" : "取消配对") { connection.cancelPairing() }
+                        Button(connection.isScanning ? CWL("停止扫描") : CWL("取消配对")) { connection.cancelPairing() }
                     } else {
-                        Button("扫描附近车辆") { connection.startScan() }
+                        Button(CWL("扫描附近车辆")) { connection.startScan() }
                             .disabled(!connection.canScan)
                     }
                     if connection.canScan {
@@ -63,16 +63,16 @@ struct NinebotVehiclePairingView: View {
                         }
                     }
                 } header: {
-                    Text("添加车辆")
+                    Text(CWL("添加车辆"))
                 } footer: {
-                    Text("通电后扫描并选择自己的车辆。建立本机配对时，按车上的 P 键确认。")
+                    Text(CWL("通电后扫描并选择自己的车辆。建立本机配对时，按车上的 P 键确认。"))
                 }
             }
         }
         .onDisappear { if !locked { connection.cancelPairing() } }
-        .confirmationDialog("删除本机配对记录？", isPresented: $confirmsRemoval, titleVisibility: .visible,
+        .confirmationDialog(CWL("删除本机配对记录？"), isPresented: $confirmsRemoval, titleVisibility: .visible,
                             presenting: vehicleToForget) { vehicle in
-            Button("删除 \(vehicle.name)", role: .destructive) { connection.forgetVehicle(vehicle.id) }
+            Button(CWL("删除 {1}", [vehicle.name]), role: .destructive) { connection.forgetVehicle(vehicle.id) }
         }
     }
 
