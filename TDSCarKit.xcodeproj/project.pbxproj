@@ -10,6 +10,7 @@
         AAAAAAAA0000000000000001 /* ikcp.c in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAAAA0000000000000003; };
         AAAAAAAA0000000000000002 /* NinebotKCPVideo.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAAAA0000000000000004; };
         AAAAAAAA0000000000000005 /* KCP-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAA0000000000000006; };
+        ABBEFEED0000000000000001 /* ANTBMS-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = ABBEFEED0000000000000002; };
 		7E96AD8A0902263D7707A076 /* App/TailingSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = D69FD1F200ECE2D7FA951B51 /* App/TailingSocket.swift */; };
 		BF8C88925F55D6937482C442 /* App/TailingProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1742C549D25653794782E49 /* App/TailingProtocol.swift */; };
 		88C07C68A7CFD386DB471AF9 /* App/TailingOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15C6BB68729B79CB1589593B /* App/TailingOutput.swift */; };
@@ -101,6 +102,7 @@
         AAAAAAAA0000000000000003 /* ikcp.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = App/ikcp.c; sourceTree = "<group>"; };
         AAAAAAAA0000000000000004 /* NinebotKCPVideo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/NinebotKCPVideo.swift; sourceTree = "<group>"; };
         AAAAAAAA0000000000000006 /* KCP-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "App/KCP-LICENSE.txt"; sourceTree = "<group>"; };
+        ABBEFEED0000000000000002 /* ANTBMS-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "App/ANTBMS-LICENSE.txt"; sourceTree = "<group>"; };
 		D69FD1F200ECE2D7FA951B51 /* App/TailingSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/TailingSocket.swift; sourceTree = "<group>"; };
 		E1742C549D25653794782E49 /* App/TailingProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/TailingProtocol.swift; sourceTree = "<group>"; };
 		15C6BB68729B79CB1589593B /* App/TailingOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/TailingOutput.swift; sourceTree = "<group>"; };
@@ -215,6 +217,7 @@
                 AAAAAAAA0000000000000003 /* ikcp.c */,
                 AAAAAAAA0000000000000004 /* NinebotKCPVideo.swift */,
                 AAAAAAAA0000000000000006 /* KCP-LICENSE.txt */,
+                ABBEFEED0000000000000002 /* ANTBMS-LICENSE.txt */,
 				D6983BA5CA7041AE8981B978 /* App/NinebotUDPSocket.swift */,
 				E9D368B6A679BA4668F1A3B6 /* App/NinebotProtocol.swift */,
 				48E1C9F471B51889D986E066 /* App/NinebotOutput.swift */,
@@ -356,6 +359,7 @@
 			files = (
 				716E9590E60B3AFA6E62BF18 /* App/Assets.xcassets in Resources */,
                 AAAAAAAA0000000000000005 /* KCP-LICENSE.txt in Resources */,
+                ABBEFEED0000000000000001 /* ANTBMS-LICENSE.txt in Resources */,
 				094F299DB983C107B346E308 /* App/BundledIdentity/certificate.p7b in Resources */,
 				0E8D4D76E0A69F1E1ADD06B8 /* App/BundledIdentity/leaf.cer in Resources */,
 				42710856210EB8AB1A71320B /* App/BundledIdentity/private.x963 in Resources */,
