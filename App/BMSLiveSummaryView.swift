@@ -6,18 +6,17 @@ final class BMSLiveSummaryView: UIView {
     private var tiles: [ANTBMSCardConfiguration.Field: UIView] = [:]
     private var rows: [UIStackView] = []
 
-    override init(frame: CGRect) {
-        super.init(frame: frame)
+    init(fields: [ANTBMSCardConfiguration.Field] = [.charge, .voltage, .current, .power, .temperature, .cellDelta]) {
+        super.init(frame: .zero)
         let grid = UIStackView(); grid.axis = .vertical; grid.spacing = 8
         grid.translatesAutoresizingMaskIntoConstraints = false
         addSubview(grid)
         NSLayoutConstraint.activate([grid.leadingAnchor.constraint(equalTo: leadingAnchor),
             grid.trailingAnchor.constraint(equalTo: trailingAnchor), grid.topAnchor.constraint(equalTo: topAnchor),
             grid.bottomAnchor.constraint(equalTo: bottomAnchor)])
-        let fields: [ANTBMSCardConfiguration.Field] = [.charge, .voltage, .current, .power, .temperature, .cellDelta]
         for offset in stride(from: 0, to: fields.count, by: 2) {
             let row = UIStackView(); row.spacing = 8; row.distribution = .fillEqually
-            for field in fields[offset..<(offset + 2)] {
+            for field in fields[offset..<min(offset + 2, fields.count)] {
                 let label = UILabel(); label.text = field.title
                 label.font = .preferredFont(forTextStyle: .caption1); label.textColor = .secondaryLabel
                 label.adjustsFontForContentSizeCategory = true; label.numberOfLines = 0
@@ -51,7 +50,16 @@ final class BMSLiveSummaryView: UIView {
         NotificationCenter.default.post(name: StatusLabel.didChange, object: self)
     }
 
-    func update(_ reading: ANTBMSReading?) {
+    func update(_ reading: ANTBMSReading?, visibleFields: [ANTBMSCardConfiguration.Field]? = nil) {
+        let fields = visibleFields.map { Set($0) }
+        var changed = false
+        for (field, tile) in tiles {
+            let hidden = fields.map { !$0.contains(field) } ?? false
+            if tile.isHidden != hidden { tile.isHidden = hidden; changed = true }
+        }
+        for row in rows { row.isHidden = row.arrangedSubviews.allSatisfy(\.isHidden) }
+        isHidden = rows.allSatisfy(\.isHidden)
+        if changed { NotificationCenter.default.post(name: StatusLabel.didChange, object: self) }
         for (field, label) in values {
             let text = reading.map { field.text($0).replacingOccurrences(of: "压差 ", with: "") } ?? "--"
             label.text = text

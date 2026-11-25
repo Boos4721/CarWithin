@@ -214,6 +214,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private func updateZeehoStatus(_ message: String) {
         zeehoStatus.text = message
         zeehoCardStatus.text = message
+        refreshConnectionOverview()
     }
     private let cfmotoCard = UIStackView()
     private let cfmotoCardStatus = UILabel()
@@ -230,6 +231,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private func updateCfmotoStatus(_ message: String) {
         cfmotoStatus.text = message
         cfmotoCardStatus.text = message
+        refreshConnectionOverview()
     }
     private let ninebotCard = UIStackView()
     private var ninebotCardInstructions: UILabel?
@@ -258,6 +260,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private func updateNinebotStatus(_ message: String) {
         ninebotStatus.text = message
         ninebotCardStatus.text = message
+        refreshConnectionOverview()
     }
     private let tailingCard = UIStackView()
     private let tailingCardStatus = UILabel()
@@ -265,6 +268,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let tailingStatus = StatusLabel()
     private func updateTailingStatus(_ message: String) {
         tailingStatus.text = message; tailingCardStatus.text = message
+        refreshConnectionOverview()
     }
     private let carLifeCard = UIStackView()
     private let airPlayCard = UIStackView()
@@ -299,7 +303,16 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private var connectionFailure: String?
     private var completingSetupGuide = false
     private var showsConnectionDetails = false
-    private let vehicleProfileButton = UIButton(type: .system)
+    private let connectionOverview = ConnectionOverviewView()
+    private var connectionPhase: ConnectionOverview.Phase = .idle
+    private var instrumentPhase: InstrumentChannelPhase = .idle
+    private var confirmedHomeSSID: String?
+    private var homeNetworkRequest: UUID?
+    private var lastHomeNetworkCheck = -Double.infinity
+    private let completedBMSCard = BMSRecordSummaryView()
+    private let currentBMSCard = BMSRecordSummaryView()
+    private var lastFinishedBMSRecord: BMSRideRecord?
+    private let autoOpenBMSSummarySwitch = UISwitch()
     private let autoFullscreenSwitch = UISwitch()
     private var connectionTimeline: ConnectionTimeline?
     private var lastReceiverMessage: String?
@@ -345,7 +358,9 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let bmsCardPreviewStatus = StatusLabel()
     private let bmsStatus = StatusLabel()
     private let bmsDetails = StatusLabel()
-    private let bmsLiveSummary = BMSLiveSummaryView()
+    private let bmsLiveSummary = BMSLiveSummaryView(fields: [.charge, .voltage, .current, .power])
+    private let bmsHealthSummary = BMSLiveSummaryView(fields: [.temperature, .cellDelta])
+    private let bmsCellExtrema = StatusLabel()
     private let bmsStatusCard = BMSStatusCardView()
     private let bmsSetupStatusCard = BMSStatusCardView()
     private let bmsSetupSummary = BMSLiveSummaryView()
@@ -412,6 +427,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private func updateAirPlayStatus(_ message: String) {
         airPlayStatus.text = message
         airPlayCardStatus.text = message
+        refreshConnectionOverview()
         airPlayRoutePicker.isUserInteractionEnabled = airPlayReady
         airPlayRoutePicker.alpha = airPlayReady ? 1 : 0.45
         if airPlayReady {
@@ -429,6 +445,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private func updateCarLifeStatus(_ message: String) {
         carLifeStatus.text = message
         carLifeCardStatus.text = message
+        refreshConnectionOverview()
     }
     struct DisplayPlan: Equatable {
         var width: Int; var height: Int; var fps: Int; var codec: VideoCodec; var iconWidthMM: Int
@@ -581,14 +598,11 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         identitySetupButton.addAction(UIAction { [weak self] _ in self?.revealSettings(showIdentity: true) }, for: .touchUpInside)
         [titleStack, explanation, statusRow, identitySetupButton, startupHint, connectionHelp, receiverPicker, networkSummary]
             .forEach { heroStack.addArrangedSubview($0) }
-        vehicleProfileButton.configuration = .plain()
-        vehicleProfileButton.contentHorizontalAlignment = .leading
-        vehicleProfileButton.addAction(UIAction { [weak self] _ in
-            guard let self else { return }
-            self.revealSettings()
-            self.settingsNavigation?.pushViewController(self.vehicleProfilesPage(), animated: true)
-        }, for: .touchUpInside)
-        heroStack.addArrangedSubview(vehicleProfileButton)
+        connectionOverview.onVehicle = { [weak self] in self?.openHomeSettings { $0.vehicleProfilesPage() } }
+        connectionOverview.onWiFi = { [weak self] in self?.revealSettings(wifi: true) }
+        connectionOverview.onOutput = { [weak self] in self?.revealSettings(output: true) }
+        connectionOverview.onBattery = { [weak self] in self?.openHomeSettings { $0.bmsPage() } }
+        heroStack.addArrangedSubview(connectionOverview)
         heroStack.axis = .vertical; heroStack.spacing = 14
         heroStack.isLayoutMarginsRelativeArrangement = true
         heroStack.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 22, leading: 20, bottom: 22, trailing: 20)
@@ -596,6 +610,12 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         heroStack.layer.cornerRadius = 24; heroStack.layer.cornerCurve = .continuous
         let stack = homeStack
         stack.addArrangedSubview(heroStack)
+        stack.addArrangedSubview(completedBMSCard)
+        completedBMSCard.onDetails = { [weak self] in
+            guard let self, let record = self.lastFinishedBMSRecord else { return }
+            self.openHomeSettings { $0.bmsRecordPage(record) }
+        }
+        currentBMSCard.onDetails = { [weak self] in self?.openHomeSettings { $0.bmsStatisticsPage() } }
         configureSettingsControls()
         if #available(iOS 17.0, *) {
             registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in self.applyAppearance() }
@@ -850,8 +870,11 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         receiver.onLog = { [weak self] in self?.lastReceiverMessage = $0; self?.log($0) }
         bluetooth.onLog = { [weak self] in self?.log($0) }
         receiver.onControlConnected = { [weak self] in
-            self?.recordConnection(.control, "已收到 CarPlay 控制请求")
-            self?.sameDevice.didConnectControl()
+            guard let self, self.running else { return }
+            self.connectionPhase = .controlConnected
+            self.refreshConnectionOverview()
+            self.recordConnection(.control, "已收到 CarPlay 控制请求")
+            self.sameDevice.didConnectControl()
         }
         receiver.onConnectionProgress = { [weak self] in self?.sameDevice.didProgressControl($0) }
         receiver.onFirstVideo = { [weak self] in
@@ -871,6 +894,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                 let acceptedPicture = try self.videoSurface.enqueue(accessUnit: data, codec: codec)
                 if acceptedPicture, !self.displayedVideo {
                     self.inlineVideoContainer.isHidden = false
+                    self.connectionPhase = .displaying
                     self.displayedVideo = true; self.statusLabel.text = CWL("正在显示 CarPlay")
                     self.clearStartupHint()
                     self.networkStartupTask?.cancel()
@@ -910,6 +934,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         receiver.onCfmotoState = { [weak self] message in
             guard let self, self.running, self.outputMode.cfmoto else { return }
             self.updateCfmotoStatus(message)
+        }
+        receiver.onNinebotPhase = { [weak self] phase in
+            guard let self, self.running, self.outputMode.ninebotMode != nil else { return }
+            self.instrumentPhase = phase; self.refreshConnectionOverview()
         }
         receiver.onNinebotState = { [weak self] message in
             guard let self, self.running, self.outputMode.ninebotMode != nil else { return }
@@ -1018,7 +1046,12 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         }
         #endif
         wifiPathMonitor.pathUpdateHandler = { [weak self] _ in
-            DispatchQueue.main.async { self?.refreshNetworkAddresses() }
+            DispatchQueue.main.async {
+                self?.confirmedHomeSSID = nil
+                self?.homeNetworkRequest = nil
+                self?.lastHomeNetworkCheck = -Double.infinity
+                self?.refreshNetworkAddresses()
+            }
         }
         wifiPathMonitor.start(queue: DispatchQueue(label: "CarWithin.wifiPath"))
         ninebotAutoConnectSwitch.isOn = UserDefaults.standard.bool(forKey: "ninebotAutoConnect")
@@ -1195,13 +1228,23 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         bmsSessionStatus.text = bmsStatisticsText(bmsSession)
         refreshLiveBMSRecord()
         bmsStatus.text = bmsEnabledSwitch.isOn ? bmsClient.status : "BMS 显示已关闭"
-        bmsLiveSummary.update(reading)
+        let overview = BMSOverviewPresentation(capabilities: bmsCapabilities)
+        bmsLiveSummary.update(reading, visibleFields: overview.primaryFields)
+        bmsHealthSummary.update(reading, visibleFields: overview.healthFields)
+        let cells = BMSCellSummary(cells: reading?.cells ?? [])
+        if let low = cells.minimum, let high = cells.maximum {
+            bmsCellExtrema.text = String(format: "最低单体 %.3f V · 最高单体 %.3f V", low, high)
+        } else { bmsCellExtrema.text = reading == nil ? "等待实时单体数据" : "当前未提供逐串电压" }
+        bmsCellExtrema.isHidden = bmsClient.selectedFamily == .xiaoha
+        currentBMSCard.update(title: bmsSessionStartedAt == nil ? "最近一次统计" : "本次记录", statistics: bmsSession,
+            context: bmsSessionVehicle)
+        refreshConnectionOverview()
         bmsSetupSummary.update(reading)
         bmsCellGrid.update(reading)
         let presentation = bmsClient.presentation
         let family = bmsClient.selectedID == nil ? nil : bmsClient.selectedFamily
         let name = bmsClient.selectedID == nil ? "尚未添加电池" : bmsClient.selectedName
-        bmsStatusCard.update(name: name, family: family, presentation: presentation)
+        bmsStatusCard.update(name: BMSDisplayNameStore.name(for: bmsClient.selectedID, fallback: name), family: family, presentation: presentation)
         bmsSetupStatusCard.update(name: name, family: family, presentation: presentation)
         bmsConfirmButton.isEnabled = bmsClient.isConfirmingSelection && reading != nil
         if let reading {
@@ -1582,21 +1625,25 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
 
     private func refreshHomePresentation() {
         let compact = displayedVideo && !showsConnectionDetails
+        if !running && !waitingForNetwork, connectionPhase == .starting, connectionFailure == nil {
+            connectionPhase = .idle
+        }
         heroTitleRow?.isHidden = compact
-        vehicleProfileButton.isHidden = compact
-        vehicleProfileButton.isEnabled = !running && !waitingForNetwork
+        connectionOverview.isHidden = compact
+        refreshConnectionOverview()
+        refreshCompletedBMSCard()
         setupGuideButton.isHidden = displayedVideo || running || waitingForNetwork
             || UserDefaults.standard.bool(forKey: "setupGuideCompleted.v1")
         recoveryActions.isHidden = running || waitingForNetwork || connectionFailure == nil
         statusLabel.textColor = connectionFailure == nil ? .systemBlue : .systemOrange
         explanation.isHidden = compact
         connectionHelp.isHidden = compact
-        networkSummary.isHidden = compact
+        networkSummary.isHidden = true
         heroStack.spacing = compact ? 10 : 14
         heroStack.directionalLayoutMargins = compact
             ? NSDirectionalEdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)
             : NSDirectionalEdgeInsets(top: 22, leading: 20, bottom: 22, trailing: 20)
-        connectionDetailsButton.isHidden = !displayedVideo
+        connectionDetailsButton.isHidden = false
         connectionDetailsButton.setTitle(showsConnectionDetails ? "收起详情" : "连接详情", for: .normal)
         connectionDetailsButton.accessibilityValue = showsConnectionDetails ? "已展开" : "已收起"
         startButton.configuration?.contentInsets = compact
@@ -1608,7 +1655,17 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         }
         let cards: [(UIStackView, UILabel)] = [(carLifeCard, carLifeCardStatus), (zeehoCard, zeehoCardStatus),
             (ninebotCard, ninebotCardStatus), (tailingCard, tailingCardStatus), (cfmotoCard, cfmotoCardStatus)]
+        let selectedCard: UIStackView?
+        switch outputMode {
+        case .ninebot43, .ninebot, .ninebotSeven: selectedCard = ninebotCard
+        case .zeeho, .zeehoFive: selectedCard = zeehoCard
+        case .tailing: selectedCard = tailingCard
+        case .cfmoto5, .cfmoto62: selectedCard = cfmotoCard
+        case .carLife: selectedCard = carLifeCard
+        default: selectedCard = nil
+        }
         for (card, status) in cards {
+            card.isHidden = card !== selectedCard || !showsConnectionDetails || modeControl.selectedSegmentIndex == 2
             for child in card.arrangedSubviews { child.isHidden = compact && child !== status }
             card.directionalLayoutMargins = compact
                 ? NSDirectionalEdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
@@ -2105,6 +2162,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         let id = UUID()
         wiFiJoinID = id
         waitingForNetwork = true
+        connectionPhase = .checkingWiFi; refreshConnectionOverview()
         modeControl.isEnabled = false
         setEditing(false)
         startButton.setTitle("取消连接", for: .normal)
@@ -2268,7 +2326,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     }
 
     @objc private func toggleReceiver() {
-        if running || waitingForNetwork { attemptedNinebotAutoConnect = true; stop(); return }
+        if running || waitingForNetwork { attemptedNinebotAutoConnect = true; stop(showBMSSummary: true); return }
         if outputMode.ninebotMode != nil, modeControl.selectedSegmentIndex == 1,
            !startingAfterWiFiJoin {
             joinSelectedWiFi(startCarPlay: true)
@@ -2323,6 +2381,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             }
             guard saveSettings(config) else { stopVehicleProjection(); return }
             if keepAliveSwitch.isOn { keepAlive.start() }
+            connectionPhase = .starting
             view.endEditing(true); running = true; modeControl.isEnabled = false; setEditing(false)
             beginBMSSessionIfNeeded()
             receiverPicker.isEnabled = false; receiverBrowser.stop()
@@ -2359,7 +2418,9 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             // Waiting until willResignActive can fail to acquire an audio session on CarAudio.
             if keepAliveSwitch.isOn { keepAlive.start() }
             view.endEditing(true)
+            connectionPhase = .starting; instrumentPhase = .preparing
             running = true; modeControl.isEnabled = false; setEditing(false)
+            refreshHomePresentation()
             beginBMSSessionIfNeeded()
             saveActiveVehicleProfile()
             startButton.setTitle("停止 CarPlay", for: .normal)
@@ -2399,7 +2460,9 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         sessionHasVehicleButton = CarPlayInfo.vehicleButtonSize(in: config) != nil
         if keepAliveSwitch.isOn { keepAlive.start() }
         view.endEditing(true)
+        connectionPhase = .starting; instrumentPhase = .preparing
         running = true; modeControl.isEnabled = false; setEditing(false); startButton.setTitle("停止接收", for: .normal)
+        refreshHomePresentation()
         beginBMSSessionIfNeeded()
         startButton.configuration?.image = UIImage(systemName: "stop.fill")
         UIApplication.shared.isIdleTimerDisabled = true; statusLabel.text = CWL("正在启动接收服务…")
@@ -2435,10 +2498,13 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
 
     private func refreshNetworkAddresses() {
         refreshBrowserAddressLabels()
+        refreshConnectionOverview()
+        refreshHomeWiFiObservation()
     }
 
     private func waitForLocalNetwork() {
         waitingForNetwork = true
+        connectionPhase = .checkingWiFi; refreshConnectionOverview()
         modeControl.isEnabled = false
         setEditing(false)
         startButton.setTitle(CWL("取消连接"), for: .normal)
@@ -2496,11 +2562,12 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         }
     }
 
-    private func stop(preserveDiagnostics: Bool = false, keepVehicleNavigation: Bool = false) {
+    private func stop(preserveDiagnostics: Bool = false, keepVehicleNavigation: Bool = false, showBMSSummary: Bool = false) {
         if !keepVehicleNavigation { stopVehicleProjection() }
         connectionFailure = nil
         if !preserveDiagnostics { recordConnection(.stopped, "连接已停止") }
-        finishBMSSession()
+        let completedRecord = finishBMSSession()
+        connectionPhase = .stopped; instrumentPhase = .idle
         wiFiJoinID = nil
         wiFiJoinTask?.cancel()
         wiFiJoinTask = nil
@@ -2541,6 +2608,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         UIApplication.shared.isIdleTimerDisabled = false; setEditing(true)
         modeChanged()
         statusLabel.text = identity == nil ? CWL("需要导入 MFi 身份") : CWL("已停止")
+        refreshHomePresentation()
+        if showBMSSummary, completedRecord != nil { presentCompletedBMSSummaryIfNeeded() }
         log(CWL("CarPlay 接收已停止"))
     }
 
@@ -2602,6 +2671,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         startButton.setTitle(remote ? "连接到 iPad" : local ? "启动本机 CarPlay" : "启动 CarPlay 接收屏", for: .normal)
         statusLabel.text = identity == nil ? "需要导入 MFi 身份" : remote ? "请选择接收端" : "准备就绪"
         if !running, !waitingForNetwork, let connectionFailure { statusLabel.text = connectionFailure }
+        refreshConnectionOverview()
         refreshCurrentNetwork(requestPermission: false)
     }
     private func setEditing(_ value: Bool) {
@@ -3371,6 +3441,89 @@ extension ReceiverViewController {
 
     // MARK: CarPlay 画面
 
+    private func openHomeSettings(_ make: (ReceiverViewController) -> UIViewController) {
+        if settingsNavigation == nil {
+            guard presentedViewController == nil else { return }
+            revealSettings()
+        }
+        settingsNavigation?.pushViewController(make(self), animated: true)
+    }
+
+    private func refreshHomeWiFiObservation() {
+        guard homeNetworkRequest == nil,
+              ProcessInfo.processInfo.systemUptime - lastHomeNetworkCheck >= 3 else { return }
+        lastHomeNetworkCheck = ProcessInfo.processInfo.systemUptime
+        let request = UUID(); homeNetworkRequest = request
+        NEHotspotNetwork.fetchCurrent { [weak self] network in
+            DispatchQueue.main.async {
+                guard let self, self.homeNetworkRequest == request else { return }
+                self.homeNetworkRequest = nil
+                self.confirmedHomeSSID = network?.ssid
+                self.refreshConnectionOverview()
+            }
+        }
+    }
+
+    private func refreshConnectionOverview() {
+        guard isViewLoaded else { return }
+        let state = ConnectionOverview(phase: waitingForNetwork ? .checkingWiFi : connectionPhase,
+            expectedSSID: ssidField.text ?? "", actualSSID: confirmedHomeSSID,
+            hasWiFiAddress: ReceiverConfiguration.wifiIPv4Address() != nil,
+            hasIdentity: identity != nil, failure: connectionFailure)
+        let output: String?
+        if outputMode.ninebotMode != nil {
+            output = instrumentPhase.title + (instrumentPhase == .waitingForPorts
+                ? "；请结束九号出行投屏，释放后自动重试" : "")
+        } else {
+            switch outputMode {
+            case .zeeho, .zeehoFive: output = zeehoCardStatus.text
+            case .cfmoto5, .cfmoto62: output = cfmotoCardStatus.text
+            case .tailing: output = tailingCardStatus.text
+            case .carLife: output = carLifeCardStatus.text
+            case .airPlay: output = airPlayCardStatus.text
+            default: output = nil
+            }
+        }
+        let name = BMSDisplayNameStore.name(for: bmsClient.selectedID, fallback: bmsClient.selectedFamily.shortName)
+        let battery = bmsEnabledSwitch.isOn ? (bmsClient.selectedID == nil ? "尚未添加" : name + " · " + bmsClient.presentation.title) : "读取已关闭"
+        connectionOverview.update(vehicle: currentVehicleName, canSwitch: !running && !waitingForNetwork,
+            connection: state, output: output, battery: battery)
+    }
+
+    private func refreshCompletedBMSCard() {
+        guard let record = lastFinishedBMSRecord else { completedBMSCard.isHidden = true; return }
+        let matchesVehicle = record.vehicleID.map { $0 == VehicleProfileStore.selectedID }
+            ?? (record.vehicleName == currentVehicleName)
+        completedBMSCard.update(title: "本次用电摘要", statistics: record.statistics, context: record.vehicleName)
+        completedBMSCard.isHidden = !matchesVehicle || running || waitingForNetwork
+    }
+
+    private func presentCompletedBMSSummaryIfNeeded() {
+        guard autoOpenBMSSummarySwitch.isOn, let record = lastFinishedBMSRecord else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, UIApplication.shared.applicationState == .active,
+                  !self.running, !self.waitingForNetwork,
+                  self.lastFinishedBMSRecord?.id == record.id else { return }
+            self.openHomeSettings { $0.bmsRecordPage(record) }
+        }
+    }
+
+    private func renameCurrentBMS() {
+        guard let id = bmsClient.selectedID else { return }
+        let prompt = UIAlertController(title: "电池显示名称", message: "例如主电池、备用电池；留空恢复设备名称。仅保存在本机，不修改保护板。", preferredStyle: .alert)
+        prompt.addTextField { field in
+            field.text = BMSDisplayNameStore.name(for: id, fallback: "")
+            field.placeholder = "最多 40 字"
+        }
+        prompt.addAction(UIAlertAction(title: "取消", style: .cancel))
+        prompt.addAction(UIAlertAction(title: "保存", style: .default) { [weak self, weak prompt] _ in
+            guard let self, self.bmsClient.selectedID == id else { return }
+            BMSDisplayNameStore.save(prompt?.textFields?.first?.text ?? "", for: id)
+            self.refreshBMS(); self.reloadVisibleSettings()
+        })
+        (settingsNavigation ?? self).present(prompt, animated: true)
+    }
+
     private var currentVehicleName: String {
         VehicleProfileStore.profiles().first { $0.id == VehicleProfileStore.selectedID }?.name ?? headUnitOutput.selectedTitle
     }
@@ -3393,12 +3546,17 @@ extension ReceiverViewController {
             connectionTimeline = try? JSONDecoder().decode(ConnectionTimeline.self, from: data)
         }
         refreshConnectionReport()
+        autoOpenBMSSummarySwitch.isOn = defaults.bool(forKey: "autoOpenBMSSummary.v1")
+        autoOpenBMSSummarySwitch.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            UserDefaults.standard.set(self.autoOpenBMSSummarySwitch.isOn, forKey: "autoOpenBMSSummary.v1")
+        }, for: .valueChanged)
         refreshVehicleProfileTitle()
     }
 
     private func refreshVehicleProfileTitle() {
-        vehicleProfileButton.setTitle("\(currentVehicleName) · 车辆配置", for: .normal)
-        vehicleProfileButton.accessibilityLabel = "车辆配置，\(currentVehicleName)"
+        refreshConnectionOverview()
+        refreshCompletedBMSCard()
     }
 
     private func capturedVehicle(id: UUID, name: String) -> VehicleProfile {
@@ -3585,6 +3743,7 @@ extension ReceiverViewController {
         recoveryActions.isHidden = true
         statusLabel.textColor = .systemBlue
         lastReceiverMessage = nil
+        connectionPhase = .starting; instrumentPhase = .idle
         connectionTimeline = ConnectionTimeline(output: headUnitOutput.selectedTitle,
             uptime: ProcessInfo.processInfo.systemUptime)
         recordConnection(.preparing, outputMode.ninebotMode != nil
@@ -3593,6 +3752,7 @@ extension ReceiverViewController {
 
     private func showConnectionFailure(_ message: String) {
         connectionFailure = message
+        connectionPhase = .failed
         statusLabel.text = message
         startButton.setTitle("重试连接", for: .normal)
         startButton.configuration?.image = UIImage(systemName: "arrow.clockwise")
@@ -3605,6 +3765,7 @@ extension ReceiverViewController {
             UserDefaults.standard.set(data, forKey: "lastConnectionTimeline.v1")
         }
         refreshConnectionReport()
+        refreshConnectionOverview()
     }
 
     private func refreshConnectionReport() {
@@ -3686,12 +3847,22 @@ extension ReceiverViewController {
         bmsSessionStatus.text = "等待新的 BMS 实时数据"
     }
 
-    private func finishBMSSession() {
-        guard bmsSessionStartedAt != nil else { return }
+    @discardableResult
+    private func finishBMSSession() -> BMSRideRecord? {
+        guard bmsSessionStartedAt != nil else { return nil }
+        let hasSamples = bmsSession.sampleCount > 0
         bmsSession.finishRecording(at: ProcessInfo.processInfo.systemUptime)
+        if let record = currentBMSRecord {
+            lastFinishedBMSRecord = BMSRideRecord(id: record.id, startedAt: record.startedAt, endedAt: record.endedAt,
+                vehicleName: record.vehicleName, statistics: record.statistics, completed: true,
+                vehicleID: record.vehicleID, bmsID: record.bmsID)
+        }
         checkpointBMSSession(completed: true)
         bmsSessionStartedAt = nil
+        bmsSessionStatus.text = bmsStatisticsText(bmsSession)
+        refreshCompletedBMSCard()
         reloadVisibleSettings()
+        return hasSamples ? lastFinishedBMSRecord : nil
     }
 
     private func checkpointBMSSession(completed: Bool) {
@@ -3788,7 +3959,8 @@ extension ReceiverViewController {
             var controls: [SettingsRow] = []
             if self.bmsSessionStartedAt != nil {
                 controls.append(.action("结束并保存本次记录", icon: ("stop.circle", .systemBlue)) { [unowned self] in
-                    self.finishBMSSession(); self.reloadVisibleSettings()
+                    let finished = self.finishBMSSession(); self.reloadVisibleSettings()
+                    if finished != nil { self.presentCompletedBMSSummaryIfNeeded() }
                 })
             } else {
                 controls.append(.action("开始新记录", icon: ("record.circle", .systemBlue)) { [unowned self] in
@@ -3959,9 +4131,16 @@ extension ReceiverViewController {
 
     private func bmsPage() -> SettingsPageController {
         page("电池与 BMS") { [unowned self] in
-            var sections = [SettingsSection("当前电池", footer: "仅显示最近 5 秒内的有效数据，过期后清空读数。", [
-                .view(self.bmsStatusCard), .view(self.bmsLiveSummary)
-            ])]
+            var sections = [SettingsSection("当前电池", footer: "只显示最近 5 秒内的有效数据；缺失字段不估算。", [
+                .view(self.bmsStatusCard)
+            ]), SettingsSection("主要读数", [.view(self.bmsLiveSummary)])]
+            if !self.bmsHealthSummary.isHidden || !self.bmsCellExtrema.isHidden {
+                sections.append(SettingsSection("电池状态", [.view(self.bmsHealthSummary), .note(self.bmsCellExtrema)]))
+            }
+            if self.bmsSession.sampleCount > 0,
+               self.bmsSessionVehicleID.map({ $0 == VehicleProfileStore.selectedID }) ?? (self.bmsSessionVehicle == self.currentVehicleName) {
+                sections.append(SettingsSection([.view(self.currentBMSCard)]))
+            }
             if self.bmsClient.isConfirmingSelection {
                 sections.append(SettingsSection([.page("继续核对新电池", icon: ("checkmark.circle", .systemBlue)) { [unowned self] in self.bmsSetupPage() }]))
             }
@@ -3975,7 +4154,10 @@ extension ReceiverViewController {
                     self.bmsClient.selectedID == nil ? "添加电池" : self.bmsClient.selectedFamily.shortName
                 }) { [unowned self] in self.bmsDevicesPage() }
             ]))
-            sections.append(SettingsSection("读取设置", [.control("读取并显示 BMS", self.bmsEnabledSwitch)]))
+            sections.append(SettingsSection("读取与记录", [
+                .control("读取并显示 BMS", self.bmsEnabledSwitch),
+                .control("结束后自动打开摘要", self.autoOpenBMSSummarySwitch)
+            ]))
             return sections
         }
     }
@@ -4011,8 +4193,12 @@ extension ReceiverViewController {
         page("设备管理") { [unowned self] in
             var sections = [SettingsSection("当前设备", [
                 .info(self.bmsClient.isConfirmingSelection ? "正在核对" : "已保存设备", self.bmsClient.selectedName),
+                .info("显示名称", BMSDisplayNameStore.name(for: self.bmsClient.selectedID, fallback: self.bmsClient.selectedName)),
                 .note(self.bmsStatus)
             ])]
+            if self.bmsClient.selectedID != nil {
+                sections.append(SettingsSection([.action("修改电池显示名称", icon: ("pencil", .systemBlue)) { [unowned self] in self.renameCurrentBMS() }]))
+            }
             guard self.bmsEnabledSwitch.isOn else {
                 sections.append(SettingsSection(footer: "开启读取后搜索并选择自己的保护板或电量计。", [
                     .action("开启读取并查找设备", icon: ("antenna.radiowaves.left.and.right", .systemBlue)) { [unowned self] in
@@ -4048,7 +4234,7 @@ extension ReceiverViewController {
     }
 
     private func bmsDeviceRow(_ device: ANTBMSClient.Device) -> SettingsRow {
-        var row = SettingsRow.action(device.name) { [unowned self] in
+        var row = SettingsRow.action(BMSDisplayNameStore.name(for: device.id, fallback: device.name)) { [unowned self] in
             if let family = self.bmsClient.rememberedFamily(for: device.id) {
                 guard self.bmsClient.select(device.id, family: family) else {
                     self.alert("设备列表已更新", "请重新扫描并选择设备。"); return

@@ -28,11 +28,11 @@ final class NinebotOutput {
 
     deinit { stop() }
 
-    func start(localAddress: String, targetAddress: String, mode: Mode, onState: @escaping (String) -> Void,
+    func start(localAddress: String, targetAddress: String, mode: Mode, onState: @escaping (String) -> Void, onPhase: @escaping (InstrumentChannelPhase) -> Void,
                onLog: @escaping (String) -> Void, requestKeyframe: @escaping () -> Void,
                onPrepared: @escaping (Result<Void, Error>) -> Void) {
         stop()
-        let next = Session(queue: queue, mode: mode, onState: onState, onLog: onLog, requestKeyframe: requestKeyframe)
+        let next = Session(queue: queue, mode: mode, onState: onState, onPhase: onPhase, onLog: onLog, requestKeyframe: requestKeyframe)
         session = next
         let overlay = bmsImage, configuration = bmsConfiguration
         queue.async {
@@ -60,6 +60,7 @@ final class NinebotOutput {
         var usesJPEG: Bool { mode == .fourThreeInch }
         private var kcp: NinebotKCPVideo?
         let onState: (String) -> Void
+        let onPhase: (InstrumentChannelPhase) -> Void
         let onLog: (String) -> Void
         let requestKeyframe: () -> Void
         private let lock = NSLock()
@@ -119,12 +120,13 @@ final class NinebotOutput {
             fresh = true
         }
 
-        init(queue: DispatchQueue, mode: Mode, onState: @escaping (String) -> Void, onLog: @escaping (String) -> Void,
+        init(queue: DispatchQueue, mode: Mode, onState: @escaping (String) -> Void, onPhase: @escaping (InstrumentChannelPhase) -> Void, onLog: @escaping (String) -> Void,
              requestKeyframe: @escaping () -> Void) {
             self.queue = queue
             self.mode = mode
             if mode == .fourThreeInch { counter = .max }
             self.onState = onState
+            self.onPhase = onPhase
             self.onLog = onLog
             self.requestKeyframe = requestKeyframe
         }
@@ -155,7 +157,7 @@ final class NinebotOutput {
                 if waitingForPorts { onLog("本机投屏端口已释放，继续启动 CarPlay") }
                 waitingForPorts = false
                 onLog("九号投屏端口 5012/5013 已就绪，已发送首个控制握手")
-                report("投屏通道已准备，等待仪表回应…")
+                report("投屏通道已准备，等待仪表回应…", phase: .ready)
                 switch mode {
                 case .fourThreeInch: onLog("九号 4.3 寸：JPEG/RTP UDP 5012 · RTCP UDP 5013 · 480×272 · 最高 10 FPS")
                 case .sevenInch: onLog("九号 7 寸：KCP/UDP 5012 · RTCP/UDP 5013 · 1024×600 · H.264 Baseline 3.1 · 25 FPS")
@@ -174,7 +176,7 @@ final class NinebotOutput {
                     waitingForPorts = true
                     onLog("本机投屏端口被占用，最多等待 10 秒释放。请结束九号出行导航投屏，必要时关闭其后台实例。")
                 }
-                report("投屏端口被占用，正在等待释放；请结束九号出行导航投屏…")
+                report("投屏端口被占用，正在等待释放；请结束九号出行导航投屏…", phase: .waitingForPorts)
                 let retry = DispatchWorkItem { [weak self] in self?.prepareChannels() }
                 startupRetry = retry
                 queue.asyncAfter(deadline: .now() + 0.5, execute: retry)
@@ -289,13 +291,13 @@ final class NinebotOutput {
                 }
                 if let lastReply, now - lastReply < 4 {
                     if sevenInch, !acknowledgedVideo {
-                        report(sentPicture ? "等待仪表确认视频数据…" : "仪表已回应，等待发送画面…")
+                        report(sentPicture ? "等待仪表确认视频数据…" : "仪表已回应，等待发送画面…", phase: .responding)
                     } else {
                         report(sevenInch ? "仪表已确认收到数据，正在发送画面" :
-                               sentPicture ? "仪表已回应，正在发送画面" : "仪表已回应，等待发送画面…")
+                               sentPicture ? "仪表已回应，正在发送画面" : "仪表已回应，等待发送画面…", phase: sentPicture ? .sending : .responding)
                     }
                 } else if now - origin > 4 {
-                    report("未收到仪表回应，请检查 Wi-Fi 和仪表 IP。")
+                    report("未收到仪表回应，请检查 Wi-Fi 和仪表 IP。", phase: .ready)
                 }
                 if usesJPEG {
                     try sendJPEGFrame(to: video, at: now)
@@ -346,7 +348,7 @@ final class NinebotOutput {
                 channels?.close(); channels = nil; kcp = nil
                 lastReply = nil; acknowledgedVideo = false; sentPicture = false
                 onLog("九号 Wi-Fi 暂不可用，最多等待 8 秒恢复投屏通道：\(error.localizedDescription)")
-                report("Wi-Fi 暂时中断，正在恢复投屏通道…")
+                report("Wi-Fi 暂时中断，正在恢复投屏通道…", phase: .recovering)
             } catch { fail(error) }
         }
 
@@ -372,7 +374,7 @@ final class NinebotOutput {
                 nextHeartbeat = now + 1
                 fresh = true; lastKeyframe = -.infinity
                 onLog("九号 Wi-Fi 已恢复，已重建 UDP 5012/5013 通道并重新发送握手")
-                report("投屏通道已恢复，等待仪表回应…")
+                report("投屏通道已恢复，等待仪表回应…", phase: .ready)
                 requestKeyframe()
             } catch let error as NinebotSocketError where error.isNetworkUnavailable || error.isTransient || error.isPortInUse {
                 networkRecoveryError = error
@@ -485,11 +487,12 @@ final class NinebotOutput {
             lastCodecFailure = now
         }
 
-        private func report(_ message: String) {
+        private func report(_ message: String, phase: InstrumentChannelPhase) {
             guard active, message != status else { return }
             status = message
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.active else { return }
+                self.onPhase(phase)
                 self.onState(message)
             }
         }
@@ -497,7 +500,7 @@ final class NinebotOutput {
         private func fail(_ error: Error) {
             let message = "九号输出失败：\(error.localizedDescription)"
             onLog(message)
-            report(message)
+            report(message, phase: .failed)
             close()
         }
 

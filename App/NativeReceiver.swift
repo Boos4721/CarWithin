@@ -61,6 +61,7 @@ final class NativeReceiver {
     var onZeehoState: ((String) -> Void)?
     private let ninebot = NinebotOutput()
     var onNinebotState: ((String) -> Void)?
+    var onNinebotPhase: ((InstrumentChannelPhase) -> Void)?
     private let cfmoto5 = CfmotoOutput(name: "cfmoto5")
     private let cfmoto62 = CfmotoOutput(name: "cfmoto62")
     var onCfmotoState: ((String) -> Void)?
@@ -203,6 +204,7 @@ final class NativeReceiver {
                 let generation = self.generation
                 self.ninebot.start(localAddress: configuration.address, targetAddress: target, mode: configuration.ninebotMode,
                     onState: { [weak self] in self?.onNinebotState?($0) },
+                    onPhase: { [weak self] in self?.onNinebotPhase?($0) },
                     onLog: { [weak self] in self?.log($0) },
                     requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "九号解码恢复") },
                     onPrepared: { [weak self] result in
