@@ -1626,7 +1626,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
 
     private func refreshHomePresentation() {
         let compact = displayedVideo && !showsConnectionDetails
-        if !running && !waitingForNetwork, connectionPhase == .starting, connectionFailure == nil {
+        if !running && !waitingForNetwork, connectionFailure == nil,
+           connectionPhase == .starting || connectionPhase == .checkingWiFi {
             connectionPhase = .idle
         }
         heroTitleRow?.isHidden = compact
