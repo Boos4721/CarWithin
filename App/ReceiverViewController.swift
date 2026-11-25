@@ -284,10 +284,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let startupHint = UILabel()
     private let identitySetupButton = UIButton(type: .system)
     private let identityImportStatus = StatusLabel()
-    private enum DocumentImportPurpose { case https, identityIPA, identityFiles, ninebotProbe }
+    private enum DocumentImportPurpose { case https, identityIPA, identityFiles }
     private var documentImportPurpose: DocumentImportPurpose = .https
-    private var ninebotProbeReport: NinebotProjectionDiagnostics?
-    private var ninebotProbeData: Data?
     private var startupHintTask: DispatchWorkItem?
     private var startupHintGeneration = UUID()
     private let connectionHelp = UILabel()
@@ -3273,9 +3271,6 @@ extension ReceiverViewController {
             }
             rows.append(.page("Wi-Fi 预设", icon: ("list.bullet", .systemBlue), detail: { WiFiPresetStore.selected()?.ssid ?? "未选择" }) { [unowned self] in self.presetsPage() })
             rows.append(.page("输出设置", icon: ("slider.horizontal.3", .systemGray)) { [unowned self] in self.headUnitPage() })
-            if self.outputMode == .ninebot || self.outputMode == .ninebotSeven {
-                rows.append(.page("官方投屏助手（验证）", icon: ("wrench.and.screwdriver", .systemOrange)) { [unowned self] in self.ninebotProbePage() })
-            }
             if self.outputMode == .browser {
                 rows.append(.page("HTTPS 设置", icon: ("lock.shield", .systemBlue)) { [unowned self] in self.httpsSettingsPage() })
             }
@@ -3642,68 +3637,6 @@ extension ReceiverViewController {
                 .page("运行日志", icon: ("doc.text", .systemGray)) { [unowned self] in self.logPage() }
              ])]
         }
-    }
-
-    private func ninebotProbePage() -> SettingsPageController {
-        page("官方投屏助手") { [unowned self] in
-            var sections = [SettingsSection("观察验证版", footer:
-                "适配目标：九号出行 6.10.13，iOS 18.7.1 / iPadOS 16.6。观察点尚需实测；本版不会自动激活仪表或接管官方视频。", [
-                .guide("先在连接车辆的 iPhone 测试", icon: ("iphone", .systemBlue),
-                    "向九号出行 IPA 注入配套诊断插件后安装。App Store 原版没有此插件，仅升级 CarWithin 无法启用。"),
-                .action("打开已安装的诊断版九号", icon: ("arrow.up.forward.app", .systemBlue)) { [unowned self] in
-                    guard !self.running, !self.waitingForNetwork else {
-                        self.alert("请先停止连接", "第一轮只观察官方投屏；停止 CarPlay 后再开始，避免端口冲突。")
-                        return
-                    }
-                    UIApplication.shared.open(URL(string: "cw-ninebot-probe://diagnostics")!, options: [:]) { [weak self] opened in
-                        guard !opened else { return }
-                        DispatchQueue.main.async {
-                            self?.alert("未找到诊断版九号", "请先安装已注入插件并注册助手入口的九号出行。也可手动打开修改版；原版不支持这个入口。")
-                        }
-                    }
-                }
-            ]), SettingsSection("实车采集", [
-                .guide("1. 连接自己的车辆", icon: ("scooter", .systemBlue), "在修改版九号中确认连接正常，打开浮动的「投屏诊断」并开始新的采集。"),
-                .guide("2. 标记并手动启停", icon: ("hand.tap", .systemOrange), "标记「准备开启」后使用原有投屏按钮。仪表出画后标记人工确认，再标记并关闭官方投屏。"),
-                .guide("3. 导出并导入报告", icon: ("doc.text", .systemGreen), "在浮动面板导出 JSON，保存到文件，再回到这里导入。报告用于定位下一版 Hook，不会自动执行其中的动作。"),
-                .action("导入助手诊断 JSON", icon: ("square.and.arrow.down", .systemBlue)) { [unowned self] in
-                    self.documentImportPurpose = .ninebotProbe
-                    let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.json], asCopy: true)
-                    picker.delegate = self
-                    (self.settingsNavigation ?? self).present(picker, animated: true)
-                }
-            ])]
-            if let report = self.ninebotProbeReport {
-                var summary = SettingsRow.info("最近导入", "")
-                summary.subtitle = { report.summary }
-                sections.append(SettingsSection("报告结果", [summary,
-                    .page("预览并导出报告", icon: ("doc.text.magnifyingglass", .systemBlue)) { [unowned self] in
-                        self.reportPreviewPage(title: "助手报告", name: "CarWithin-ninebot-probe.json",
-                            footer: "来自手动导入的诊断文件，只作为调用线索，不能认证仪表状态。") {
-                                self.ninebotProbeData ?? Data()
-                            }
-                    }
-                ]))
-            }
-            return sections
-        }
-    }
-
-    private func importNinebotProbe(_ urls: [URL]) {
-        guard urls.count == 1, let url = urls.first else { alert("导入失败", "请选择一个助手诊断 JSON。"); return }
-        let access = url.startAccessingSecurityScopedResource()
-        defer { if access { url.stopAccessingSecurityScopedResource() } }
-        do {
-            let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? Int.max
-            guard size <= NinebotProjectionDiagnostics.maximumBytes else { throw NinebotProjectionDiagnostics.Failure.tooLarge }
-            let data = try Data(contentsOf: url)
-            let report = try NinebotProjectionDiagnostics.decode(data)
-            // Re-encode known fields; unrelated imported fields are never re-shared.
-            let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            ninebotProbeData = try encoder.encode(report); ninebotProbeReport = report
-            reloadVisibleSettings()
-        } catch { alert("助手报告导入失败", error.localizedDescription) }
     }
 
     private func reportPreviewPage(title: String, name: String, format: String = "JSON",
@@ -5145,10 +5078,6 @@ extension ReceiverViewController {
 extension ReceiverViewController: UIDocumentPickerDelegate {
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
         switch documentImportPurpose {
-        case .ninebotProbe:
-            documentImportPurpose = .https
-            importNinebotProbe(urls)
-            return
         case .identityIPA, .identityFiles:
             let fromIPA: Bool
             if case .identityIPA = documentImportPurpose { fromIPA = true } else { fromIPA = false }

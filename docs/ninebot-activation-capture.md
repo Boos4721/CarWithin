@@ -35,8 +35,8 @@ Apple 提供 Bluetooth for iOS/iPadOS 的日志描述文件，并指导在复现
 - [NinebotEnhance：调用官方巡航入口的实现](https://github.com/wx9614-cell/NinebotEnhance/blob/2eb54bbd47f8edd89c9b7d7423487d520b01b04f/app/src/main/java/dev/ichinomiya/ninebotenhance/ui/DirectCastController.java)
 - [NinebotEnhance：导航数据发送依赖官方设备接口，投屏启停由官方负责](https://github.com/wx9614-cell/NinebotEnhance/blob/2eb54bbd47f8edd89c9b7d7423487d520b01b04f/app/src/main/java/dev/ichinomiya/ninebotenhance/hook/NaviSender.java)
 
-## Hook 观察路线（Build 26）
+## 官方投屏助手已移除（Build 39）
 
-用户环境为 iOS 18.7.1、iPadOS 16.6 和九号出行 6.10.13，可使用自签/巨魔安装方式。已新增 `Companion/NinebotProjectionProbe` 观察插件、IPA 准备脚本和 CarWithin 报告导入入口。现有参考分析来自更早版本，不能视为 6.10.13 已适配。
+开发分支已移除官方投屏助手页面、助手报告导入与配套观察插件、IPA 注入准备工具；CI 不再构建或分发这些工具。Build 26–29 的验证文档仅保留为历史记录。
 
-当前仅观察官方手动启停，没有自动激活或视频交接。需要用户自己的可分析、可重签 6.10.13 IPA 和实车 JSON，才能继续核对入口。详见 [插件说明](../Companion/NinebotProjectionProbe/README.md)。没有用户二进制时不生成猜测的自动调用。
+现有九号车辆 BLE 配对、投屏连接和连接诊断仍保留。独立激活能否在具体车型上成功，仍以冷启动实车出画为准。
