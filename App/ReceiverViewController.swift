@@ -969,6 +969,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         (settingsNavigation?.topViewController as? SettingsPageController)?.reload()
     }
     private func updateVideoAspect() {
+        antBMS.recordingVehicleName = headUnitOutput.selectedTitle
         antBMS.aspectRatio = outputMode == .ninebotSeven ? 1024 / 600 : 848 / 480
         guard videoHeight != nil else { return }
         let plan = running ? (liveDisplay ?? planDisplay(for: targetScreen)) : planDisplay(for: targetScreen)
@@ -1587,6 +1588,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             guard saveSettings(config) else { return }
             if keepAliveSwitch.isOn { keepAlive.start() }
             view.endEditing(true); running = true; modeControl.isEnabled = false; setEditing(false)
+            antBMS.recordingVehicleName = headUnitOutput.selectedTitle
+            antBMS.setReceiving(true)
             receiverPicker.isEnabled = false; receiverBrowser.stop()
             UIApplication.shared.isIdleTimerDisabled = true
             startButton.setTitle(CWL("停止 iPad 连接"), for: .normal)
@@ -1617,6 +1620,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             if keepAliveSwitch.isOn { keepAlive.start() }
             view.endEditing(true)
             running = true; modeControl.isEnabled = false; setEditing(false)
+            antBMS.recordingVehicleName = headUnitOutput.selectedTitle
+            antBMS.setReceiving(true)
             startButton.setTitle(CWL("停止 CarPlay"), for: .normal)
             startButton.configuration?.image = UIImage(systemName: "stop.fill")
             statusLabel.text = CWL("正在启动本机 CarPlay…")
@@ -1652,7 +1657,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         sessionHasVehicleButton = CarPlayInfo.vehicleButtonSize(in: config) != nil
         if keepAliveSwitch.isOn { keepAlive.start() }
         view.endEditing(true)
-        running = true; modeControl.isEnabled = false; setEditing(false); startButton.setTitle(CWL("停止接收"), for: .normal)
+        running = true; modeControl.isEnabled = false; setEditing(false)
+        antBMS.recordingVehicleName = headUnitOutput.selectedTitle
+        antBMS.setReceiving(true)
+        startButton.setTitle(CWL("停止接收"), for: .normal)
         startButton.configuration?.image = UIImage(systemName: "stop.fill")
         UIApplication.shared.isIdleTimerDisabled = true; statusLabel.text = CWL("正在启动接收服务…")
         receiver.onListening = { [weak self] port in
@@ -1730,6 +1738,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     }
 
     private func stop() {
+        antBMS.setReceiving(false)
         localStartupID = nil
         networkStartupTask?.cancel()
         networkStartupTask = nil
