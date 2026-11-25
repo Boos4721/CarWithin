@@ -39,8 +39,18 @@ connection, count = re.subn(r'        let announcement: TailingSocket\n        i
 assert count == 1
 connection = connection.replace('        UserDefaults.standard.set(targetIP, forKey: TailingDiscovery.savedAddressKey)\n', '')
 assert connection == original_body('TailingConnection.swift'), '6.2 negotiation changed beyond discovery adapter'
+def without_localization(text):
+    # Only remove the known CWL presentation wrapper; retain argument expressions.
+    def expand(match):
+        key, expressions = match.group(1), match.group(2)
+        for index, expression in enumerate(re.findall(r'String\(describing: ([^)]+)\)', expressions), 1):
+            key = key.replace('{' + str(index) + '}', '\\(' + expression + ')')
+        return '"' + key + '"'
+    text = re.sub(r'CWL\("([^"\n]*)", \[(.*?)\]\)', expand, text)
+    return re.sub(r'CWL\(("[^"\n]*")\)', r'\1', text)
+
 for name in manifest['shared_original_files']:
-    assert (root / 'App' / name).read_text(encoding='utf-8') == (originals / name).read_text(encoding='utf-8'), name
+    assert without_localization((root / 'App' / name).read_text(encoding='utf-8')) == (originals / name).read_text(encoding='utf-8'), name
 helpers = protocol[protocol.index('extension Data'):protocol.index('enum TailingError')].strip()
 assert helpers in (root / 'App/TailingProtocol.swift').read_text(encoding='utf-8')
 native = (root / 'App/NativeReceiver.swift').read_text(encoding='utf-8')
@@ -52,4 +62,6 @@ assert [name.strip() for name in cases.split(',')] == [
     'browser', 'carLife', 'airPlay', 'tailing', 'ninebot', 'zeeho', 'ninebotSeven', 'ninebot43', 'zeehoFive'
 ], 'persisted output IDs changed'
 print('PASS: original 6.2 output and wire codec unchanged; original negotiation restored with IP-discovery-only changes; raw snapshots and shared socket/identity verified')
-print('PASS: output IDs 0–7 preserved; unified ZEEHO five-inch is ID 8; legacy ID 9 migrates separately')
+assert 'case cfmoto5 = 10, cfmoto62 = 11' in settings, 'CFMOTO persisted IDs changed'
+assert 'headUnitOutput.selectedSegmentIndex = output.menuIndex' in settings, 'vehicle restore must use display menu mapping'
+print('PASS: output IDs 0–7 preserved; unified ZEEHO five-inch is ID 8; legacy ID 9 migrates separately; CFMOTO IDs 10/11 preserved')

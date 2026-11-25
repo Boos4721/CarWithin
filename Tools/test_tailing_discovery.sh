@@ -8,6 +8,6 @@ if [[ "$(uname -s)" == Darwin ]]; then
     # The Darwin network implementation shares the production socket and error types.
     extra_sources+=("$root/App/TailingSocket.swift" "$root/App/TailingProtocol.swift" "$root/App/TailingDisplayProfile.swift")
 fi
-"${SWIFTC:-swiftc}" -swift-version 5 "$root/App/TailingDiscovery.swift" \
+"${SWIFTC:-swiftc}" -swift-version 5 "$root/Sources/TDSCarKitCore/Localization.swift" "$root/App/TailingDiscovery.swift" \
     "${extra_sources[@]}" "$root/Tools/TailingDiscoverySmoke.swift" -o "$stage/discovery-test"
 "$stage/discovery-test"

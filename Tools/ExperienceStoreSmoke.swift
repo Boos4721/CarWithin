@@ -91,6 +91,12 @@ enum ExperienceStoreSmoke {
             ZeehoFivePreferences.migrate(defaults)
             precondition(defaults.integer(forKey: "headUnitOutputV2") == output)
         }
+        for output in [10, 11] {
+            var cfmoto = profile; cfmoto.output = output; cfmoto.instrumentAddress = "192.168.0.1"
+            let restored = try decoder.decode(VehicleProfile.self, from: encoder.encode(cfmoto)).migratedZeehoFive
+            precondition(restored.output == output && restored.instrumentAddress == "192.168.0.1")
+            precondition(restored.bmsID == cfmoto.bmsID && restored.cardFields == cfmoto.cardFields)
+        }
         print("ZEEHO profiles: unified five-inch migration, subtype, separate addresses/settings, stable IDs 0-7 and idempotent defaults migration passed")
 
         let now = ISO8601DateFormatter().date(from: "2026-11-24T12:00:00Z")!

@@ -8,15 +8,21 @@ CarWithin runs CarPlay on the same iPhone that generates its interface. Use CarP
 
 ![CarWithin connection diagram showing playback on iPhone and output to a browser, wireless CarLife, compatible dashboards, or experimental AirPlay.](docs/images/carwithin-connections-en.png)
 
-## Import an existing CarPlay identity (build 17)
-
-Builds with a bundled identity load it automatically. Build 21 removes the identity entry from the settings list. If the original CarWithin starts but this source build reports a missing MFi identity, use the home-screen identity button. Choose the original working IPA, or select all three existing files (`certificate.p7b`, `leaf.cer`, `private.x963`). The app extracts only those resources, checks the certificate/key match, and saves them in this app's local Keychain. The original files are not modified or uploaded. Invalid, incomplete or ambiguous archives are rejected. Local matching does not guarantee acceptance by iOS; start CarPlay to verify the actual authentication.
-
 ## Download and install
 
-- [Download from GitHub Releases](https://github.com/xmz28/CarWithin/releases/latest). The current version is **1.0.4 (build 16)**.
-- Download `CarWithin-1.0.4-unsigned.ipa` and sign and install it with an IPA sideloading tool using your own signing setup. Follow any iOS prompts for developer trust or Developer Mode.
+- [Download from GitHub Releases](https://github.com/xmz28/CarWithin/releases/latest). The current version is **1.0.5 (build 17)**.
+- Download `CarWithin-1.0.5-unsigned.ipa` and sign and install it with an IPA sideloading tool using your own signing setup. Follow any iOS prompts for developer trust or Developer Mode.
 - The minimum installation target is iOS/iPadOS 16.0 on arm64; iOS 15 is not supported. Same-device CarPlay, audio, and background behavior still need testing on iOS 16.x hardware. CarWithin uses private iOS interfaces. Compatibility depends on the device, OS version, and signing setup, and OS updates can affect it.
+
+## What is new in 1.0.5
+
+- Added output profiles for ZEEHO SE+ 5/5.5-inch, AE2 Pro 5-inch, and CFMOTO 5/6.2-inch dashboards, with a reorganized output menu.
+- Added optional ANT BMS telemetry and battery cards, disabled by default.
+- Added English app and browser-receiver interfaces; some new dashboard messages still fall back to Chinese.
+- Improved saved Wi-Fi passwords, CarLife discovery and AirPlay recovery, and added supporter and contributor views.
+- Added Feedback & Suggestions between Diagnostics and experiments and About.
+
+The maintainer checked existing functionality for regressions. The new ZEEHO, CFMOTO and ANT BMS paths still need corresponding hardware testing by the maintainer; builds and simulated protocol tests do not establish compatibility with every model.
 
 ## Quick start
 
@@ -24,52 +30,6 @@ Builds with a bundled identity load it automatically. Build 21 removes the ident
 2. **Use another device as the display.** Under Settings → Current output, choose Browser. Open Output settings and enable the local receiver page. Connect the iPhone and receiver to the same Wi-Fi. The network can be offline or provided by another device's hotspot. The iPhone running CarWithin must itself join Wi-Fi. Start CarPlay and open the HTTP address displayed by the app in the receiving browser.
 3. **Use Safari on the same iPhone.** After starting CarPlay, use the option to open the receiver in the local browser under the app's output settings. If the page prompts you to start playback, tap it.
 4. **Stop sharing when finished.** Stop CarPlay from the iPhone. The browser receiver has no sign-in. A device that can reach its address can view and control the CarPlay session, so use a trusted network.
-
-## ANT BMS telemetry
-
-Settings → 电池与 BMS adds opt-in, read-only ANT BLE monitoring. Select your own device; the saved CoreBluetooth UUID is used for reconnection. SOC, voltage, current, reported power, temperature and cell voltage spread (mV) are displayed on the local CarPlay view and composited into Ninebot 5-inch/7-inch video. Capacity, MOS temperature and cell spread are available in settings. Stale values are hidden after five seconds.
-
-Framing and decoding reference [maibms](https://github.com/lswlc33/maibms), with its MIT license retained and bundled. Only the default FFE0/FFE1 realtime-query channel is included. Other remote outputs and PiP do not include the panel. Hardware verification is pending; see [the integration guide](docs/ant-bms.md). Run `bash Tools/test_bms.sh` with Swift 5.9+ for standalone protocol tests.
-
-## Integrated experience (build 23)
-
-Vehicle profiles save the instrument mode/address, SSID/channel, selected ANT device, BMS card layout, automatic connection, background keep-alive and automatic fullscreen. Passwords remain in the SSID Keychain entry. Save the current setup as a vehicle under Settings → 车辆配置; stop the connection before switching. Current vehicle settings update when leaving settings. Removing a profile preserves its Wi-Fi password.
-
-Connection diagnostics under 诊断与实验 record explicit stages, first-keyframe timing, retries and errors in a bounded 64-event timeline. Preview, copy or share the local JSON report; credential material is excluded.
-
-BMS statistics track SOC changes, voltage range, absolute current/power peaks, maximum temperature/spread and a bounded voltage trend. Fresh, unique samples only; outages do not count as sampled time. Recording starts with CarPlay when BMS is enabled, or manually from 本次统计与记录. Fifteen-second checkpoints and completed records are stored locally, retaining up to 20 sessions for viewing, deletion and JSON export. No distance or range estimates are inferred.
-
-Independent Ninebot projection activation remains unimplemented. Instruments requiring the official app still need that step; see the iPhone capture guide.
-
-## Home and BMS card (build 22)
-
-Once a video picture is accepted, the home screen collapses setup instructions and moves CarPlay and its controls directly below the status card. Connection details can be expanded, and stopping restores the setup layout. Instrument status remains visible below the video.
-
-Settings → 电池与 BMS → 卡片显示 provides small/medium/large text, top-right/bottom-right placement, and individual metric switches for SOC, voltage, maximum temperature, current, power and cell voltage spread. Compact and common presets select three or six fields, in at most two lines. At least one field remains selected. Settings apply immediately to the phone and Ninebot 5-inch/7-inch encoded video, persist across launches, and preserve the alarm indication. Existing users keep the medium six-field layout.
-
-## Setup and daily use (build 24)
-
-An unconfigured iPhone opens a setup checklist for output selection, Wi-Fi, optional BMS and a startup test. Existing valid configurations skip onboarding. Settings group connection, display, battery, and audio/background preferences. Failed connections offer an explicit retry, configuration check and diagnostic report. Tapping the voltage plot shows the selected interval's extrema and latest reading.
-
-## Battery interface and voltage history (build 24)
-
-The BMS page shows six fresh metrics, with device discovery, detailed parameters and history on separate pages. Card fields can be reordered by dragging; placement supports all four corners and three background opacity choices. A schematic preview labels example data explicitly when live data is unavailable. Example values never enter video output or battery history.
-
-Voltage history now retains the minimum, maximum and latest reading in each five-second interval, capped at 120 intervals. This preserves short sags missed by the old snapshot approach. The summary describes the whole session, while the plot describes its visible window. Older records remain readable and are marked as snapshots; lost historical extrema cannot be reconstructed. See [build 24 validation](docs/build24-validation.md).
-
-## Ninebot current-network startup experiment
-
-Build 24 removes the password-candidate button. Reading the current network obtains its SSID and loads only credentials saved by this app. It cannot retrieve the system Wi-Fi password. A missing or inaccessible app Keychain entry is reported explicitly and remains retryable; the form supports pasting and temporarily revealing the password. Current input is preserved.
-
-For the 5-inch and 7-inch outputs, enable **无密码时尝试当前 Wi-Fi（实验）** (try the current network only without a password, experimental) under Output settings. Connect the iPhone to the instrument network first, then read or enter its exact SSID in the app. With the experiment enabled, the preset may be saved without a password. Do not mark an encrypted network as open just because its password is unknown.
-
-After confirming the current SSID and a stable Wi-Fi IPv4 address, the app prepares UDP 5012/5013. Build 19 sends valid entered/saved credentials immediately, even when the experiment was enabled in an older build. Only an unknown password uses the request without the wireless group, with a 12-second limit. A user log showed that omitting credentials stalled until the old fallback sent the saved configuration; the credential path then negotiated video successfully. This does not verify password-free startup.
-
-Startup now reports individual phases and continues monitoring until a video keyframe arrives. A brief loss of the original IP no longer restarts CarPlay immediately; Ninebot UDP sockets can be rebuilt within an eight-second recovery window. A changed IP must settle before restarting. These recovery changes still require hardware verification.
-
-When disconnected or unable to read the current SSID, credentials are still required to join. Networks joined by this attempt use the existing credential-based CarPlay path. The app cannot read iOS-saved passwords. Saving only the SSID preserves existing Keychain passwords. Wi-Fi information requires the appropriate signing entitlement and, for networks not configured by this app, usually precise location permission. The experiment is off by default and is not offered for other outputs.
-
-This does not implement the official Ninebot app's remote projection activation, Shortcuts actions, or background wake-up. Hardware verification steps are in [the validation guide](docs/ninebot-auto-connect-validation.md).
 
 ## Browser playback and audio
 
@@ -132,17 +92,17 @@ One instrument was tested successfully, including screen lock. Other models and 
 
 ### ZEEHO AE2 Pro 5-inch display
 
-Connect the iPhone to the dashboard Wi-Fi, select the matching preset, then choose `极核 5 寸` under Current output and select AE2 Pro in Output settings → Dashboard model. Start projection on the dashboard and start CarPlay in the app. The default dashboard address is `192.168.0.1`, configurable in Output settings. Video uses H.264 at the size reported by the dashboard, up to 25 fps. Projection was confirmed on one AE2 Pro.
+Connect the iPhone to the dashboard Wi-Fi, select the matching preset, then choose `极核 AE2 Pro 5 寸` under Current output. Start projection on the dashboard and start CarPlay in the app. The default dashboard address is `192.168.0.1`, configurable in Output settings. Video uses H.264 at the size reported by the dashboard, up to 25 fps. Projection was confirmed on one AE2 Pro.
 
 ### Additional dashboard support
 
 - **Ninebot 7-inch:** Connect to the dashboard Wi-Fi, select this output, start CarPlay, then enable navigation casting in Ninebot app and keep it running in the background. Display was confirmed on one dashboard.
-- **Ninebot 4.3-inch (experimental):** Uses the N1 90 protocol, with default address `192.168.169.1`. Follow the same startup order. Physical dashboard testing is pending.
+- **Ninebot 4.3-inch:** Uses the N1 90 protocol, with default address `192.168.169.1`. Follow the same startup order. Physical dashboard testing is pending.
 - **AirPlay (experimental):** Startup and reconnection may fail, and the receiver may retain the last picture after stopping.
 
-### ZEEHO SE+ 5/5.5-inch display (experimental)
+### ZEEHO SE+ 5/5.5-inch display
 
-Choose `极核 5 寸`, then select SE+ in Output settings → Dashboard model. Both ZEEHO modes offer automatic IP discovery and retain manual addresses. The 6.2-inch mode keeps its isolated original handshake/output at 1024×480 and 25 FPS.
+Choose the separate SE+ output. The 5/5.5-inch label names the intended profile family: one profile negotiates the reported pixel dimensions, rather than two independently verified physical-size implementations. Both ZEEHO modes offer automatic IP discovery and retain manual addresses. The 6.2-inch mode keeps its isolated original handshake/output at 1024×480 and 25 FPS.
 
 SE+ offers a 1600×770 wide canvas or 800×480 compatibility canvas, plus 25/30/60 FPS targets. Start with 30 FPS and default compatibility transcoding. H.264 passthrough is opt-in and still needs instrument testing, as do sustained 60 FPS and lock-screen stability. Sent FPS is not panel refresh. The sound page provides the system audio route picker. See [implementation and validation scope](docs/zeeho-seplus-experimental.md).
 
@@ -165,6 +125,24 @@ This mode targets the **TL-DASH-V2** instrument display. Other models and firmwa
 The instrument receives 480×272 video at up to 20 FPS. Audio uses the iPhone's current speaker or Bluetooth route. The instrument does not send touch input back; operate CarPlay on the iPhone. Matching display parameters are applied automatically; switching to another output restores its previous settings.
 
 Video and recovery after locking the iPhone have been confirmed on one instrument. If locking invalidates the decoder, CarWithin rebuilds it from a keyframe and resumes; a brief pause may occur. Extended playback, repeated locking, network-loss recovery, and other instruments have not all been verified.
+
+### CFMOTO 5-inch and 6.2-inch dashboards
+
+Join the dashboard Wi-Fi on the iPhone, select the corresponding CFMOTO output, enable dashboard projection and start CarPlay. Set the dashboard address in Output settings. Leaving it blank tries `.1` on the local subnet; this is a guess, not a discovered DHCP gateway. Enter the real address if it fails. A separate PXC session uses TCP 10920/10921/10922 and probe port 10930, with negotiated, aligned video dimensions. Audio and controls remain on the iPhone or its Bluetooth device. The maintainer has no CFMOTO dashboard, so connection, video and background behavior need hardware testing.
+
+### ANT BMS battery cards
+
+Enable reading under Settings → Battery & BMS and explicitly select the Bluetooth device. The feature is off by default and only queries telemetry; it does not change battery parameters. Configure fields, position, size and transparency for charge level, voltage, current, power, temperature and cell-voltage spread. Old values are hidden after five seconds without valid new data.
+
+Cards currently appear in the phone CarPlay preview and Ninebot 5/7-inch video. Ninebot 4.3-inch, browser and other dashboard outputs do not include the card in this version. The maintainer has no ANT BMS hardware; connectivity, background behavior and model compatibility need testing. See [implementation scope](docs/ant-bms-display.md).
+
+## Feedback, support and contributors
+
+Settings → Feedback & Suggestions opens the [feedback survey](https://v.wjx.cn/vm/e5IX6eZ.aspx). Copy diagnostic logs from Diagnostics and experiments → Logs → Copy logs, and check for unrelated personal information before submitting them.
+
+About → Appreciation & Support lists supporters and development/testing contributions; Buy me a coffee provides Alipay and WeChat options. Support is optional and does not affect features, updates or adaptation priorities.
+
+Code contributions in this release: [yiquchangge1](https://github.com/yiquchangge1) (SE+), [武汉 / yuliang-shuji](https://github.com/yuliang-shuji) (AE2 Pro), [Boos4721](https://github.com/Boos4721) (ANT BMS), and [扫毒单位 / SDDW007](https://github.com/SDDW007) (CFMOTO). Original commits and GitHub authorship are preserved.
 
 ## Check for updates and install a newer version
 

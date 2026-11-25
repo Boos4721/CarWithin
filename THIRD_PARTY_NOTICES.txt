@@ -9,8 +9,8 @@ components retain their original terms; see LICENSES/GPL-3.0.txt.
 No JVM server, browser viewer or Android code is part of this native app target.
 
 Locally imported accessory credentials are not covered by this source license.
-They are kept in .local, excluded from source control, and included only in local
-builds. No claim of Apple certification or credential redistribution rights is made.
+They are excluded from source control and source archives. Packaged builds may
+include the same separately provided identity resources used by earlier releases. No claim of Apple certification or credential redistribution rights is made.
 
 BigInt v5.4.0, commit 88071df9f27361b52d92f9acea85e8b658af8183
 https://github.com/attaswift/BigInt
@@ -95,3 +95,7 @@ https://github.com/Margele/NineCast-iOS
 Multibrand BMS family recognition and read-only Swift protocol implementations adapt
 lswlc33/maibms at 6bbb5d64ef823385df5f5b8dd54580594a604ba5 (MIT).
 See LICENSES/maibms-MIT.txt, bundled App/maibms-MIT.txt and docs/multibrand-bms.md.
+
+ANT BMS framing and field layout adapt lswlc33/maibms, copyright (c) 2026 lswlc33,
+under the MIT License: https://github.com/lswlc33/maibms
+The complete notice is in App/ANTBMS-LICENSE.txt and is bundled with the app.

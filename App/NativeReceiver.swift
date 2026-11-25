@@ -34,7 +34,7 @@ final class NativeReceiver {
         let elapsed = arrival - diagnosticStarted
         guard elapsed >= 5 else { return }
         let cpu = TailingPerformanceDiagnostics.cpuTime()
-        log(String(format: "接收性能：输入 %.1f FPS / %.0f KiB/s，最大帧间隔 %.0f ms，转发最大 %.1f ms，本机队列 %d，主线程排队/处理最大 %.1f/%.1f ms，CPU %.0f%%（单核100%%），热状态 %d，低电量模式 %d",
+        log(String(format: CWL("接收性能：输入 %.1f FPS / %.0f KiB/s，最大帧间隔 %.0f ms，转发最大 %.1f ms，本机队列 %d，主线程排队/处理最大 %.1f/%.1f ms，CPU %.0f%%（单核100%%），热状态 %d，低电量模式 %d"),
             Double(diagnosticFrames) / elapsed, Double(diagnosticBytes) / elapsed / 1024,
             diagnosticGap * 1000, diagnosticWork * 1000, localInFlight,
             diagnosticMainDelay * 1000, diagnosticMainWork * 1000,
@@ -61,6 +61,9 @@ final class NativeReceiver {
     var onZeehoState: ((String) -> Void)?
     private let ninebot = NinebotOutput()
     var onNinebotState: ((String) -> Void)?
+    private let cfmoto5 = CfmotoOutput(name: "cfmoto5")
+    private let cfmoto62 = CfmotoOutput(name: "cfmoto62")
+    var onCfmotoState: ((String) -> Void)?
     private let tailing = TailingOutput()
     var onTailingState: ((String) -> Void)?
     private lazy var carLink = CarLinkRelay(queue: queue)
@@ -131,18 +134,31 @@ final class NativeReceiver {
                         sourceSize: InstrumentFrameSize(width: configuration.width, height: configuration.height), phone: phone,
                         onState: { [weak self] in self?.onZeehoState?($0) },
                         onLog: { [weak self] in self?.log($0) },
-                        requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "极核解码恢复") })
+                        requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: CWL("极核解码恢复")) })
                 }
             }
             if let target = configuration.tailingAddress {
                 self.tailing.onLog = { [weak self] in self?.log($0) }
                 self.tailing.onState = { [weak self] in self?.onTailingState?($0) }
-                self.tailing.onKeyframeRequest = { [weak self] in self?.requestKeyFrame(reason: "台铃解码恢复") }
+                self.tailing.onKeyframeRequest = { [weak self] in self?.requestKeyFrame(reason: CWL("台铃解码恢复")) }
                 let phone = configuration.tailingPhoneInfo ?? TailingPhoneInfo(package: Bundle.main.bundleIdentifier ?? "CarWithin",
                     versionCode: Int(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0") ?? 0,
                     model: "iPhone", systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
                     width: configuration.width, height: configuration.height, rotation: 1)
                 self.tailing.start(localAddress: configuration.address, targetAddress: target, phone: phone)
+            }
+            if let profile = configuration.cfmotoProfile,
+               let target = configuration.cfmotoAddress.flatMap({ $0.isEmpty ? nil : $0 })
+                   ?? PxcConnection.gateway(for: configuration.address) {
+                let output = profile == .sixInch ? self.cfmoto62 : self.cfmoto5
+                let phone = configuration.tailingPhoneInfo ?? TailingPhoneInfo(package: Bundle.main.bundleIdentifier ?? "CarWithin",
+                    versionCode: Int(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0") ?? 0,
+                    model: "iPhone", systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
+                    width: configuration.width, height: configuration.height, rotation: 1)
+                output.start(localAddress: configuration.address, targetAddress: target, phone: phone, profile: profile,
+                             onState: { [weak self] in self?.onCfmotoState?($0) },
+                             onLog: { [weak self] in self?.log($0) },
+                             requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: CWL("春风解码恢复")) })
             }
             if configuration.carLifeEnabled {
                 self.carLife.onLog = { [weak self] in self?.log($0) }
@@ -160,7 +176,7 @@ final class NativeReceiver {
                 }
                 self.carLink.onTouches = { [weak self] in self?.touches(source: "carlink-relay", $0) }
                 self.carLink.onControl = { [weak self] in self?.press($0) }
-                self.carLink.onKeyframe = { [weak self] in self?.requestKeyFrame(reason: "CarLink 中继") }
+                self.carLink.onKeyframe = { [weak self] in self?.requestKeyFrame(reason: CWL("CarLink 中继")) }
                 self.carLink.start(host: address, port: ReceiverConfiguration.carLinkRelayPort, fps: configuration.maxFPS)
             }
             if let port = configuration.videoOutputPort {
@@ -171,7 +187,7 @@ final class NativeReceiver {
                                        airPlayStreamID: configuration.airPlayStreamID, airPlayAddress: configuration.address)
             }
             do { self.airPlayIdentity = advertise ? try AirPlayCredentials() : nil }
-            catch { self.fail("AirPlay 身份创建失败：\(error.localizedDescription)"); return }
+            catch { self.fail(CWL("AirPlay 身份创建失败：{1}", [String(describing: error.localizedDescription)])); return }
             if configuration.audioEnabled {
                 do {
                     for bits: UInt64 in [0x10000000, 0x20000000, 0x40000000] {
@@ -179,8 +195,8 @@ final class NativeReceiver {
                         _ = try NativeAudioDecoder(format: format)
                         _ = try NativeOpusEncoder(rate: format.sampleRate)
                     }
-                    self.log("原生 Opus 语音编解码器可用（16/24/48 kHz）")
-                } catch { self.fail("无线音频编解码器不可用：\(error.localizedDescription)"); return }
+                    self.log(CWL("原生 Opus 语音编解码器可用（16/24/48 kHz）"))
+                } catch { self.fail(CWL("无线音频编解码器不可用：{1}", [String(describing: error.localizedDescription)])); return }
             }
             self.log("请求 \(configuration.width)×\(configuration.height) @ \(configuration.maxFPS) FPS，\(configuration.videoCodec.displayName)；音频\(configuration.audioEnabled ? "已启用（PCM/AAC/Opus）" : "已关闭")")
             if let target = configuration.ninebotAddress {
@@ -219,15 +235,15 @@ final class NativeReceiver {
                     "flags": "0x4", "model": "TDSCarKit1,1", "srcvers": "509.11", "protovers": "1.1",
                     "pi": airPlayIdentity.identifier, "pk": airPlayIdentity.signingKey.publicKey.rawRepresentation.map { String(format: "%02x", $0) }.joined()]
                 candidate.service = NWListener.Service(name: configuration.name, type: "_airplay._tcp", txtRecord: NWTXTRecord(txt))
-                candidate.serviceRegistrationUpdateHandler = { [weak self] change in self?.log("Bonjour 注册状态：\(change)") }
+                candidate.serviceRegistrationUpdateHandler = { [weak self] change in self?.log(CWL("Bonjour 注册状态：{1}", [String(describing: change)])) }
             }
             listener = candidate
             candidate.stateUpdateHandler = { [weak self, weak candidate] state in
                 guard let self, let candidate, self.generation == generation, self.listener === candidate else { return }
                 switch state {
                 case .ready:
-                    guard let actualPort = candidate.port?.rawValue else { self.fail("监听器未获得端口"); return }
-                    self.log("原生 RTSP 监听器已在端口 \(actualPort) 就绪")
+                    guard let actualPort = candidate.port?.rawValue else { self.fail(CWL("监听器未获得端口")); return }
+                    self.log(CWL("原生 RTSP 监听器已在端口 {1} 就绪", [String(describing: actualPort)]))
                     let advertiseDiscovery = self.airPlayIdentity != nil
                     DispatchQueue.main.async { [weak self] in
                         guard let self else { return }
@@ -237,16 +253,16 @@ final class NativeReceiver {
                             service.setTXTRecord(NetService.data(fromTXTRecord: [
                                 "app": Data("TDSCarKit".utf8), "deviceid": Data(configuration.deviceID.utf8)]))
                             self.discoveryService?.stop(); self.discoveryService = service; service.publish()
-                            self.onLog?("正在通过 \(ReceiverConfiguration.discoveryType) 发布 \(configuration.name)")
+                            self.onLog?(CWL("正在通过 {1} 发布 {2}", [String(describing: ReceiverConfiguration.discoveryType), String(describing: configuration.name)]))
                         }
                         onReady?(actualPort)
                     }
                 case .failed(let error):
                     if port != nil, case .posix(.EADDRINUSE) = error {
-                        self.log("端口 \(port!) 已被占用，正在申请可用端口")
+                        self.log(CWL("端口 {1} 已被占用，正在申请可用端口", [String(describing: port!)]))
                         candidate.cancel(); self.listener = nil
                         self.listen(configuration: configuration, identity: identity, port: nil, onReady: onReady)
-                    } else { self.fail("监听器失败：\(error.localizedDescription)") }
+                    } else { self.fail(CWL("监听器失败：{1}", [String(describing: error.localizedDescription)])) }
                 default: break
                 }
             }
@@ -273,10 +289,10 @@ final class NativeReceiver {
             candidate.start(queue: queue)
         } catch let error as NWError {
             if port != nil, case .posix(.EADDRINUSE) = error {
-                log("端口 \(port!) 已被占用，正在申请可用端口")
+                log(CWL("端口 {1} 已被占用，正在申请可用端口", [String(describing: port!)]))
                 listen(configuration: configuration, identity: identity, port: nil, onReady: onReady)
-            } else { fail("无法创建监听器：\(error.localizedDescription)") }
-        } catch { fail("无法创建监听器：\(error)") }
+            } else { fail(CWL("无法创建监听器：{1}", [String(describing: error.localizedDescription)])) }
+        } catch { fail(CWL("无法创建监听器：{1}", [String(describing: error)])) }
     }
     private func fail(_ message: String) {
         log(message); stopOnQueue()
@@ -301,7 +317,7 @@ final class NativeReceiver {
     }
     func press(_ control: CarPlayControl) {
         queue.async { [weak self] in
-            guard let self, let media = self.activeMedia else { self?.log("CarPlay 尚未连接，无法发送「\(control.title)」"); return }
+            guard let self, let media = self.activeMedia else { self?.log(CWL("CarPlay 尚未连接，无法发送「{1}」", [String(describing: control.title)])); return }
             let knobUp = CarPlayInfo.knobReport()
             switch control {
             case .home: media.pressHID(CarPlayInfo.HID.knob, CarPlayInfo.knobReport(home: true), release: knobUp)
@@ -342,9 +358,9 @@ final class NativeReceiver {
         keyframeAttempts += 1
         keyframeLastSent = .now()
         guard media.requestKeyFrame() else { return }
-        if keyframeAttempts == 1 { log("已请求关键帧（\(keyframeReason)）") }
+        if keyframeAttempts == 1 { log(CWL("已请求关键帧（{1}）", [String(describing: keyframeReason)])) }
         guard keyframeAttempts < 8 else {
-            log("iPhone 未响应关键帧请求（已重试 \(keyframeAttempts) 次），等待自然关键帧")
+            log(CWL("iPhone 未响应关键帧请求（已重试 {1} 次），等待自然关键帧", [String(describing: keyframeAttempts)]))
             keyframeWantedSince = nil; return
         }
         let run = generation
@@ -357,7 +373,7 @@ final class NativeReceiver {
         guard let since = keyframeWantedSince else { return }
         keyframeWantedSince = nil
         let ms = (DispatchTime.now().uptimeNanoseconds - since.uptimeNanoseconds) / 1_000_000
-        log("关键帧已到达（\(ms) ms，\(keyframeAttempts) 次请求）")
+        log(CWL("关键帧已到达（{1} ms，{2} 次请求）", [String(describing: ms), String(describing: keyframeAttempts)]))
     }
     private static func containsRandomAccess(_ accessUnit: Data, codec: VideoCodec) -> Bool {
         (try? AnnexB.units(in: accessUnit))?.contains { codec.isRandomAccess($0) } ?? false
@@ -371,6 +387,8 @@ final class NativeReceiver {
         zeeho.stop()
         zeeho62.stop()
         ninebot.stop()
+        cfmoto5.stop()
+        cfmoto62.stop()
         tailing.stop()
         carLink.stop()
         #if DEBUG
@@ -428,7 +446,7 @@ final class NativeReceiver {
                         let encoded = response.encoded(for: request)
                         let wire = try state.cipher?.encrypt(encoded) ?? encoded
                         connection.send(content: wire, completion: .contentProcessed { [weak self] error in
-                            if let error { self?.log("控制通道写入失败：\(error.localizedDescription)"); connection.cancel() }
+                            if let error { self?.log(CWL("控制通道写入失败：{1}", [String(describing: error.localizedDescription)])); connection.cancel() }
                         })
                         input = Data()
                         if state.cipher == nil, let keys = state.verify?.keys {
@@ -443,7 +461,7 @@ final class NativeReceiver {
                 if complete || error != nil { connection.cancel(); self.connections.removeValue(forKey: id) }
                 else { self.receive(connection, id: id, state: state, configuration: configuration, identity: identity) }
             } catch {
-                self.log("控制连接被拒绝：\(error)"); connection.cancel(); self.connections.removeValue(forKey: id)
+                self.log(CWL("控制连接被拒绝：{1}", [String(describing: error)])); connection.cancel(); self.connections.removeValue(forKey: id)
             }
         }
     }
@@ -453,7 +471,7 @@ final class NativeReceiver {
         case ("OPTIONS", _): return RTSPResponse()
         case ("SETUP", _):
             guard state.cipher != nil, state.authenticated, let secret = state.verify?.mediaSecret else {
-                throw ProtocolError.malformed("在配件会话通过验证前收到 SETUP")
+                throw ProtocolError.malformed(CWL("在配件会话通过验证前收到 SETUP"))
             }
             if state.media == nil {
                 let media = CarPlayMediaSession(queue: queue, secret: secret, peerAddress: state.peerAddress,
@@ -488,6 +506,10 @@ final class NativeReceiver {
                         else { self.zeeho.append(data, codec: codec, keyframe: keyframe) }
                     }
                     if configuration.ninebotAddress != nil { self.ninebot.append(data, codec: codec, keyframe: keyframe) }
+                    if let cfmoto = configuration.cfmotoProfile {
+                        let output = cfmoto == .sixInch ? self.cfmoto62 : self.cfmoto5
+                        output.append(data, codec: codec, keyframe: keyframe)
+                    }
                     if configuration.tailingAddress != nil { self.tailing.append(data, codec: codec) }
                     if configuration.carLifeEnabled { self.carLife.append(data, codec: codec) }
                     if configuration.carLinkRelayAddress != nil { self.carLink.append(data, codec: codec) }
@@ -497,7 +519,7 @@ final class NativeReceiver {
                         self.localSkipping = false
                     } else if self.localInFlight >= self.maximumLocalInFlight, !keyframe {
                         self.localSkipping = true
-                        self.requestKeyFrameOnQueue(reason: "本机显示积压")
+                        self.requestKeyFrameOnQueue(reason: CWL("本机显示积压"))
                         return
                     }
                     self.localInFlight += 1
@@ -531,14 +553,14 @@ final class NativeReceiver {
             connectionProgress("CarPlay 会话已开始，正在等待首帧视频")
             return RTSPResponse()
         case ("POST", "/pair-setup"):
-            guard state.cipher == nil, let setup = state.setup else { throw ProtocolError.malformed("pair-setup 不可用") }
+            guard state.cipher == nil, let setup = state.setup else { throw ProtocolError.malformed(CWL("pair-setup 不可用")) }
             let fields = try TLV8.decode(request.body)
-            log("Pair-Setup 状态 \(fields[6]?.first ?? 0)，方法 \(fields[0]?.first.map(String.init) ?? "缺失")")
+            log(CWL("Pair-Setup 状态 {1}，方法 {2}", [String(describing: fields[6]?.first ?? 0), String(describing: fields[0]?.first.map(String.init) ?? CWL("缺失"))]))
             let body = try setup.handle(request.body)
-            if setup.complete { log("Pair-Setup 已完成，已保存通过验证的控制端") }
+            if setup.complete { log(CWL("Pair-Setup 已完成，已保存通过验证的控制端")) }
             return RTSPResponse(body: body, contentType: "application/pairing+tlv8")
         case ("POST", "/pair-verify"):
-            guard state.cipher == nil, let verify = state.verify else { throw ProtocolError.malformed("pair-verify 不可用") }
+            guard state.cipher == nil, let verify = state.verify else { throw ProtocolError.malformed(CWL("pair-verify 不可用")) }
             return RTSPResponse(body: try verify.handle(request.body), contentType: "application/pairing+tlv8")
         case ("GET", "/info"), ("POST", "/info"):
             let info = CarPlayInfo.build(configuration)
@@ -556,10 +578,10 @@ final class NativeReceiver {
             }
             return RTSPResponse()
         case ("POST", "/command"):
-            guard state.cipher != nil else { throw ProtocolError.malformed("验证完成前收到 command") }
+            guard state.cipher != nil else { throw ProtocolError.malformed(CWL("验证完成前收到 command")) }
             if let command = try PropertyListSerialization.propertyList(from: request.body, format: nil) as? [String: Any] {
-                let type = command["type"] as? String ?? "未知"
-                log("CarPlay 命令：\(type)；字段：\(command.keys.sorted().joined(separator: ", "))")
+                let type = command["type"] as? String ?? CWL("未知")
+                log(CWL("CarPlay 命令：{1}；字段：{2}", [String(describing: type), String(describing: command.keys.sorted().joined(separator: ", "))]))
                 if type == "requestUI" {
                     let url = (command["params"] as? [String: Any])?["url"] as? String
                     // "videoplayback:" is the parked-video player, which CarWithin does not offer.
@@ -573,17 +595,27 @@ final class NativeReceiver {
                             guard let value = resource[key] as? NSNumber else { return nil }
                             return "\(key)=\(value)"
                         }
-                        log("CarPlay 资源：\(fields.joined(separator: ", "))")
+                        log(CWL("CarPlay 资源：{1}", [String(describing: fields.joined(separator: ", "))]))
                     }
                 }
 
             }
             return RTSPResponse()
         case ("TEARDOWN", _):
-            if try state.media?.teardown(request.body) == true { state.media = nil }
+            // Log only protocol structure, never arbitrary values or credentials.
+            if let values = try? PropertyListSerialization.propertyList(from: request.body, format: nil) as? [String: Any] {
+                let types = (values["streams"] as? [[String: Any]])?.compactMap { ($0["type"] as? NSNumber)?.intValue }
+                log("CarPlay TEARDOWN details: keys=\(values.keys.sorted().joined(separator: ",")); streams=\(types.map { String(describing: $0) } ?? "absent (entire media session)")")
+            } else {
+                log("CarPlay TEARDOWN details: no property-list dictionary; bytes=\(request.body.count)")
+            }
+            if try state.media?.teardown(request.body) == true {
+                state.media = nil
+                log("CarPlay TEARDOWN: all media stopped; control connection may remain open")
+            }
             return RTSPResponse()
         default:
-            log("尚未实现：\(request.method) \(request.target.prefix(80))；未占用会话")
+            log(CWL("尚未实现：{1} {2}；未占用会话", [String(describing: request.method), String(describing: request.target.prefix(80))]))
             return RTSPResponse(status: 501, reason: "Not Implemented")
         }
     }

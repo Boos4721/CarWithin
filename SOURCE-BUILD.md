@@ -1,25 +1,20 @@
-# 源码构建说明
+# 源码构建说明 / Build from source
 
-使用 Xcode 打开 TDSCarKit.xcodeproj，选择 TDSCarKit scheme，配置自己的开发团队、Bundle ID 和签名，再构建 iOS 目标。最低部署目标为 iOS 16.0。
+本候选对应 CarWithin **1.0.5（17）**。应用版本与构建号仅来自 `App/Info.plist`。
 
-源码不包含配件认证身份、私钥、证书或 Apple 签名材料。没有可用身份时应用可编译，但本机 CarPlay 连接需要另行配置有效身份。Tools/generate_project.py 会将本地 App/BundledIdentity 内的文件加入生成的工程，请勿把该目录中的身份材料提交到公开仓库。
+需要 Xcode，最低部署目标为 iOS/iPadOS 16.0。项目包含中英文界面资源、浏览器接收页、支持名单资源及完整第三方许可。请从同一版本的标签或源码附件构建，不混用其他版本的 Swift 文件和资源。
 
-发布安装包与源码应对应同一代码版本。第三方许可与来源见 THIRD_PARTY_NOTICES.txt 和 LICENSES。
+```sh
+python3 Tools/generate_project.py
+xcodebuild -project TDSCarKit.xcodeproj -scheme TDSCarKit \
+  -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO \
+  -derivedDataPath build/source
+```
 
-Wi-Fi 自动加入使用 `App/TDSCarKit.entitlements`，包含 `com.apple.developer.networking.HotspotConfiguration` 与 `com.apple.developer.networking.wifi-info`。开发者账号的 App ID 和 provisioning profile 必须支持并启用 Hotspot Configuration / Access WiFi Information；重新签名 IPA 时也需保留这些权限。工程及生成脚本默认设置 `TDS_WIFI_ENTITLEMENTS=App/TDSCarKit.entitlements`。模拟器与 Mac Catalyst 不执行自动加入。
+用于自己的设备时，在 Xcode 设置自己的开发团队与 Bundle ID 并签名。生成脚本保留本地选择，也可用 `TDS_DEVELOPMENT_TEAM` 与 `TDS_BUNDLE_IDENTIFIER` 配置。源码的开发团队为空，不包含 Apple 签名材料。
 
-九号自动连接的真机验收步骤见 `docs/ninebot-auto-connect-validation.md`。
+源码不包含配件认证身份、私钥或证书。没有身份仍可编译，但实际本机 CarPlay 连接需要有效身份。可把自己的 `certificate.p7b`、`leaf.cer`、`private.x963` 放到 `App/BundledIdentity/` 后重新生成工程，或通过 `Documents/IdentityImport` 导入 Keychain。安装包沿用先前公开 IPA 已有的认证资源；这些资源不包含在源码附件，也不属于代码许可证的授权范围。内置文件可以从安装包提取，不应视为不可导出的秘密。
 
-默认启用 `TDS_WIFI_NAME_DETECTION=YES`，显示“读取当前 Wi-Fi”入口。读取非本 App 配置的当前网络通常需要用户授予精确定位；该权限仅用于读取 Wi-Fi 名称，不调用位置坐标采集。
+English: use the same source revision and bundled resources. Run the commands above for an unsigned arm64 Release build, or configure your own team and bundle identifier for device signing. Accessory credentials and Apple signing material are excluded. The project can compile without credentials, but a working CarPlay session requires a valid accessory identity. Local identity resources can be staged before running the generator; they must not be committed to a public repository.
 
-## 云端编译未签名 IPA
-
-`.github/workflows/ios-build.yml` 在 `codex/ninebot-ant-bms` 分支推送时使用 GitHub 的 macOS 15 构建机运行核心测试、重新生成 Xcode 工程，再编译 Release iOS 应用。成功后在 Actions 的 Artifacts 中提供未签名 IPA、SHA-256、源代码提交号、签名权限文件及日志。该流程不发布 Release。
-
-安装前需要用自己的签名工具重新签名；有效配件身份仍需另行配置。使用 GitHub 构建不包含或上传本地身份材料。也可在 Mac 上执行与工作流相同的 `xcodebuild` 命令。
-
-## 从原版迁移身份
-
-内置身份安装包启动时自动加载身份。Build 21 移除设置列表中的「CarPlay 身份」入口；没有可用身份时，仍可从主界面的配置按钮选择原来可用的 CarWithin IPA，或同时选择 `certificate.p7b`、`leaf.cer`、`private.x963`。读取、匹配校验和 Keychain 保存均在用户设备本地执行；不上传身份材料，不更改原文件。归档解析只接受一个 App 中完整的一组资源，并检查大小、CRC、重复路径及压缩方式。
-
-本地证书/私钥匹配不等于 iOS 已接受 MFi 认证；最终仍需启动验证。若原包没有这三个资源，则不能通过该方式迁移。App 沙盒或签名访问组不同，也不会自动读取原 App 的 Keychain。
+The combined distribution is AGPL-3.0-only. See `LICENSE`, `THIRD_PARTY_NOTICES.txt`, `LICENSES`, `ThirdParty`, `App/KCP-LICENSE.txt` and `App/ANTBMS-LICENSE.txt`.
