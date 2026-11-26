@@ -16,11 +16,11 @@ struct BMSRideRecord: Codable, Identifiable {
 struct BMSRecordFilter {
     enum Period: Int, CaseIterable {
         case all, today, last7Days, last30Days
-        var title: String { ["全部时间", "今天", "最近 7 天", "最近 30 天"][rawValue] }
+        var title: String { [CWL("全部时间"), CWL("今天"), CWL("最近 7 天"), CWL("最近 30 天")][rawValue] }
     }
     enum Completion: Int, CaseIterable {
         case all, finished, fragments, recording
-        var title: String { ["全部状态", "已结束", "已保存片段", "记录中"][rawValue] }
+        var title: String { [CWL("全部状态"), CWL("已结束"), CWL("已保存片段"), CWL("记录中")][rawValue] }
     }
     var vehicleID: UUID?
     var vehicleName: String?

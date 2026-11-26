@@ -8,7 +8,7 @@ final class ANTBMSController: NSObject {
     var onLog: ((String) -> Void)?
     var aspectRatio: CGFloat = 848 / 480 { didSet { if aspectRatio != oldValue { refreshBMS() } } }
     private var receiving = false
-    var recordingVehicleName: String = "电池记录"
+    var recordingVehicleName: String = CWL("电池记录")
     var recordingVehicleID: UUID?
     private let bmsRecordStore = BMSRideRecordStore()
     private let bmsSessionStatus = StatusLabel()
@@ -299,14 +299,14 @@ final class ANTBMSController: NSObject {
             text.heightAnchor.constraint(equalToConstant: 360).isActive = true
             return page(title) { [weak self] in
                 [SettingsSection(footer: footer, [.view(text)]), SettingsSection([
-                    .action("复制内容", icon: ("doc.on.doc", .systemBlue)) { UIPasteboard.general.string = text.text },
+                    .action(CWL("复制内容"), icon: ("doc.on.doc", .systemBlue)) { UIPasteboard.general.string = text.text },
                     .action("分享 \(format) 文件", icon: ("square.and.arrow.up", .systemBlue)) {
                         self?.shareReport(snapshot, name: name)
                     }
                 ])]
             }
         } catch {
-            return page(title) { [SettingsSection([.info("报告生成失败", error.localizedDescription)])] }
+            return page(title) { [SettingsSection([.info(CWL("报告生成失败"), error.localizedDescription)])] }
         }
     }
 
@@ -322,7 +322,7 @@ final class ANTBMSController: NSObject {
             sheet.popoverPresentationController?.sourceView = presenter.view
             sheet.popoverPresentationController?.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 1, height: 1)
             presenter.present(sheet, animated: true)
-        } catch { alert("无法导出", error.localizedDescription) }
+        } catch { alert(CWL("无法导出"), error.localizedDescription) }
     }
 
     private func beginBMSSessionIfNeeded() {
@@ -334,7 +334,7 @@ final class ANTBMSController: NSObject {
         bmsSessionStartedAt = Date(); bmsSessionVehicle = recordingVehicleName
         bmsSessionVehicleID = recordingVehicleID; bmsSessionDevice = bmsClient.selectedID
         bmsSessionDeviceName = bmsSessionDevice == nil ? nil : bmsClient.selectedName
-        bmsSessionStatus.text = "等待新的 BMS 实时数据"
+        bmsSessionStatus.text = CWL("等待新的 BMS 实时数据")
     }
 
     private func finishBMSSession() {
@@ -379,7 +379,7 @@ final class ANTBMSController: NSObject {
     }
 
     private func bmsRecordSubtitle(_ record: BMSRideRecord, active: Bool) -> String {
-        let state = active ? "记录中" : record.completed ? "已结束" : "已保存片段"
+        let state = active ? CWL("记录中") : record.completed ? CWL("已结束") : CWL("已保存片段")
         let statistics = record.statistics
         let charge = statistics.firstCharge.flatMap { first in statistics.lastCharge.map { " · \(first)% → \($0)%" } } ?? ""
         let voltage = statistics.minimumVoltage.flatMap { low in statistics.maximumVoltage.map {
@@ -415,35 +415,35 @@ final class ANTBMSController: NSObject {
             self.bmsRecordFilter.completion = BMSRecordFilter.Completion(rawValue: completion.selectedSegmentIndex) ?? .all
             self.reloadVisibleSettings()
         }, for: .valueChanged)
-        return page("BMS 统计与记录") { [unowned self] in
-            var sections = [SettingsSection(self.bmsSessionStartedAt == nil ? "本次统计" : "正在记录", footer:
+        return page(CWL("BMS 统计与记录")) { [unowned self] in
+            var sections = [SettingsSection(self.bmsSessionStartedAt == nil ? CWL("本次统计") : CWL("正在记录"), footer:
                 "有效采样时长不计入断线间隔；峰值取绝对值。记录电池读数，不计算里程或预计续航。", [.note(self.bmsSessionStatus), .view(self.bmsTrend)])]
             var controls: [SettingsRow] = []
             if self.bmsSessionStartedAt != nil {
-                controls.append(.action("结束并保存本次记录", icon: ("stop.circle", .systemBlue)) { [unowned self] in
+                controls.append(.action(CWL("结束并保存本次记录"), icon: ("stop.circle", .systemBlue)) { [unowned self] in
                     self.finishBMSSession(); self.reloadVisibleSettings()
                 })
             } else {
-                controls.append(.action("开始新记录", icon: ("record.circle", .systemBlue)) { [unowned self] in
-                    guard self.bmsEnabledSwitch.isOn else { self.alert("先开启 BMS", "在电池与 BMS 页面开启读取并连接自己的设备。"); return }
+                controls.append(.action(CWL("开始新记录"), icon: ("record.circle", .systemBlue)) { [unowned self] in
+                    guard self.bmsEnabledSwitch.isOn else { self.alert(CWL("先开启 BMS"), "在电池与 BMS 页面开启读取并连接自己的设备。"); return }
                     self.beginBMSSessionIfNeeded(); self.reloadVisibleSettings()
                 })
             }
-            controls.append(.page("预览并导出本次统计", icon: ("square.and.arrow.up", .systemBlue)) { [unowned self] in
-                self.reportPreviewPage(title: "BMS 统计预览", name: "CarWithin-bms-statistics.json", data: {
+            controls.append(.page(CWL("预览并导出本次统计"), icon: ("square.and.arrow.up", .systemBlue)) { [unowned self] in
+                self.reportPreviewPage(title: CWL("BMS 统计预览"), name: "CarWithin-bms-statistics.json", data: {
                     let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
                     return try encoder.encode(self.bmsSession)
                 })
             })
             if !self.bmsSession.points.isEmpty { controls.append(self.bmsCSVRow { [unowned self] in self.bmsSession }) }
             sections.append(SettingsSection(controls))
-            sections.append(SettingsSection("筛选历史", [
-                .page("车辆", detail: { [unowned self] in self.bmsRecordFilter.vehicleName ?? "全部车辆" }) { [unowned self] in self.bmsRecordVehiclePage() },
-                .page("电池设备", detail: { [unowned self] in
-                    guard let id = self.bmsRecordFilter.bmsID else { return "全部设备" }
-                    return self.bmsHistoryRecords().first { $0.bmsID == id }?.bmsName ?? "已保存设备"
+            sections.append(SettingsSection(CWL("筛选历史"), [
+                .page("车辆", detail: { [unowned self] in self.bmsRecordFilter.vehicleName ?? CWL("全部车辆") }) { [unowned self] in self.bmsRecordVehiclePage() },
+                .page(CWL("电池设备"), detail: { [unowned self] in
+                    guard let id = self.bmsRecordFilter.bmsID else { return CWL("全部设备") }
+                    return self.bmsHistoryRecords().first { $0.bmsID == id }?.bmsName ?? CWL("已保存设备")
                 }) { [unowned self] in self.bmsRecordDevicePage() },
-                .control("时间", period), .control("状态", completion)
+                .control(CWL("时间"), period), .control(CWL("状态"), completion)
             ]))
             let all = self.bmsHistoryRecords()
             let activeID = self.bmsSessionStartedAt == nil ? nil : self.bmsSessionRecordID
@@ -456,7 +456,7 @@ final class ANTBMSController: NSObject {
                 row.subtitle = { [unowned self] in self.bmsRecordSubtitle(record, active: active) }
                 if !active {
                     row.onDelete = { [unowned self] in
-                        do { try bmsRecordStore.remove(record.id) } catch { self.alert("删除失败", error.localizedDescription) }
+                        do { try bmsRecordStore.remove(record.id) } catch { self.alert(CWL("删除失败"), error.localizedDescription) }
                     }
                 }
                 return row
@@ -479,7 +479,7 @@ final class ANTBMSController: NSObject {
             for choice in choices where !unique.contains(where: { $0.id != nil ? $0.id == choice.id : $0.id == choice.id && $0.name == choice.name }) {
                 unique.append(choice)
             }
-            var all = SettingsRow.action("全部车辆") { [unowned self] in
+            var all = SettingsRow.action(CWL("全部车辆")) { [unowned self] in
                 self.bmsRecordFilter.vehicleID = nil; self.bmsRecordFilter.vehicleName = nil
                 self.rootPage?.navigationController?.popViewController(animated: true)
             }
@@ -502,7 +502,7 @@ final class ANTBMSController: NSObject {
     private func bmsRecordDevicePage() -> SettingsPageController {
         page("按电池设备筛选") { [unowned self] in
             var seen = Set<UUID>()
-            var all = SettingsRow.action("全部设备") { [unowned self] in
+            var all = SettingsRow.action(CWL("全部设备")) { [unowned self] in
                 self.bmsRecordFilter.bmsID = nil
                 self.rootPage?.navigationController?.popViewController(animated: true)
             }
@@ -521,8 +521,8 @@ final class ANTBMSController: NSObject {
     }
 
     private func bmsCSVRow(_ statistics: @escaping () -> ANTBMSSessionStatistics) -> SettingsRow {
-        .page("预览并导出电压 CSV", icon: ("tablecells", .systemGreen)) { [unowned self] in
-            self.reportPreviewPage(title: "电压 CSV 预览", name: "CarWithin-bms-voltage-\(UUID().uuidString).csv",
+        .page(CWL("预览并导出电压 CSV"), icon: ("tablecells", .systemGreen)) { [unowned self] in
+            self.reportPreviewPage(title: CWL("电压 CSV 预览"), name: "CarWithin-bms-voltage-\(UUID().uuidString).csv",
                 format: "CSV", footer: "仅导出曲线保留的最近 120 个区间，含最低、最高与最新电压，并非全程逐帧数据。旧版缺少的极值留空；时间单位为秒，电压单位为伏。") {
                     Data(statistics().voltageCSV.utf8)
                 }
@@ -541,8 +541,8 @@ final class ANTBMSController: NSObject {
             let date = DateFormatter.localizedString(from: current.startedAt, dateStyle: .medium, timeStyle: .short)
             return [SettingsSection("电池记录 · \(date)", footer: active ? "正在记录，读数与曲线持续更新。" : current.completed ? "已结束并保存。" : "这是最近保存的片段，可能尚未正常结束。", [.note(summary), .view(trend)]),
              SettingsSection([
-                .page("预览并导出完整统计 JSON", icon: ("square.and.arrow.up", .systemBlue)) { [unowned self] in
-                    self.reportPreviewPage(title: "记录预览", name: "CarWithin-bms-\(record.id.uuidString).json", data: {
+                .page(CWL("预览并导出完整统计 JSON"), icon: ("square.and.arrow.up", .systemBlue)) { [unowned self] in
+                    self.reportPreviewPage(title: CWL("记录预览"), name: "CarWithin-bms-\(record.id.uuidString).json", data: {
                         let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
                         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
                         return try encoder.encode(self.resolvedBMSRecord(record))
