@@ -482,7 +482,7 @@ final class NinebotOutput {
             encoder?.invalidate()
             encoder = nil
             latest = nil
-            lastJPEG = nil
+            canvas.setBMSOverlay(nil, configuration: ANTBMSCardConfiguration())
         }
     }
 }
