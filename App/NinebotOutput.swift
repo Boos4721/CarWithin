@@ -87,7 +87,6 @@ final class NinebotOutput {
         private var nextNetworkRecoveryAttempt = 0.0
         private let packetizer = NinebotH264Packetizer()
         private lazy var jpegPacketizer = NinebotJPEGPacketizer()
-        private var lastJPEG: Data?
         private var jpegTimestamp: UInt32 = 0
         private var jpegFramesSent = 0
         private var jpegFramesDropped = 0
@@ -97,7 +96,7 @@ final class NinebotOutput {
         private var parameters = VideoParameterSets(codec: .h264)
         private var waitingForIDR = true
         private var latest: CVPixelBuffer?
-        private lazy var compositor = CIContext(options: [.useSoftwareRenderer: true, .cacheIntermediates: false])
+        private let canvas = NinebotVideoCanvas()
         private var fresh = false
         private let origin = ProcessInfo.processInfo.systemUptime
         private var lastFrame = -Double.infinity
@@ -110,13 +109,9 @@ final class NinebotOutput {
         private var acknowledgedVideo = false
         private var nextVideoFrame = 0.0
         private var status = ""
-        private var bmsOverlay: CIImage?
-        private var bmsConfiguration = ANTBMSCardConfiguration()
 
         func setBMSOverlay(_ image: CGImage?, configuration: ANTBMSCardConfiguration) {
-            // Only 5/7-inch H.264 outputs are included in the first BMS integration.
-            bmsOverlay = usesJPEG ? nil : image.map { CIImage(cgImage: $0) }
-            bmsConfiguration = configuration
+            canvas.setBMSOverlay(image, configuration: configuration)
             fresh = true
         }
 
@@ -387,16 +382,12 @@ final class NinebotOutput {
             let interval = 1 / Double(format.fps)
             nextVideoFrame = max(nextVideoFrame, now - interval / 2) + interval
             lastFrame = now
-            if fresh || lastJPEG == nil {
-                fresh = false
-                let bounds = CGRect(x: 0, y: 0, width: format.width, height: format.height)
-                lastJPEG = compositor.jpegRepresentation(of: fittedCanvas(latest, in: bounds), colorSpace: CGColorSpaceCreateDeviceRGB(),
-                    options: [kCGImageDestinationLossyCompressionQuality as CIImageRepresentationOption: 0.8])
-                if lastJPEG == nil {
-                    logCodecFailure(" JPEG 编码", ConfigurationError("无法生成九号 4.3 寸画面"))
-                }
+            let bounds = CGRect(x: 0, y: 0, width: format.width, height: format.height)
+            guard let jpeg = canvas.jpeg(latest, in: bounds, refresh: fresh) else {
+                logCodecFailure(" JPEG 编码", ConfigurationError("无法生成九号 4.3 寸画面"))
+                return
             }
-            guard let jpeg = lastJPEG else { return }
+            fresh = false
             jpegTimestamp = UInt32(truncatingIfNeeded: Self.unixMilliseconds)
             let packets = try jpegPacketizer.packets(for: jpeg, timestamp: jpegTimestamp)
             do {
@@ -430,7 +421,8 @@ final class NinebotOutput {
                     lastKeyframe = -.infinity
                 }
                 guard let encoder else { return nil }
-                try encoder.encode(try fittedImage(image), presentationTime: CMTime(seconds: now, preferredTimescale: 1_000_000),
+                let format = sevenInch ? NinebotOutput.sevenInchFormat : (NinebotOutput.width, NinebotOutput.height, NinebotOutput.fps)
+                try encoder.encode(try canvas.fittedImage(image, width: format.0, height: format.1), presentationTime: CMTime(seconds: now, preferredTimescale: 1_000_000),
                                    forceKeyframe: now - lastKeyframe >= 0.5)
                 encoder.complete()
                 let result = lock.withLock {
@@ -447,38 +439,6 @@ final class NinebotOutput {
                 logCodecFailure("编码", error)
                 return nil
             }
-        }
-
-        private func fittedImage(_ image: CVPixelBuffer) throws -> CVPixelBuffer {
-            let width = sevenInch ? NinebotOutput.sevenInchFormat.width : NinebotOutput.width
-            let height = sevenInch ? NinebotOutput.sevenInchFormat.height : NinebotOutput.height
-            if bmsOverlay == nil, CVPixelBufferGetWidth(image) == width, CVPixelBufferGetHeight(image) == height { return image }
-            var buffer: CVPixelBuffer?
-            let status = CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA,
-                                             [kCVPixelBufferIOSurfacePropertiesKey: [:]] as CFDictionary, &buffer)
-            guard status == kCVReturnSuccess, let buffer else { throw ConfigurationError("无法分配九号缩放画面（\(status)）") }
-            let bounds = CGRect(x: 0, y: 0, width: width, height: height)
-            compositor.render(fittedCanvas(image, in: bounds), to: buffer, bounds: bounds, colorSpace: CGColorSpaceCreateDeviceRGB())
-            return buffer
-        }
-
-        private func fittedCanvas(_ image: CVPixelBuffer, in bounds: CGRect) -> CIImage {
-            let source = CIImage(cvPixelBuffer: image)
-            let scale = min(bounds.width / source.extent.width, bounds.height / source.extent.height)
-            let scaled = source.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-            let positioned = scaled.transformed(by: CGAffineTransform(
-                translationX: (bounds.width - scaled.extent.width) / 2,
-                y: (bounds.height - scaled.extent.height) / 2))
-            let canvas = positioned.composited(over: CIImage(color: .black)).cropped(to: bounds)
-            guard let bmsOverlay else { return canvas }
-            let overlayWidth = bounds.width * CGFloat(bmsConfiguration.size.widthFraction)
-            let factor = overlayWidth / bmsOverlay.extent.width
-            let scaledOverlay = bmsOverlay.transformed(by: CGAffineTransform(scaleX: factor, y: factor))
-            let margin = max(6, bounds.width * 0.007)
-            let overlay = scaledOverlay.transformed(by: CGAffineTransform(
-                translationX: bmsConfiguration.position.isAtRight ? bounds.maxX - margin - scaledOverlay.extent.width : margin,
-                y: bmsConfiguration.position.isAtTop ? bounds.maxY - margin - scaledOverlay.extent.height : margin))
-            return overlay.composited(over: canvas).cropped(to: bounds)
         }
 
         private func logCodecFailure(_ stage: String, _ error: Error) {

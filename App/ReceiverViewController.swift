@@ -1270,7 +1270,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         bmsOverlay.update(enabled: bmsEnabledSwitch.isOn, reading: reading, status: bmsClient.status,
                           configuration: cardConfiguration)
         bmsCardPreview.update(reading: reading, configuration: cardConfiguration,
-                             aspectRatio: outputMode == .ninebotSeven ? 1024 / 600 : 848 / 480, family: bmsClient.selectedFamily)
+                             aspectRatio: outputMode == .ninebotSeven ? 1024 / 600 : outputMode == .ninebot43 ? 480 / 272 : 848 / 480, family: bmsClient.selectedFamily)
         bmsCardPreviewStatus.text = reading == nil ? "示例数据 · 当前没有实时读数" : "实时数据 · " + bmsClient.selectedFamily.title
         let ids = bmsClient.devices.map(\.id)
         let structureKey = "\(bmsClient.selectedID?.uuidString ?? "")|\(bmsClient.selectedFamily.rawValue)|\(bmsClient.isConfirmingSelection)|\(bmsClient.isScanning)|\(bmsClient.presentation.action)|\(cardConfiguration.fields.map(\.rawValue).joined(separator: ","))|\(bmsCapabilities.variant ?? "")"
@@ -4367,7 +4367,7 @@ extension ReceiverViewController {
 
     private func bmsCardPage() -> SettingsPageController {
         bmsCardPreview.update(reading: bmsClient.freshReading, configuration: effectiveBMSCardConfiguration,
-                             aspectRatio: outputMode == .ninebotSeven ? 1024 / 600 : 848 / 480, family: bmsClient.selectedFamily)
+                             aspectRatio: outputMode == .ninebotSeven ? 1024 / 600 : outputMode == .ninebot43 ? 480 / 272 : 848 / 480, family: bmsClient.selectedFamily)
         return page("BMS 卡片显示") { [unowned self] in
             var sections = [SettingsSection("内容模式", footer: "自动推荐最多四项有效字段，短时缺失时保留位置。自定义保留你的字段与顺序，随车辆配置保存。旧版布局继续使用自定义模式。", [
                 .control("显示内容", self.bmsCardModeControl),

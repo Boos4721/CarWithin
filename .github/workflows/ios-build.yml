@@ -43,6 +43,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+          bash Tools/test_ninebot_canvas.sh 2>&1 | tee artifacts/ninebot-canvas-tests.log
           bash Tools/test_ninebot_sockets.sh 2>&1 | tee artifacts/ninebot-socket-tests.log
           bash Tools/test_bms.sh 2>&1 | tee artifacts/bms-tests.log
           bash Tools/test.sh 2>&1 | tee artifacts/core-tests.log
