@@ -88,6 +88,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let ninebotAutoConnectSwitch = UISwitch()
     private let ninebotCurrentWiFiSwitch = UISwitch()
     private var attemptedNinebotAutoConnect = false
+    private var wiFiJoinDiagnostic: [String: Any] = UserDefaults.standard.dictionary(forKey: "lastWiFiJoinDiagnostic.v1") ?? [:]
     private var wiFiJoinID: UUID?
     private var wiFiJoinTask: Task<Void, Never>?
     private var wiFiJoinTimeoutTask: Task<Void, Never>?
@@ -2159,6 +2160,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         reloadVisibleSettings()
         #else
         let ssid = ssidField.text ?? ""
+        wiFiJoinDiagnostic = [:]
+        UserDefaults.standard.removeObject(forKey: "lastWiFiJoinDiagnostic.v1")
         let credentials = enteredWiFiCredentials
         let reuseCurrentWiFi = startCarPlay && prefersCurrentWiFiStartup
         let restarting = restartingAutomatically
@@ -2235,40 +2238,95 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
 
     private func applyInstrumentWiFi(_ configuration: NEHotspotConfiguration, id: UUID, ssid: String,
                                      startCarPlay: Bool, restarting: Bool, attempt: Int) {
-        guard wiFiJoinID == id else { return }
+        guard wiFiJoinID == id, UIApplication.shared.applicationState == .active else { return }
         NEHotspotConfigurationManager.shared.apply(configuration) { [weak self] error in
-                    DispatchQueue.main.async {
-                        guard let self, self.wiFiJoinID == id else { return }
-                        if let error = error as NSError?,
-                           !(error.domain == NEHotspotConfigurationErrorDomain &&
-                             error.code == NEHotspotConfigurationError.alreadyAssociated.rawValue) {
-                            let denied = error.domain == NEHotspotConfigurationErrorDomain &&
-                                error.code == NEHotspotConfigurationError.userDenied.rawValue
-                            let hotspotMayBeStarting = startCarPlay && self.requestedVehicleProjection &&
-                                self.ninebotVehicle.isPreparingProjection && attempt < 5 &&
-                                error.domain == NEHotspotConfigurationErrorDomain &&
-                                (error.code == NEHotspotConfigurationError.pending.rawValue ||
-                                 error.code == NEHotspotConfigurationError.internal.rawValue)
-                            if !denied, hotspotMayBeStarting {
-                                self.passwordStatus.text = "等待车辆开启仪表 Wi-Fi，正在重试加入…"
-                                self.wiFiJoinTask = Task { [weak self] in
-                                    try? await Task.sleep(nanoseconds: 2_000_000_000)
-                                    guard !Task.isCancelled, let self, self.wiFiJoinID == id,
-                                          UIApplication.shared.applicationState == .active else { return }
-                                    self.applyInstrumentWiFi(configuration, id: id, ssid: ssid,
-                                        startCarPlay: startCarPlay, restarting: restarting, attempt: attempt + 1)
-                                }
-                                return
-                            }
-                            self.finishWiFiJoin(id: id, message: denied ? "已取消加入 Wi-Fi，可手动重试。" :
-                                "加入 Wi-Fi 失败：\(error.localizedDescription)。请检查密码、仪表热点和签名的 Hotspot Configuration 权限。")
-                            return
-                        }
-                        // Newly joined networks retain the established credential-based path.
-                        self.waitForSelectedWiFi(id: id, ssid: ssid, startCarPlay: startCarPlay,
-                            useCurrentWiFi: false, restarting: restarting)
-                    }
+            DispatchQueue.main.async {
+                guard let self, self.wiFiJoinID == id else { return }
+                if let error = error as NSError?,
+                   !(error.domain == NEHotspotConfigurationErrorDomain &&
+                     error.code == NEHotspotConfigurationError.alreadyAssociated.rawValue) {
+                    self.recoverInstrumentWiFi(configuration, error: error, id: id, ssid: ssid,
+                        startCarPlay: startCarPlay, restarting: restarting, attempt: attempt)
+                    return
                 }
+                self.waitForSelectedWiFi(id: id, ssid: ssid, startCarPlay: startCarPlay,
+                    useCurrentWiFi: false, restarting: restarting)
+            }
+        }
+    }
+
+    private func recoverInstrumentWiFi(_ configuration: NEHotspotConfiguration, error: NSError,
+                                       id: UUID, ssid: String, startCarPlay: Bool, restarting: Bool, attempt: Int) {
+        let isHotspotError = error.domain == NEHotspotConfigurationErrorDomain
+        let denied = isHotspotError && error.code == NEHotspotConfigurationError.userDenied.rawValue
+        let transient = isHotspotError && (error.code == NEHotspotConfigurationError.pending.rawValue ||
+            error.code == NEHotspotConfigurationError.internal.rawValue)
+        let failure: InstrumentWiFiJoinRecovery.Failure = denied ? .userDenied : transient ? .transient : .other
+        let code = "\(String(error.domain.prefix(128)))/\(error.code)"
+        log("Wi-Fi 加入请求返回 \(code)，第 \(attempt + 1) 次请求")
+        saveWiFiJoinDiagnostic(error: error, attempt: attempt, currentSSID: nil, outcome: denied ? "denied" : "checking")
+        if denied {
+            finishWiFiJoin(id: id, message: "已取消加入 Wi-Fi，可手动重试。")
+            return
+        }
+        guard transient else {
+            finishWiFiJoin(id: id, message: "加入 Wi-Fi 失败（\(code)）：\(error.localizedDescription)。请核对热点、密码和签名能力。")
+            return
+        }
+        // An apply error does not establish the current association. Re-observe it before failing or retrying.
+        statusLabel.text = "系统未完成 Wi-Fi 加入请求，正在重新确认当前网络…"
+        passwordStatus.text = statusLabel.text
+        recordConnection(.preparing, "Wi-Fi 加入返回 \(code)，重新确认网络（第 \(attempt + 1) 次）")
+        wiFiJoinTask?.cancel()
+        wiFiJoinTask = Task { [weak self] in
+            var observedSSID: String?
+            for _ in 0..<4 {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                guard !Task.isCancelled, let self, self.wiFiJoinID == id else { return }
+                guard UIApplication.shared.applicationState == .active else {
+                    self.finishWiFiJoin(id: id, message: "请返回 CarWithin 后重试连接。")
+                    return
+                }
+                let network = await NEHotspotNetwork.fetchCurrent()
+                guard !Task.isCancelled, self.wiFiJoinID == id else { return }
+                observedSSID = network?.ssid
+                if network?.ssid == ssid {
+                    self.saveWiFiJoinDiagnostic(error: error, attempt: attempt, currentSSID: observedSSID, outcome: "associatedAwaitingAddress")
+                    self.log("加入请求返回错误，但已重新读取目标 SSID，继续等待 IP 稳定后启动")
+                    self.waitForSelectedWiFi(id: id, ssid: ssid, startCarPlay: startCarPlay,
+                        useCurrentWiFi: startCarPlay && self.prefersCurrentWiFiStartup, restarting: restarting)
+                    return
+                }
+            }
+            guard !Task.isCancelled, let self, self.wiFiJoinID == id else { return }
+            let preparing = startCarPlay && self.requestedVehicleProjection && self.ninebotVehicle.isPreparingProjection
+            if InstrumentWiFiJoinRecovery.shouldRetry(failure, attempt: attempt, preparingVehicleHotspot: preparing) {
+                self.saveWiFiJoinDiagnostic(error: error, attempt: attempt, currentSSID: observedSSID, outcome: "retrying")
+                self.passwordStatus.text = "尚未确认目标 Wi-Fi，正在重试加入…"
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard !Task.isCancelled, self.wiFiJoinID == id else { return }
+                guard UIApplication.shared.applicationState == .active else {
+                    self.finishWiFiJoin(id: id, message: "请返回 CarWithin 后重试连接。")
+                    return
+                }
+                self.applyInstrumentWiFi(configuration, id: id, ssid: ssid,
+                    startCarPlay: startCarPlay, restarting: restarting, attempt: attempt + 1)
+                return
+            }
+            self.saveWiFiJoinDiagnostic(error: error, attempt: attempt, currentSSID: observedSSID, outcome: "failed")
+            self.finishWiFiJoin(id: id, message: "系统未能加入仪表 Wi-Fi（\(code)）。请先在系统设置连接所选热点；普通自签还需确认签名包含 Hotspot Configuration 和 Access Wi-Fi Information，并允许精确位置。返回后重试，仍失败可导出连接报告。")
+        }
+    }
+
+    private func saveWiFiJoinDiagnostic(error: NSError, attempt: Int, currentSSID: String?, outcome: String) {
+        wiFiJoinDiagnostic = ["errorDomain": String(error.domain.prefix(128)), "errorCode": error.code,
+            "requestNumber": attempt + 1, "outcome": outcome,
+            "currentNetwork": currentSSID.map { $0 == ssidField.text ? "selected" : "different" } ?? "unavailable",
+            "localWiFiAddress": ReceiverConfiguration.wifiIPv4Address() ?? "",
+            "locationAuthorization": Int(locationManager.authorizationStatus.rawValue),
+            "preciseLocation": locationManager.accuracyAuthorization == .fullAccuracy,
+            "ssidDetectionConfigured": canDetectWiFiName]
+        UserDefaults.standard.set(wiFiJoinDiagnostic, forKey: "lastWiFiJoinDiagnostic.v1")
     }
     #endif
 
@@ -2277,14 +2335,14 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         guard wiFiJoinID == id else { return }
         wiFiJoinTask?.cancel()
         wiFiJoinTask = Task { [weak self] in
-            var previousAddress: String?
+            var readiness = InstrumentWiFiJoinReadiness(selectedSSID: ssid)
             for _ in 0..<60 {
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 guard !Task.isCancelled, let self, self.wiFiJoinID == id else { return }
                 let network = await NEHotspotNetwork.fetchCurrent()
                 guard !Task.isCancelled, self.wiFiJoinID == id else { return }
                 let address = ReceiverConfiguration.wifiIPv4Address()
-                if network?.ssid == ssid, let address, address == previousAddress,
+                if readiness.observe(ssid: network?.ssid, address: address),
                    UIApplication.shared.applicationState == .active {
                     self.finishWiFiJoin(id: id, message: "已连接 Wi-Fi：\(ssid)")
                     if startCarPlay {
@@ -2301,7 +2359,6 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                     }
                     return
                 }
-                previousAddress = network?.ssid == ssid ? address : nil
             }
             self?.finishWiFiJoin(id: id, message: "未确认仪表 Wi-Fi 连接。请检查热点已开启、Wi-Fi 权限及密码，然后重试。")
         }
@@ -3789,7 +3846,7 @@ extension ReceiverViewController {
             "build": Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "",
             "iOS": UIDevice.current.systemVersion, "device": UIDevice.current.model,
             "localWiFiAddress": ReceiverConfiguration.wifiIPv4Address() ?? "",
-            "bmsStatus": bmsClient.status, "timeline": timeline,
+            "bmsStatus": bmsClient.status, "timeline": timeline, "wifiJoin": wiFiJoinDiagnostic,
             "instrumentActivation": "尚未实现独立激活；仪表是否出画需实物确认"]
         return try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys])
     }
