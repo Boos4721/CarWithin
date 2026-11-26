@@ -258,7 +258,7 @@ final class ANTBMSController: NSObject {
         bmsCardPreview.update(reading: bmsClient.freshReading, configuration: bmsCardConfiguration,
                              aspectRatio: aspectRatio)
         return page("BMS 卡片显示") { [unowned self] in
-            var sections = [SettingsSection("布局", footer: "修改后立即同步到手机和九号 4.3、5、7 寸投屏，并自动保存。卡片最多两行；减少显示项可留出更多地图空间。", [
+            var sections = [SettingsSection("布局", footer: "修改后立即同步到手机、九号 4.3/5/7 寸和极核 5/6.2 寸投屏，并自动保存。卡片最多两行；减少显示项可留出更多地图空间。", [
                 .control("字号", self.bmsCardSize),
                 .control("显示位置", self.bmsPosition),
                 .control("背景", self.bmsCardBackground),

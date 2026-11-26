@@ -970,7 +970,12 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     }
     private func updateVideoAspect() {
         antBMS.recordingVehicleName = headUnitOutput.selectedTitle
-        antBMS.aspectRatio = outputMode == .ninebotSeven ? 1024 / 600 : outputMode == .ninebot43 ? 480 / 272 : 848 / 480
+        if let profile = outputMode.zeehoProfile {
+            let size = profile == .zeehoSEPlus ? selectedZeehoCanvas.size : profile.preferredSize
+            antBMS.aspectRatio = CGFloat(size.width) / CGFloat(size.height)
+        } else {
+            antBMS.aspectRatio = outputMode == .ninebotSeven ? 1024 / 600 : outputMode == .ninebot43 ? 480 / 272 : 848 / 480
+        }
         guard videoHeight != nil else { return }
         let plan = running ? (liveDisplay ?? planDisplay(for: targetScreen)) : planDisplay(for: targetScreen)
         let width = plan.width, height = plan.height
@@ -1868,7 +1873,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             skippedLocalVideo = true
             pictureInPicture.stop()
             videoSurface.suspendForExternalOutput()
-            log("极核仪表继续输出，手机预览已暂停；直传模式不需要手机端视频解码和编码")
+            log("极核仪表继续输出，手机预览已暂停；启用 BMS 卡片时使用兼容转码")
             return
         }
         pictureInPicture.awaitAutomaticStart()
@@ -2809,7 +2814,7 @@ extension ReceiverViewController {
                     rows.append(.control("CarPlay 画面", icon: ("aspectratio", .systemGreen), zeehoSEPlusCanvasControl))
                     rows.append(.control("视频发送方式", icon: ("film", .systemIndigo), zeehoSEPlusVideoModeControl))
                     rows.append(.info("当前发送方式", selectedZeehoVideoMode.title))
-                    rows.append(.info(CWL("使用说明"), "全宽适合本机 1600×770 仪表。直传兼容性待实测，黑屏时改回兼容转码。25 FPS 自动使用转码。锁屏时暂停手机预览，后台保持需开启。"))
+                    rows.append(.info(CWL("使用说明"), "全宽适合本机 1600×770 仪表。直传兼容性待实测，黑屏时改回兼容转码。25 FPS 或启用 BMS 卡片时自动使用转码。锁屏时暂停手机预览，后台保持需开启。"))
                 }
                 if usesAutomaticZeehoAddress {
                     rows.append(.info("仪表 IP", "连接时自动匹配，结果见日志"))

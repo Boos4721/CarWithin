@@ -18666,6 +18666,22 @@
           }
         }
       }
+    },
+    "BMS 电池卡片已启用，本次极核输出自动改用兼容转码": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BMS card enabled; this ZEEHO session now uses compatible transcoding."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BMS 电池卡片已启用，本次极核输出自动改用兼容转码"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

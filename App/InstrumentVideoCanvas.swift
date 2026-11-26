@@ -3,7 +3,7 @@ import CoreVideo
 import Foundation
 import ImageIO
 
-/// Shared canvas for Ninebot JPEG and H.264 outputs. Used only on the output queue.
+/// Shared canvas for Ninebot JPEG and Ninebot/ZEEHO H.264 outputs. Used only on the output queue.
 final class InstrumentVideoCanvas {
     private var bmsOverlay: CIImage?
     private var bmsConfiguration = ANTBMSCardConfiguration()

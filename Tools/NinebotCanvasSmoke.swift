@@ -58,8 +58,24 @@ struct NinebotCanvasSmoke {
         }
         print("PASS: 5/7-inch H.264 input canvases retain the same card composition")
 
+        for (width, height) in [(800, 480), (1600, 770), (1024, 480), (480, 800)] {
+            for position in ANTBMSCardConfiguration.Position.allCases {
+                for size in ANTBMSCardConfiguration.Size.allCases {
+                    config.position = position; config.size = size
+                    renderer.setBMSOverlay(red, configuration: config)
+                    let fitted = try renderer.fittedImage(source, width: width, height: height)
+                    precondition(CVPixelBufferGetWidth(fitted) == width && CVPixelBufferGetHeight(fitted) == height)
+                    let x: CGFloat = position.isAtRight ? CGFloat(width) - 60 : 60
+                    let y: CGFloat = position.isAtTop ? CGFloat(height) - 20 : 20
+                    try expectColor(CIImage(cvPixelBuffer: fitted), at: CGPoint(x: x, y: y), channel: 0)
+                    try expectColor(CIImage(cvPixelBuffer: fitted), at: CGPoint(x: width / 2, y: height / 2), channel: 2)
+                }
+            }
+        }
+        print("PASS: ZEEHO SE+/AE2/6.2 canvases support all corners and sizes, including reported portrait dimensions")
+
         config.position = .topRight; config.size = .medium
-        for (width, height) in [(848, 480), (1024, 600)] {
+        for (width, height) in [(848, 480), (1024, 600), (800, 480), (1600, 770), (1024, 480)] {
             for (card, channel) in [(red, 0), (green, 1)] {
                 renderer.setBMSOverlay(card, configuration: config)
                 let fitted = try renderer.fittedImage(source, width: width, height: height)
@@ -74,7 +90,7 @@ struct NinebotCanvasSmoke {
             precondition(pixel[0] < 90 && pixel[1] < 90, "Disabled card remains in H.264")
             try expectColor(CIImage(cvPixelBuffer: received), at: CGPoint(x: width / 2, y: height / 2), channel: 2)
         }
-        print("PASS: actual H.264 encode/decode retains card updates and removes disabled cards for Ninebot 5/7-inch formats")
+        print("PASS: actual H.264 encode/decode retains card updates and removes disabled cards for Ninebot 5/7-inch and ZEEHO SE+/AE2/6.2 formats")
 
         renderer.setBMSOverlay(nil, configuration: config)
         let sameSize = try buffer(width: 848, height: 480)
