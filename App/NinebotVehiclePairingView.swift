@@ -14,6 +14,8 @@ struct NinebotVehiclePairingView: View {
     @State private var vehicleToRename: NinebotVehicle?
     @State private var showsRename = false
     @State private var editedName = ""
+    @State private var showsOtherBluetooth = false
+    @State private var copiedScanDiagnostics = false
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { _ in
@@ -55,6 +57,7 @@ struct NinebotVehiclePairingView: View {
             finderSection
             successSection
             pairingControls(now: now)
+            scanDiagnosticsSection(now: now)
             savedVehiclesSection
         }
     }
@@ -166,11 +169,13 @@ struct NinebotVehiclePairingView: View {
             if connection.canScan {
                 Section {
                     if let window = connection.scanWindow {
-                        Text("扫描剩余 \(window.remaining(at: now)) 秒 · 已发现 \(connection.devices.count) 台")
+                        Text("扫描剩余 \(window.remaining(at: now)) 秒 · 九号已识别 \(connection.devices.count) 台")
                             .font(.footnote).foregroundStyle(.secondary).monospacedDigit()
                     }
                     if connection.devices.isEmpty {
-                        Text(connection.isScanning ? "正在等待已验证的九号车辆广播…" : "尚无扫描结果，点击上方按钮开始查找。")
+                        Text(connection.scanReport.packetCount > 0
+                            ? "已收到附近蓝牙广播，尚未识别到九号车辆。请展开下方其他蓝牙核对。"
+                            : connection.isScanning ? "正在等待九号车辆广播…" : "尚无已识别车辆，点击上方按钮开始扫描。")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                     ForEach(connection.devices) { device in
@@ -179,6 +184,51 @@ struct NinebotVehiclePairingView: View {
                 } header: {
                     Text("附近车辆")
                 } footer: { Text("仅显示通过九号广播校验的设备。相同名称可按本机识别码区分；信号强弱仅供参考，列表不会自动选车。") }
+            }
+        }
+    }
+
+    @ViewBuilder private func scanDiagnosticsSection(now: TimeInterval) -> some View {
+        if !locked, connection.canScan {
+            Section {
+                Text(connection.scanReport.summary)
+                    .font(.footnote).foregroundStyle(.secondary)
+                if connection.scanReport.entries.isEmpty {
+                    Text("保持 App 在前台扫描。给车辆通电并靠近；结束九号出行及其他设备上的车辆蓝牙连接后重试，车辆被占用时可能不再广播。")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+                if !connection.scanReport.unrecognized.isEmpty {
+                    DisclosureGroup(isExpanded: $showsOtherBluetooth) {
+                        ForEach(connection.scanReport.unrecognized) { item in
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text(item.name).foregroundStyle(.primary)
+                                Text("本机识别码 \(item.shortID) · \(NinebotPairingWindow.signal(item.rssi))")
+                                if item.systemConnected {
+                                    Text("扫描开始时系统已有连接，可能由其他 App 使用。请先结束官方车辆连接后重新扫描。")
+                                } else {
+                                    Text(NinebotPairingWindow.isFresh(lastSeen: item.lastSeen, now: now)
+                                         ? item.reason : "本轮曾收到，当前广播已过期。")
+                                }
+                                if item.hasUART { Text("包含通用指令服务提示，仍未确认车型和配对协议。") }
+                            }
+                            .font(.footnote).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .accessibilityElement(children: .combine)
+                        }
+                    } label: {
+                        Text("附近其他蓝牙（未确认）· \(connection.scanReport.unrecognized.count) 台")
+                    }
+                }
+                Button(copiedScanDiagnostics ? "再次复制扫描诊断" : "复制扫描诊断") {
+                    UIPasteboard.general.string = connection.scanDiagnosticsJSON
+                    copiedScanDiagnostics = true
+                }
+                if copiedScanDiagnostics { Text("已复制，可粘贴给开发者排查。新一轮扫描后请重新复制。")
+                    .font(.footnote).foregroundStyle(.secondary) }
+            } header: {
+                Text("找不到车辆？")
+            } footer: {
+                Text("其他蓝牙仅供核对，不会自动连接或发送配对请求。诊断包含本轮设备名称、本机识别码及广播格式摘要，不包含完整广播载荷或配对密钥。本机识别码不是蓝牙 MAC。最多记录 100 台。")
             }
         }
     }

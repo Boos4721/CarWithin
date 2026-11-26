@@ -18,6 +18,18 @@ final class NinebotVehicleConnection: NSObject, ObservableObject {
     }
 
     @Published private(set) var finder = NinebotVehicleFinder()
+    @Published private(set) var scanReport = NinebotScanDiagnostics()
+    private var scanInventory = NinebotScanDiagnostics()
+    private var lastScanReportUptime = -Double.infinity
+    var scanDiagnosticsJSON: String { scanInventory.json }
+
+    private func publishScanReport(force: Bool = false) {
+        let now = ProcessInfo.processInfo.systemUptime
+        if force || now - lastScanReportUptime >= 1 {
+            scanReport = scanInventory
+            lastScanReportUptime = now
+        }
+    }
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var status = "请扫描并选择车辆。"
     @Published private(set) var devices: [Device] = []
@@ -143,6 +155,9 @@ final class NinebotVehicleConnection: NSObject, ObservableObject {
         }
         central.stopScan()
         scanDetails.removeAll()
+        scanInventory = NinebotScanDiagnostics()
+        scanReport = scanInventory
+        lastScanReportUptime = -Double.infinity
         devices.removeAll()
         peripherals.removeAll()
         discoveryOrder.removeAll()
@@ -157,8 +172,11 @@ final class NinebotVehicleConnection: NSObject, ObservableObject {
             let ids = Set(self.devices.filter { $0.isConnectable && self.isFresh($0, at: ProcessInfo.processInfo.systemUptime) }.map(\.id))
             self.finder.completeRound(ids: ids)
             self.stopScan()
+            self.onLog?("车辆扫描摘要：" + self.scanReport.summary)
             self.transition(.idle, self.devices.isEmpty
-                ? "扫描结束，未发现已验证的九号车辆。请给车辆通电、靠近车辆后重新扫描。"
+                ? (self.scanReport.packetCount == 0
+                    ? "本轮没有收到蓝牙广播。请在前台扫描，确认蓝牙权限、给车辆通电并靠近后重试。"
+                    : "已收到附近蓝牙广播，但尚未识别出九号车辆。请查看附近其他蓝牙并复制扫描诊断。")
                 : "扫描已结束，可选择仍在附近的车辆；广播过期后请重新扫描。")
         }
         scanTimeoutTask = timeout
@@ -166,6 +184,15 @@ final class NinebotVehicleConnection: NSObject, ObservableObject {
         // Some supported vehicles omit the UART service from their advertisement.
         central.scanForPeripherals(withServices: nil, options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
         isScanning = true
+        // These devices may be connected by another app and no longer advertise.
+        // Listing them does not establish pairing eligibility or take ownership.
+        for item in central.retrieveConnectedPeripherals(withServices: [Self.service]) {
+            scanInventory.observe(id: item.identifier, name: item.name, rssi: nil,
+                services: [Self.service.uuidString], manufacturerData: nil,
+                evidence: DiscoveryEvidence(), now: ProcessInfo.processInfo.systemUptime,
+                systemConnected: true)
+        }
+        publishScanReport(force: true)
         transition(.scanning, "正在扫描九号车辆…")
     }
 
@@ -197,6 +224,7 @@ final class NinebotVehicleConnection: NSObject, ObservableObject {
     }
 
     func stopScan() {
+        publishScanReport(force: true)
         scanEpoch = UUID()
         scanTimeoutTask?.cancel(); scanTimeoutTask = nil
         scanWindow = nil
@@ -862,6 +890,16 @@ extension NinebotVehicleConnection: @preconcurrency CBCentralManagerDelegate {
             localName: advertisementData[CBAdvertisementDataLocalNameKey] as? String,
             isConnectable: (advertisementData[CBAdvertisementDataIsConnectable] as? NSNumber)?.boolValue
         )
+        let advertisedServices = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] ?? []
+        let overflowServices = advertisementData[CBAdvertisementDataOverflowServiceUUIDsKey] as? [CBUUID] ?? []
+        let serviceData = advertisementData[CBAdvertisementDataServiceDataKey] as? [CBUUID: Data] ?? [:]
+        let services = (advertisedServices + overflowServices + Array(serviceData.keys)).map(\.uuidString)
+        scanInventory.observe(id: item.identifier,
+            name: advertisementData[CBAdvertisementDataLocalNameKey] as? String ?? item.name,
+            rssi: rssi.intValue, services: services,
+            manufacturerData: advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data,
+            evidence: evidence, now: ProcessInfo.processInfo.systemUptime)
+        publishScanReport()
         guard identified, let advertisement = evidence.advertisement else {
             // Retain bounded name-first/connectability-first packets, without
             // displaying an unverified peripheral as supported or selectable.
