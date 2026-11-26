@@ -13,6 +13,7 @@ trap 'rm -rf "$canvas_test_dir"' EXIT
     "$project_root/Sources/TDSCarKitCore/VideoCodec.swift" \
     "$project_root/Sources/TDSCarKitCore/AnnexB.swift" \
     "$project_root/Sources/TDSCarKitCore/Localization.swift" \
+    "$project_root/App/NinebotProtocol.swift" \
     "$project_root/App/NinebotH264Encoder.swift" "$project_root/App/TailingH264Decoder.swift" \
     -framework AVFoundation -framework VideoToolbox -framework CoreImage -framework CoreVideo -framework ImageIO -o "$canvas_test_dir/canvas-tests"
 "$canvas_test_dir/canvas-tests"
