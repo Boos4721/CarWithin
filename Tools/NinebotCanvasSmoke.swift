@@ -86,7 +86,7 @@ struct NinebotCanvasSmoke {
             renderer.setBMSOverlay(nil, configuration: config)
             let fitted = try renderer.fittedImage(source, width: width, height: height)
             let received = try h264RoundTrip(fitted, width: width, height: height)
-            let pixel = pixel(CIImage(cvPixelBuffer: received), at: CGPoint(x: width - 60, y: height - 20))
+            let pixel = Self.pixel(CIImage(cvPixelBuffer: received), at: CGPoint(x: width - 60, y: height - 20))
             precondition(pixel[0] < 90 && pixel[1] < 90, "Disabled card remains in H.264")
             try expectColor(CIImage(cvPixelBuffer: received), at: CGPoint(x: width / 2, y: height / 2), channel: 2)
         }
@@ -122,7 +122,7 @@ struct NinebotCanvasSmoke {
         return value
     }
     static func expectColor(_ image: CIImage, at point: CGPoint, channel: Int) throws {
-        let pixel = pixel(image, at: point)
+        let pixel = Self.pixel(image, at: point)
         precondition(pixel[channel] > 170 && (0..<3).filter { $0 != channel }.allSatisfy { pixel[$0] < 90 },
             "Unexpected pixel at \(point): \(pixel), expected channel \(channel)")
     }
