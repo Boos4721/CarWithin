@@ -134,6 +134,10 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let zeehoSEPlusFrameRateControl = ChoiceMenu(items: ZeehoFrameRate.allCases.map(\.title))
     private let zeehoSEPlusCanvasControl = ChoiceMenu(items: ZeehoCanvas.allCases.map(\.title))
     private let zeehoSEPlusVideoModeControl = ChoiceMenu(items: ZeehoVideoMode.allCases.map(\.title))
+    /// AE4i Pro+ 单独可调：帧率、码率、H.264 档位。
+    private let zeehoAE4iFrameRateControl = ChoiceMenu(items: ZeehoFrameRate.allCases.map(\.title))
+    private let zeehoAE4iBitrateControl = ChoiceMenu(items: ZeehoBitrate.allCases.map(\.title))
+    private let zeehoAE4iEncodeProfileControl = ChoiceMenu(items: ZeehoEncodeProfile.allCases.map(\.title))
     private let audioRoutePicker: AVRoutePickerView = {
         let picker = AVRoutePickerView()
         picker.prioritizesVideoDevices = false
@@ -153,14 +157,30 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         AVAudioSession.sharedInstance().currentRoute.outputs.map { "\($0.portName)（\($0.portType.rawValue)）" }.joined(separator: "、")
     }
     private var selectedZeehoFrameRate: ZeehoFrameRate {
+        if outputMode == .zeehoAE4i { return selectedZeehoAE4iFrameRate }
         guard outputMode == .zeehoSEPlus else { return .fps25 }
         let rates = ZeehoFrameRate.allCases
         let index = max(0, min(zeehoSEPlusFrameRateControl.selectedSegmentIndex, rates.count - 1))
         return rates[index]
     }
+    private var selectedZeehoAE4iFrameRate: ZeehoFrameRate {
+        let rates = ZeehoFrameRate.allCases
+        let index = max(0, min(zeehoAE4iFrameRateControl.selectedSegmentIndex, rates.count - 1))
+        return rates[index]
+    }
+    private var selectedZeehoAE4iBitrate: ZeehoBitrate {
+        let options = ZeehoBitrate.allCases
+        let index = max(0, min(zeehoAE4iBitrateControl.selectedSegmentIndex, options.count - 1))
+        return options[index]
+    }
+    private var selectedZeehoAE4iEncodeProfile: ZeehoEncodeProfile {
+        let options = ZeehoEncodeProfile.allCases
+        let index = max(0, min(zeehoAE4iEncodeProfileControl.selectedSegmentIndex, options.count - 1))
+        return options[index]
+    }
     private var usesAutomaticZeehoAddress: Bool {
-        if outputMode == .zeehoSEPlus { return zeehoSEPlusAutomaticSwitch.isOn }
-        return outputMode == .zeeho && zeeho62AutomaticSwitch.isOn
+        if pausesLocalPreviewWhenInactive { return zeehoSEPlusAutomaticSwitch.isOn }
+        return (outputMode == .zeeho || outputMode == .zeehoAE4i) && zeeho62AutomaticSwitch.isOn
     }
     private var activeZeehoAddressField: UITextField {
         outputMode == .zeehoSEPlus ? zeehoSEPlusAddressField : zeehoAddressField
@@ -237,9 +257,9 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let headUnitOutput = ChoiceMenu(items: HeadUnitOutput.menuOrder.map(\.title))
     private enum HeadUnitOutput: Int {
         // Persisted in headUnitOutputV2. Append new modes after existing values.
-        case browser, carLife, airPlay, tailing, ninebot, zeeho, ninebotSeven, ninebot43, zeehoSEPlus, zeehoAE2, cfmoto5, cfmoto62
+        case browser, carLife, airPlay, tailing, ninebot, zeeho, ninebotSeven, ninebot43, zeehoSEPlus, zeehoAE2, cfmoto5, cfmoto62, zeehoAE4i
         // Display order is independent of the persisted raw values above.
-        static let menuOrder: [Self] = [.browser, .carLife, .airPlay, .ninebot43, .ninebot, .ninebotSeven, .tailing, .zeeho, .zeehoSEPlus, .zeehoAE2, .cfmoto5, .cfmoto62]
+        static let menuOrder: [Self] = [.browser, .carLife, .airPlay, .ninebot43, .ninebot, .ninebotSeven, .tailing, .zeeho, .zeehoAE4i, .zeehoSEPlus, .zeehoAE2, .cfmoto5, .cfmoto62]
         var menuIndex: Int { Self.menuOrder.firstIndex(of: self)! }
         var title: String {
             switch self {
@@ -250,6 +270,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             case .ninebot: return CWL("九号 5 寸")
             case .ninebotSeven: return CWL("九号 7 寸")
             case .tailing: return CWL("台铃 4.3 寸")
+            case .zeehoAE4i: return "极核 AE4i Pro+ 6.2 寸"
             case .zeeho: return CWL("极核 6.2 寸")
             case .zeehoSEPlus: return CWL("极核 SE+ 5/5.5 寸")
             case .zeehoAE2: return CWL("极核 AE2 Pro 5 寸")
@@ -268,6 +289,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         var zeehoProfile: TailingDisplayProfile? {
             switch self {
             case .zeeho: return .zeeho62
+            case .zeehoAE4i: return .zeehoAE4i
             case .zeehoAE2: return .zeehoAE2
             case .zeehoSEPlus: return .zeehoSEPlus
             default: return nil
@@ -307,6 +329,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         let index = headUnitOutput.selectedSegmentIndex
         return HeadUnitOutput.menuOrder.indices.contains(index) ? HeadUnitOutput.menuOrder[index] : .browser
     }
+    /// 仪表自己出画面时，本机预览只是额外负担：离开 App 后暂停解码，也不再开画中画。
+    private var pausesLocalPreviewWhenInactive: Bool { outputMode == .zeehoSEPlus || outputMode == .zeehoAE4i }
     private let carLifeAddressField = UITextField()
     private let carLifeStatus = StatusLabel()
     private func updateCarLifeStatus(_ message: String) {
@@ -654,7 +678,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             if self.outputMode == .airPlay { self.airPlayLastVideoAt = ProcessInfo.processInfo.systemUptime }
             // Nothing local is visible in the background without PiP: save the decoding work.
             // The browser output is fed before this callback and keeps running.
-            if (self.outputMode == .zeehoSEPlus && UIApplication.shared.applicationState != .active)
+            if (self.pausesLocalPreviewWhenInactive && UIApplication.shared.applicationState != .active)
                 || (UIApplication.shared.applicationState == .background && !self.pictureInPicture.canKeepSessionInBackground) {
                 self.skippedLocalVideo = true; return
             }
@@ -667,7 +691,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
                     self.networkStartupTask?.cancel()
                     self.networkStartupTask = nil
                     self.videoActions.isHidden = false; self.controlBar.isHidden = false
-                    self.pictureInPictureButton.isHidden = self.outputMode == .zeehoSEPlus
+                    self.pictureInPictureButton.isHidden = self.pausesLocalPreviewWhenInactive
                     self.log(CWL("视频已送入本机显示层"))
                     if UIDevice.current.userInterfaceIdiom == .pad { self.showFullscreen() }
                     self.updatePictureInPicturePolicy()
@@ -686,7 +710,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         videoSurface.onLog = { [weak self] in self?.log($0) }
         videoSurface.onKeyframeNeeded = { [weak self] reason in
             guard let self else { return }
-            if self.outputMode == .zeehoSEPlus, UIApplication.shared.applicationState != .active { return }
+            if self.pausesLocalPreviewWhenInactive, UIApplication.shared.applicationState != .active { return }
             // In the background without PiP nothing is drawn locally; asking for keyframes then
             // would only bloat the browser stream with repeated IDRs.
             guard UIApplication.shared.applicationState != .background || self.pictureInPicture.canKeepSessionInBackground else { return }
@@ -1208,6 +1232,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             config.zeehoProfile = profile
             config.zeehoFrameRate = selectedZeehoFrameRate
             config.zeehoVideoMode = selectedZeehoVideoMode
+            config.zeehoBitrate = outputMode == .zeehoAE4i ? selectedZeehoAE4iBitrate : .auto
+            config.zeehoEncodeProfile = outputMode == .zeehoAE4i ? selectedZeehoAE4iEncodeProfile : .baseline
             config.zeehoAutomaticAddress = usesAutomaticZeehoAddress
             config.zeehoAddress = (activeZeehoAddressField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         }
@@ -1853,6 +1879,9 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         zeehoSEPlusFrameRateControl.isEnabled = value
         zeehoSEPlusCanvasControl.isEnabled = value
         zeehoSEPlusVideoModeControl.isEnabled = value
+        zeehoAE4iFrameRateControl.isEnabled = value
+        zeehoAE4iBitrateControl.isEnabled = value
+        zeehoAE4iEncodeProfileControl.isEnabled = value
         cfmotoAddressField.isEnabled = value
         ninebotAddressField.isEnabled = value
         ninebot43AddressField.isEnabled = value
@@ -1863,7 +1892,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         guard running else { return }
         // Normally already running; retry if foreground activation failed.
         if keepAliveSwitch.isOn { keepAlive.start() }
-        if outputMode == .zeehoSEPlus {
+        if pausesLocalPreviewWhenInactive {
             receiver.setLocalVideoEnabled(false)
             skippedLocalVideo = true
             pictureInPicture.stop()
@@ -2114,6 +2143,15 @@ extension ReceiverViewController {
         zeehoSEPlusCanvasControl.selectedSegmentIndex = (ZeehoCanvas(rawValue: defaults.integer(forKey: "zeehoSEPlusCanvas")) ?? .wide).rawValue
         zeehoSEPlusCanvasControl.addTarget(self, action: #selector(zeehoVideoSettingsChanged), for: .valueChanged)
         zeehoSEPlusVideoModeControl.selectedSegmentIndex = (ZeehoVideoMode(rawValue: defaults.integer(forKey: "zeehoSEPlusVideoMode")) ?? .transcode).rawValue
+        let savedAE4iFrameRate = ZeehoFrameRate(rawValue: defaults.integer(forKey: "zeehoAE4iFrameRate")) ?? .fps25
+        zeehoAE4iFrameRateControl.selectedSegmentIndex = ZeehoFrameRate.allCases.firstIndex(of: savedAE4iFrameRate) ?? 0
+        zeehoAE4iFrameRateControl.addTarget(self, action: #selector(zeehoAE4iSettingsChanged), for: .valueChanged)
+        let savedAE4iBitrate = ZeehoBitrate(rawValue: defaults.integer(forKey: "zeehoAE4iBitrate")) ?? .auto
+        zeehoAE4iBitrateControl.selectedSegmentIndex = ZeehoBitrate.allCases.firstIndex(of: savedAE4iBitrate) ?? 0
+        zeehoAE4iBitrateControl.addTarget(self, action: #selector(zeehoAE4iSettingsChanged), for: .valueChanged)
+        let savedAE4iProfile = ZeehoEncodeProfile(rawValue: defaults.integer(forKey: "zeehoAE4iEncodeProfile")) ?? .baseline
+        zeehoAE4iEncodeProfileControl.selectedSegmentIndex = ZeehoEncodeProfile.allCases.firstIndex(of: savedAE4iProfile) ?? 0
+        zeehoAE4iEncodeProfileControl.addTarget(self, action: #selector(zeehoAE4iSettingsChanged), for: .valueChanged)
         zeehoSEPlusVideoModeControl.addTarget(self, action: #selector(zeehoVideoSettingsChanged), for: .valueChanged)
         cfmotoAddressField.text = defaults.string(forKey: "cfmotoAddress") ?? "192.168.0.1"
         cfmotoAddressField.keyboardType = .decimalPad
@@ -2187,6 +2225,15 @@ extension ReceiverViewController {
         UserDefaults.standard.set(selectedZeehoCanvas.rawValue, forKey: "zeehoSEPlusCanvas")
         UserDefaults.standard.set(zeehoSEPlusVideoModeControl.selectedSegmentIndex, forKey: "zeehoSEPlusVideoMode")
         updateVideoAspect()
+        refreshVideoOutputSummary()
+        reloadVisibleSettings()
+    }
+    @objc private func zeehoAE4iSettingsChanged() {
+        guard !running else { return }
+        let defaults = UserDefaults.standard
+        defaults.set(selectedZeehoAE4iFrameRate.rawValue, forKey: "zeehoAE4iFrameRate")
+        defaults.set(selectedZeehoAE4iBitrate.rawValue, forKey: "zeehoAE4iBitrate")
+        defaults.set(selectedZeehoAE4iEncodeProfile.rawValue, forKey: "zeehoAE4iEncodeProfile")
         refreshVideoOutputSummary()
         reloadVisibleSettings()
     }
@@ -2411,7 +2458,7 @@ extension ReceiverViewController {
                 SettingsSection(CWL("连接与输出"), connection),
                 SettingsSection("CarPlay", [
                     .page(CWL("画面"), icon: ("rectangle.on.rectangle", .systemGreen), detail: { [unowned self] in
-                        if self.outputMode == .zeehoSEPlus { return "跟随仪表上报尺寸" }
+                        if self.outputMode.zeehoProfile.map({ $0 != .zeeho62 }) == true { return "跟随仪表上报尺寸" }
                         return self.outputMode.usesInstrumentWiFi ? CWL("仪表固定尺寸") : self.followsCarScreen ? CWL("跟随车机") : self.resolutionControl.selectedTitle.components(separatedBy: "（").first
                     }) { [unowned self] in self.displayPage() },
                     .control(CWL("CarPlay 外观"), icon: ("circle.lefthalf.filled", .systemBlue), appearanceControl),
@@ -2800,10 +2847,23 @@ extension ReceiverViewController {
             case .carLife: return carLifeOutputSections()
             case .airPlay: return airPlayOutputSections()
             case .tailing: return tailingOutputSections()
-            case .zeeho, .zeehoSEPlus, .zeehoAE2:
-                let name = outputMode == .zeehoAE2 ? "极核 AE2 Pro 5 寸" : outputMode == .zeehoSEPlus ? "极核 AE4 SE+ 升级版 5/5.5 寸" : CWL("极核 AE4 MAX2+ 6.2 寸")
+            case .zeeho, .zeehoAE4i, .zeehoSEPlus, .zeehoAE2:
+                let name: String
+                switch outputMode {
+                case .zeehoAE2: name = "极核 AE2 Pro 5 寸"
+                case .zeehoSEPlus: name = "极核 AE4 SE+ 升级版 5/5.5 寸"
+                case .zeehoAE4i: name = "极核 AE4i Pro+ 6.2 寸（2048×968）"
+                default: name = "极核 AE4 MAX2+ 6.2 寸"
+                }
                 var rows: [SettingsRow] = []
                 rows.append(.control("自动查找仪表 IP", icon: ("network", .systemBlue), outputMode == .zeehoSEPlus ? zeehoSEPlusAutomaticSwitch : zeeho62AutomaticSwitch))
+                if outputMode == .zeehoAE4i {
+                    rows.append(.info("画面规格", "跟随仪表上报尺寸 · 最高 2048×968 · H.264"))
+                    rows.append(.control("仪表目标帧率", icon: ("gauge.with.dots.needle.67percent", .systemGreen), zeehoAE4iFrameRateControl))
+                    rows.append(.control("编码码率", icon: ("speedometer", .systemOrange), zeehoAE4iBitrateControl))
+                    rows.append(.control("编码档位", icon: ("film", .systemIndigo), zeehoAE4iEncodeProfileControl))
+                    rows.append(.info("当前参数", "\(selectedZeehoAE4iFrameRate.rawValue) FPS · \(selectedZeehoAE4iBitrate.title) · \(selectedZeehoAE4iEncodeProfile.title)"))
+                }
                 if outputMode == .zeehoSEPlus {
                     rows.append(.control("仪表目标帧率", icon: ("gauge.with.dots.needle.67percent", .systemGreen), zeehoSEPlusFrameRateControl))
                     rows.append(.control("CarPlay 画面", icon: ("aspectratio", .systemGreen), zeehoSEPlusCanvasControl))
@@ -3192,7 +3252,9 @@ extension ReceiverViewController {
         page(CWL("关于")) { [unowned self] in
             [
                 SettingsSection([.view(self.aboutIdentityCard())]),
-                SettingsSection(footer: "Copyright © 2026 xmz28", self.aboutLinks())
+                SettingsSection(footer: "Copyright © 2026 xmz28", self.aboutLinks() + [
+                    .info("极核 AE4i Pro+ 适配", "飞扬大大 · 大肥鱼（AI 助手）")
+                ])
             ]
         }
     }

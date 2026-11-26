@@ -1,0 +1,92 @@
+name: Build unsigned IPA
+
+# 没有 Mac 也能出包：在 GitHub 的 macOS 运行器上编译，产物是未签名的 .ipa，
+# 下载后用 Sideloadly / AltStore / TrollStore / 全能签 等按自己的方式签名安装。
+#
+# 上游把 MFi 身份文件（certificate.p7b / leaf.cer / private.x963）排除在仓库和工程之外，
+# 所以这里从公开的 v1.0.4 发布包里取回，并在**打包前**塞进 .app ——
+# 不放进去时 App 会提示「Keychain 中未存储 MFi 身份」，CarPlay 起不来。
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          xcode-select -p
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: Fetch accessory identity from the public 1.0.4 release
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/identity"
+          curl -fsSL -o "$RUNNER_TEMP/identity/1.0.4.ipa" \
+            "https://github.com/xmz28/CarWithin/releases/download/v1.0.4/CarWithin-1.0.4-unsigned.ipa"
+          unzip -q "$RUNNER_TEMP/identity/1.0.4.ipa" -d "$RUNNER_TEMP/identity/unpacked"
+          SRC_APP="$(find "$RUNNER_TEMP/identity/unpacked/Payload" -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$SRC_APP"
+          for name in certificate.p7b leaf.cer private.x963; do
+            cp "$SRC_APP/$name" "$RUNNER_TEMP/identity/$name"
+          done
+          ls -l "$RUNNER_TEMP/identity"
+
+      - name: Build unsigned app
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project TDSCarKit.xcodeproj \
+            -scheme TDSCarKit \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            DEVELOPMENT_TEAM="" \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          PRODUCTS="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos"
+          APP="$(find "$PRODUCTS" -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$APP"
+          echo "app: $APP"
+          for name in certificate.p7b leaf.cer private.x963; do
+            cp "$RUNNER_TEMP/identity/$name" "$APP/$name"
+          done
+          ls -l "$APP" | grep -E 'certificate|leaf|private' || true
+          VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")"
+          echo "version: $VERSION"
+          mkdir -p build/ipa/Payload
+          cp -R "$APP" build/ipa/Payload/
+          cd build/ipa
+          zip -qry "CarWithin-$VERSION-unsigned.ipa" Payload
+          ls -lh "CarWithin-$VERSION-unsigned.ipa"
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarWithin-unsigned-ipa
+          path: build/ipa/*.ipa
+          if-no-files-found: error
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: |
+            ${{ runner.temp }}/DerivedData/Logs/**
+          if-no-files-found: ignore
