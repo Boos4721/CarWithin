@@ -970,7 +970,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     }
     private func updateVideoAspect() {
         antBMS.recordingVehicleName = headUnitOutput.selectedTitle
-        antBMS.aspectRatio = outputMode == .ninebotSeven ? 1024 / 600 : 848 / 480
+        antBMS.aspectRatio = outputMode == .ninebotSeven ? 1024 / 600 : outputMode == .ninebot43 ? 480 / 272 : 848 / 480
         guard videoHeight != nil else { return }
         let plan = running ? (liveDisplay ?? planDisplay(for: targetScreen)) : planDisplay(for: targetScreen)
         let width = plan.width, height = plan.height
