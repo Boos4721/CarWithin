@@ -15,6 +15,7 @@ Path(sys.argv[2]).write_text('import Foundation\n' + source[start:end] + '\n')
 PYTHON
 "${SWIFTC:-swiftc}" -swift-version 5 \
     "$zeeho_bms_dir/ConfigurationError.swift" \
+    "$project_root/Sources/TDSCarKitCore/BMSFamily.swift" \
     "$project_root/Sources/TDSCarKitCore/ANTBMSProtocol.swift" \
     "$project_root/Sources/TDSCarKitCore/ANTBMSCardConfiguration.swift" \
     "$project_root/Sources/TDSCarKitCore/Localization.swift" \

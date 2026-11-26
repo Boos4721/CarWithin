@@ -5,6 +5,7 @@ project_root="$(cd "$(dirname "$0")/.." && pwd)"
 canvas_test_dir="$(mktemp -d "${TMPDIR:-/tmp}/carwithin-ninebot-canvas.XXXXXX")"
 trap 'rm -rf "$canvas_test_dir"' EXIT
 "${SWIFTC:-swiftc}" -swift-version 5 \
+    "$project_root/Sources/TDSCarKitCore/BMSFamily.swift" \
     "$project_root/Sources/TDSCarKitCore/ANTBMSProtocol.swift" \
     "$project_root/Sources/TDSCarKitCore/ANTBMSCardConfiguration.swift" \
     "$project_root/App/InstrumentVideoCanvas.swift" "$project_root/Tools/NinebotCanvasSmoke.swift" \
