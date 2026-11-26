@@ -13,12 +13,13 @@ final class ZeehoOutput {
                frameRate: ZeehoFrameRate = .fps25,
                videoMode: ZeehoVideoMode = .transcode, sourceSize: InstrumentFrameSize? = nil,
                phone: TailingPhoneInfo, onState: @escaping (String) -> Void,
-               onLog: @escaping (String) -> Void, requestKeyframe: @escaping () -> Void) {
+               onLog: @escaping (String) -> Void, requestKeyframe: @escaping () -> Void,
+               onGiveUp: (() -> Void)? = nil) {
         stop()
         let next = Session(queue: queue, localAddress: localAddress, targetAddress: targetAddress,
                            profile: profile, frameRate: frameRate, videoMode: videoMode,
                            sourceSize: sourceSize ?? profile.preferredSize, phone: phone,
-                           onState: onState, onLog: onLog, requestKeyframe: requestKeyframe)
+                           onState: onState, onLog: onLog, requestKeyframe: requestKeyframe, onGiveUp: onGiveUp)
         session = next
         next.start()
     }
@@ -40,6 +41,7 @@ final class ZeehoOutput {
         let onState: (String) -> Void
         let onLog: (String) -> Void
         let requestKeyframe: () -> Void
+        let onGiveUp: (() -> Void)?
         private let lock = NSLock()
         private var cancelled = false
         private var acceptingFrames = true
@@ -49,7 +51,12 @@ final class ZeehoOutput {
         private var decodeError: Error?
         private var encoded: Result<H264EncodedFrame, Error>?
 
-        private let connection: TailingConnection
+        private let localAddress: String
+        private let targetAddress: String
+        private let profile: TailingDisplayProfile
+        private let videoMode: ZeehoVideoMode
+        private let phone: TailingPhoneInfo
+        private var connection: TailingConnection?
         private let frameRate: ZeehoFrameRate
         private let sourceSize: InstrumentFrameSize
         private var usesRelay: Bool
@@ -65,6 +72,8 @@ final class ZeehoOutput {
         private var relayWriteTime = 0.0
         private var decoder: TailingH264Decoder?
         private var encoder: H264Encoder?
+        private var scaledBuffer: CVPixelBuffer?
+        private var scaledBufferSize = (0, 0)
         private var parameters = VideoParameterSets(codec: .h264)
         private var waitingForIDR = true
         private var latest: CVPixelBuffer?
@@ -84,88 +93,179 @@ final class ZeehoOutput {
              frameRate: ZeehoFrameRate,
              videoMode: ZeehoVideoMode, sourceSize: InstrumentFrameSize,
              phone: TailingPhoneInfo, onState: @escaping (String) -> Void, onLog: @escaping (String) -> Void,
-             requestKeyframe: @escaping () -> Void) {
+             requestKeyframe: @escaping () -> Void, onGiveUp: (() -> Void)? = nil) {
             self.queue = queue
+            self.localAddress = localAddress
+            self.targetAddress = targetAddress
+            self.profile = profile
+            self.videoMode = videoMode
+            self.phone = phone
             self.frameRate = frameRate
             self.sourceSize = sourceSize
             self.usesRelay = profile == .zeehoSEPlus && videoMode.effective(for: frameRate) == .relay
-            self.connection = TailingConnection(localIP: localAddress, targetIP: targetAddress,
-                profile: profile, phone: phone, log: onLog)
             self.onState = onState
             self.onLog = onLog
             self.requestKeyframe = requestKeyframe
+            self.onGiveUp = onGiveUp
         }
 
         func start() {
             report(CWL("正在连接极核仪表…"))
             DispatchQueue.global(qos: .userInitiated).async { [self] in
-                do {
-                    let size = try connection.start()
-                    guard active else { return }
-                    report("仪表已连接 · \(size)，等待 CarPlay 画面…")
-                    if isRelaying, sourceSize != size {
-                        lock.withLock { usesRelay = false }
-                        onLog("直传尺寸 \(sourceSize) 与仪表 \(size) 不同，本次改用兼容转码")
-                        requestKeyframe()
+                var retryAttempt = 0
+                let retryDelays = [1.5, 3.0, 5.0]
+                var disconnectedSince: TimeInterval?
+                let maxReconnectDuration: TimeInterval = 180
+                while active {
+                    let initialUsesRelay = profile == .zeehoSEPlus && videoMode.effective(for: frameRate) == .relay
+                    lock.withLock { usesRelay = initialUsesRelay }
+                    sentPicture = false
+                    counter = 0
+                    lastReply = nil
+                    relayCondition.lock()
+                    relayBuffer.reset()
+                    relayError = nil
+                    relayInputFrames = 0
+                    relayPullTime = 0
+                    relayWriteTime = 0
+                    relayCondition.unlock()
+                    queue.sync {
+                        encoder?.invalidate()
+                        encoder = nil
+                        lastKeyframe = -.infinity
                     }
-                    if isRelaying {
-                        onLog("极核使用 H.264 原码流直传，不执行手机端解码、缩放或编码；仪表兼容性需实测")
-                        try runRelay(size: size)
-                    } else {
-                        onLog("极核使用兼容转码，CarPlay 源画面 \(sourceSize)，仪表输出 \(size)")
-                        var first = true
-                        var nextFrame = ProcessInfo.processInfo.systemUptime
-                        while active {
-                            try connection.checkHealth()
-                            let ready = queue.sync { latest != nil }
-                            if !ready { Thread.sleep(forTimeInterval: 0.05); continue }
-                            let remaining = nextFrame - ProcessInfo.processInfo.systemUptime
-                            if remaining > 0 { Thread.sleep(forTimeInterval: min(remaining, 0.04)); continue }
-                            try connection.waitForH264Request()
-                            nextFrame = ProcessInfo.processInfo.systemUptime + 1.0 / Double(frameRate.rawValue)
-                            guard active else { break }
-                            let result = queue.sync { () -> H264EncodedFrame? in
-                                guard active, let image = latest else { return nil }
-                                return encode(image, size: size, at: ProcessInfo.processInfo.systemUptime, forceKeyframe: first)
-                            }
-                            guard let result else {
-                                // Preserve the pending pull request until an encodable frame is available.
-                                var recovered: H264EncodedFrame?
-                                for _ in 0..<20 where active && recovered == nil {
-                                    Thread.sleep(forTimeInterval: 0.05)
-                                    recovered = queue.sync {
-                                        guard let image = latest else { return nil }
-                                        return encode(image, size: size, at: ProcessInfo.processInfo.systemUptime, forceKeyframe: true)
-                                    }
+                    let conn = TailingConnection(localIP: localAddress, targetIP: targetAddress,
+                                                 profile: profile, phone: phone, log: onLog)
+                    guard installConnection(conn) else { break }
+                    do {
+                        let size = try conn.start()
+                        guard active else { break }
+                        retryAttempt = 0
+                        disconnectedSince = nil
+                        report("仪表已连接 · \(size)，等待 CarPlay 画面…")
+                        if isRelaying, sourceSize != size {
+                            lock.withLock { usesRelay = false }
+                            onLog("直传尺寸 \(sourceSize) 与仪表 \(size) 不同，本次改用兼容转码")
+                            requestKeyframe()
+                        }
+                        if isRelaying {
+                            onLog("极核使用 H.264 原码流直传，不执行手机端解码、缩放或编码；仪表兼容性需实测")
+                            try runRelay(connection: conn, size: size)
+                        } else {
+                            onLog("极核使用兼容转码，CarPlay 源画面 \(sourceSize)，仪表输出 \(size)")
+                            var first = true
+                            var nextFrame = ProcessInfo.processInfo.systemUptime
+                            while active {
+                                try conn.checkHealth()
+                                let ready = queue.sync { latest != nil }
+                                if !ready { Thread.sleep(forTimeInterval: 0.05); continue }
+                                let remaining = nextFrame - ProcessInfo.processInfo.systemUptime
+                                if remaining > 0 { Thread.sleep(forTimeInterval: min(remaining, 0.04)); continue }
+                                try conn.waitForH264Request()
+                                nextFrame = ProcessInfo.processInfo.systemUptime + 1.0 / Double(frameRate.rawValue)
+                                guard active else { break }
+                                let result = queue.sync { () -> H264EncodedFrame? in
+                                    guard active, let image = latest else { return nil }
+                                    return encode(image, size: size, at: ProcessInfo.processInfo.systemUptime, forceKeyframe: first)
                                 }
-                                guard let recovered else { throw TailingError.timeout(CWL("等待 H.264 编码画面")) }
-                                try connection.sendH264(recovered.data)
+                                guard let result else {
+                                    // Preserve the pending pull request for up to 3s to survive lock-transition encoder rebuilds.
+                                    var recovered: H264EncodedFrame?
+                                    for _ in 0..<60 where active && recovered == nil {
+                                        try conn.checkHealth()
+                                        Thread.sleep(forTimeInterval: 0.05)
+                                        recovered = queue.sync {
+                                            guard let image = latest else { return nil }
+                                            return encode(image, size: size, at: ProcessInfo.processInfo.systemUptime, forceKeyframe: true)
+                                        }
+                                    }
+                                    guard let recovered else { throw TailingError.timeout(CWL("等待 H.264 编码画面")) }
+                                    try conn.sendH264(recovered.data)
+                                    first = false
+                                    reportFrameSent(size: size)
+                                    continue
+                                }
+                                try conn.sendH264(result.data)
                                 first = false
                                 reportFrameSent(size: size)
-                                continue
                             }
-                            try connection.sendH264(result.data)
-                            first = false
-                            reportFrameSent(size: size)
+                        }
+                    } catch {
+                        if active {
+                            let now = ProcessInfo.processInfo.systemUptime
+                            if disconnectedSince == nil { disconnectedSince = now }
+                            if let since = disconnectedSince, now - since >= maxReconnectDuration {
+                                onLog("极核连续 3 分钟无法连接仪表，已自动停止以节省后台资源")
+                                report("极核已离开仪表 Wi-Fi，自动停止")
+                                clearConnection(conn)
+                                conn.close()
+                                onGiveUp?()
+                                break
+                            }
+                            let delay = retryDelays[min(retryAttempt, retryDelays.count - 1)]
+                            retryAttempt += 1
+                            onLog("极核输出中断（\(error.localizedDescription)），\(String(format: "%.1f", delay)) 秒后自动重连（第 \(retryAttempt) 次）")
+                            report("极核断开，正在重连…")
+                            clearConnection(conn)
+                            conn.close()
+                            sleepWhileActive(delay)
+                            continue
                         }
                     }
-                } catch {
-                    if active {
-                        onLog(CWL("极核输出失败：{1}", [String(describing: error.localizedDescription)]))
-                        report(CWL("极核连接失败：{1}", [String(describing: error.localizedDescription)]))
-                    }
+                    clearConnection(conn)
+                    conn.close()
                 }
-                connection.close()
+                closeCurrentConnection()
                 queue.async { [self] in close() }
             }
         }
 
         private var active: Bool { lock.withLock { !cancelled } }
 
+        private func installConnection(_ next: TailingConnection) -> Bool {
+            let previous: TailingConnection? = lock.withLock {
+                guard !cancelled else { return nil }
+                let old = connection
+                connection = next
+                return old
+            }
+            previous?.close()
+            return active
+        }
+
+        private func clearConnection(_ target: TailingConnection) {
+            lock.withLock {
+                if connection === target { connection = nil }
+            }
+        }
+
+        private func closeCurrentConnection() {
+            let current = lock.withLock { () -> TailingConnection? in
+                let old = connection
+                connection = nil
+                return old
+            }
+            current?.close()
+        }
+
+        private func sleepWhileActive(_ seconds: TimeInterval) {
+            let deadline = ProcessInfo.processInfo.systemUptime + seconds
+            while active {
+                let remaining = deadline - ProcessInfo.processInfo.systemUptime
+                if remaining <= 0 { break }
+                Thread.sleep(forTimeInterval: min(remaining, 0.05))
+            }
+        }
+
         func cancel() {
-            lock.withLock { cancelled = true }
+            let current = lock.withLock { () -> TailingConnection? in
+                cancelled = true
+                let old = connection
+                connection = nil
+                return old
+            }
             relayCondition.lock(); relayCondition.broadcast(); relayCondition.unlock()
-            connection.close()
+            current?.close()
         }
 
         func append(_ data: Data, keyframe: Bool) {
@@ -258,7 +358,7 @@ final class ZeehoOutput {
             return relayBuffer.pop()
         }
 
-        private func runRelay(size: InstrumentFrameSize) throws {
+        private func runRelay(connection: TailingConnection, size: InstrumentFrameSize) throws {
             var lastPicture = ProcessInfo.processInfo.systemUptime
             while active {
                 try connection.checkHealth()
@@ -284,92 +384,104 @@ final class ZeehoOutput {
         }
 
         private func decode(_ data: Data, keyframe: Bool) {
-            do {
-                var picture: [Data] = []
-                for unit in try AnnexB.units(in: data) {
-                    if VideoCodec.h264.parameterSet(unit) != nil {
-                        if parameters.absorb(unit) { waitingForIDR = true }
-                    } else { picture.append(unit) }
-                }
-                if waitingForIDR {
-                    // Throttle rebuilds while VideoToolbox is unavailable during a lock transition.
-                    guard parameters.isComplete, keyframe, !picture.isEmpty else { return }
-                    guard ProcessInfo.processInfo.systemUptime - lastCodecFailure >= 0.5 else {
-                        requestKeyframe()
-                        return
+            autoreleasepool {
+                do {
+                    var picture: [Data] = []
+                    for unit in try AnnexB.units(in: data) {
+                        if VideoCodec.h264.parameterSet(unit) != nil {
+                            if parameters.absorb(unit) { waitingForIDR = true }
+                        } else { picture.append(unit) }
                     }
+                    if waitingForIDR {
+                        // Throttle rebuilds while VideoToolbox is unavailable during a lock transition.
+                        guard parameters.isComplete, keyframe, !picture.isEmpty else { return }
+                        guard ProcessInfo.processInfo.systemUptime - lastCodecFailure >= 0.5 else {
+                            requestKeyframe()
+                            return
+                        }
+                        decoder?.invalidate()
+                        decoder = try TailingH264Decoder(configuration: parameters.decoderConfigurationRecord(),
+                            output: { [weak self] image in
+                                guard let self else { return }
+                                self.lock.withLock { self.decoded = image }
+                            }, failure: { [weak self] error in
+                                guard let self else { return }
+                                self.lock.withLock { self.decodeError = error }
+                            })
+                        waitingForIDR = false
+                    }
+                    guard let decoder, !picture.isEmpty else { return }
+                    try decoder.decode(AnnexB.lengthPrefixed(picture),
+                        presentationTimeMicroseconds: Int64(ProcessInfo.processInfo.systemUptime * 1_000_000), isKeyframe: keyframe)
+                    decoder.waitForFrames()
+                    let (image, error) = lock.withLock {
+                        defer { decoded = nil; decodeError = nil }
+                        return (decoded, decodeError)
+                    }
+                    if let error { throw error }
+                    if let image { latest = image; fresh = true }
+                } catch {
                     decoder?.invalidate()
-                    decoder = try TailingH264Decoder(configuration: parameters.decoderConfigurationRecord(),
-                        output: { [weak self] image in
-                            guard let self else { return }
-                            self.lock.withLock { self.decoded = image }
-                        }, failure: { [weak self] error in
-                            guard let self else { return }
-                            self.lock.withLock { self.decodeError = error }
-                        })
-                    waitingForIDR = false
+                    decoder = nil
+                    lock.withLock { decoded = nil; decodeError = nil }
+                    waitingForIDR = true
+                    logCodecFailure(CWL("解码"), error)
+                    requestKeyframe()
                 }
-                guard let decoder, !picture.isEmpty else { return }
-                try decoder.decode(AnnexB.lengthPrefixed(picture),
-                    presentationTimeMicroseconds: Int64(ProcessInfo.processInfo.systemUptime * 1_000_000), isKeyframe: keyframe)
-                decoder.waitForFrames()
-                let (image, error) = lock.withLock {
-                    defer { decoded = nil; decodeError = nil }
-                    return (decoded, decodeError)
-                }
-                if let error { throw error }
-                if let image { latest = image; fresh = true }
-            } catch {
-                decoder?.invalidate()
-                decoder = nil
-                lock.withLock { decoded = nil; decodeError = nil }
-                waitingForIDR = true
-                logCodecFailure(CWL("解码"), error)
-                requestKeyframe()
             }
         }
 
         private func encode(_ image: CVPixelBuffer, size: InstrumentFrameSize, at now: Double, forceKeyframe: Bool) -> H264EncodedFrame? {
-            do {
-                if encoder == nil {
-                    guard now - lastCodecFailure >= 0.5 else { return nil }
-                    encoder = try H264Encoder(width: size.width, height: size.height,
-                                              fps: frameRate.rawValue, bitrate: frameRate.bitrate) { [weak self] result in
-                        guard let self else { return }
-                        self.lock.withLock { self.encoded = result }
+            autoreleasepool {
+                do {
+                    if encoder == nil {
+                        guard now - lastCodecFailure >= 0.5 else { return nil }
+                        encoder = try H264Encoder(width: size.width, height: size.height,
+                                                  fps: frameRate.rawValue, bitrate: frameRate.bitrate) { [weak self] result in
+                            guard let self else { return }
+                            self.lock.withLock { self.encoded = result }
+                        }
+                        lastKeyframe = -.infinity
                     }
+                    guard let encoder else { return nil }
+                    try encoder.encode(try fittedImage(image, to: size), presentationTime: CMTime(seconds: now, preferredTimescale: 1_000_000),
+                                       forceKeyframe: forceKeyframe || lastKeyframe == -.infinity)
+                    encoder.complete()
+                    let result = lock.withLock {
+                        defer { encoded = nil }
+                        return encoded
+                    }
+                    let frame = try result?.get()
+                    if frame?.isKeyframe == true { lastKeyframe = now }
+                    return frame
+                } catch H264EncoderError.frameDropped {
+                    return nil
+                } catch {
+                    encoder?.invalidate()
+                    encoder = nil
                     lastKeyframe = -.infinity
+                    lock.withLock { encoded = nil }
+                    logCodecFailure(CWL("编码"), error)
+                    return nil
                 }
-                guard let encoder else { return nil }
-                try encoder.encode(try fittedImage(image, to: size), presentationTime: CMTime(seconds: now, preferredTimescale: 1_000_000),
-                                   forceKeyframe: forceKeyframe || lastKeyframe == -.infinity)
-                encoder.complete()
-                let result = lock.withLock {
-                    defer { encoded = nil }
-                    return encoded
-                }
-                let frame = try result?.get()
-                if frame?.isKeyframe == true { lastKeyframe = now }
-                return frame
-            } catch H264EncoderError.frameDropped {
-                return nil
-            } catch {
-                encoder?.invalidate()
-                encoder = nil
-                lastKeyframe = -.infinity
-                lock.withLock { encoded = nil }
-                logCodecFailure(CWL("编码"), error)
-                return nil
             }
         }
 
         private func fittedImage(_ image: CVPixelBuffer, to size: InstrumentFrameSize) throws -> CVPixelBuffer {
             let width = size.width, height = size.height
             if CVPixelBufferGetWidth(image) == width, CVPixelBufferGetHeight(image) == height { return image }
-            var buffer: CVPixelBuffer?
-            let status = CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA,
-                                             [kCVPixelBufferIOSurfacePropertiesKey: [:]] as CFDictionary, &buffer)
-            guard status == kCVReturnSuccess, let buffer else { throw ConfigurationError(CWL("无法分配极核缩放画面（{1}）", [String(describing: status)])) }
+            let buffer: CVPixelBuffer
+            if let existing = scaledBuffer, scaledBufferSize == (width, height) {
+                buffer = existing
+            } else {
+                var created: CVPixelBuffer?
+                let status = CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA,
+                                                 [kCVPixelBufferIOSurfacePropertiesKey: [:]] as CFDictionary, &created)
+                guard status == kCVReturnSuccess, let created else { throw ConfigurationError(CWL("无法分配极核缩放画面（{1}）", [String(describing: status)])) }
+                scaledBuffer = created
+                scaledBufferSize = (width, height)
+                buffer = created
+            }
             let source = CIImage(cvPixelBuffer: image)
             let destination = size.fittedRect(for: source.extent.size)
             let scale = destination.width / source.extent.width
@@ -446,11 +558,13 @@ final class ZeehoOutput {
 
         func close() {
             lock.withLock { acceptingFrames = false }
-            connection.close()
+            closeCurrentConnection()
             decoder?.invalidate()
             decoder = nil
             encoder?.invalidate()
             encoder = nil
+            scaledBuffer = nil
+            scaledBufferSize = (0, 0)
             latest = nil
             relayCondition.lock(); relayBuffer.reset(); relayCondition.broadcast(); relayCondition.unlock()
         }

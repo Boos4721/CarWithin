@@ -157,7 +157,7 @@ final class TailingConnection: @unchecked Sendable {
         let pullStarted = ProcessInfo.processInfo.systemUptime
         let request: TailingProtocol.Auxiliary
         do {
-            request = try TailingProtocol.readAuxiliary { try socket.readExactly($0, timeout: 5) }
+            request = try TailingProtocol.readAuxiliary { try socket.readExactly($0, timeout: 10) }
         } catch {
             throw terminalError(or: TailingError.channel(CWL("等待视频拉帧请求"), error))
         }
@@ -261,8 +261,14 @@ final class TailingConnection: @unchecked Sendable {
                 // 极核上报 FTP 速率和运行日志，投屏会话只确认收到。
                 break
             case 0x103e0 where isZeeho:
-                // 0x103e1 是收件确认。序列号校验结果使用独立命令。
-                log(CWL("极核收到序列号校验请求，等待仪表继续媒体协商"))
+                // 0x103e1 是收件确认，紧接着下发 0x201c0 序列号校验通过，避免春风等仪表数秒后断视频流。
+                try replyControl(socket, request, payload: Data())
+                let object = (try? TailingProtocol.object(request.payload)) ?? [:]
+                let sn = object["sn"].map { "\($0)" } ?? ""
+                let result: [String: Any] = ["isOk": true, "errCode": 0, "errMsg": "", "id": sn, "client_set": "easy_conn"]
+                try sendControl(socket, command: 0x201c0, identifier: 0, object: result)
+                log("极核收到序列号校验请求（sn=\(sn)），已回应 0x103e1 并下发 0x201c0 校验通过")
+                continue
             case 0x10010:
                 let object = try TailingProtocol.object(request.payload)
                 guard let name = object["HUName"] as? String, !name.isEmpty, name.utf8.count <= 128,
@@ -316,7 +322,9 @@ final class TailingConnection: @unchecked Sendable {
                                request.command, request.payload.count, request.command + 1))
                     continue
                 }
-                throw TailingError.protocolFailure(String(format: CWL("未支持的协商命令 0x%08x"), request.command))
+                log(String(format: "\(dashboard) 控制通道未命名命令 0x%08x（%d 字节），已忽略并继续",
+                           request.command, request.payload.count))
+                continue
             }
             try replyControl(socket, request, payload: payload)
             if request.command == 0x20000 && !reverseStarted {
@@ -362,13 +370,24 @@ final class TailingConnection: @unchecked Sendable {
         // iOS 成功抓包中同屏状态只在启动时发送，反向连接随后用 0x70000000 保活。
         let timer = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "com.hanlin.ninebotpro.tailing.status"))
         var identifier: UInt32 = isZeeho ? 7 : 6
+        var consecutiveFailures = 0
+        var lastFailureLog = -Double.infinity
         timer.schedule(deadline: .now() + 2, repeating: 2)
         timer.setEventHandler { [weak self, weak socket] in
-            guard let self, let socket else { return }
+            guard let self, let socket, !self.isClosed else { return }
             do {
                 try socket.write(TailingProtocol.control(0x70000000, identifier: identifier))
                 identifier &+= 1
-            } catch { self.fail(TailingError.channel(CWL("发送会话保活"), error)) }
+                consecutiveFailures = 0
+            } catch {
+                guard !self.isClosed else { return }
+                consecutiveFailures += 1
+                let now = ProcessInfo.processInfo.systemUptime
+                if now - lastFailureLog >= 10 {
+                    lastFailureLog = now
+                    self.log("\(self.dashboard) 会话保活发送失败（非致命，连续 \(consecutiveFailures) 次）：\(error.localizedDescription)")
+                }
+            }
         }
         condition.lock()
         let stopped = closed
@@ -439,6 +458,8 @@ final class TailingConnection: @unchecked Sendable {
             try socket.write(TailingProtocol.auxiliary(response, token: request.token, payload: payload))
         }
     }
+
+    private var isClosed: Bool { condition.lock(); defer { condition.unlock() }; return closed }
 
     private func checkLocked() throws {
         if let failure { throw failure }

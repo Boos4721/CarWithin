@@ -56,7 +56,7 @@ final class PxcConnection: @unchecked Sendable {
     private var configured = false
     private var mediaStarted = false
     private var frameRequested = false
-    private var negotiated = MediaSize(width: 800, height: 384, fps: 30)
+    private var negotiated = MediaSize(width: 800, height: 386, fps: 25)
     private var framesSent = 0
 
     init(localIP: String, targetIP: String, phone: TailingPhoneInfo, dashboard: String,
@@ -70,7 +70,7 @@ final class PxcConnection: @unchecked Sendable {
         self.log = log
     }
 
-    /// 仪表在媒体配置里要求的实际编码尺寸（已按 16 对齐）。
+    /// 仪表在媒体配置里要求的实际编码尺寸（已按偶数对齐）。
     var mediaSize: MediaSize {
         condition.lock(); defer { condition.unlock() }
         return negotiated
@@ -84,15 +84,25 @@ final class PxcConnection: @unchecked Sendable {
         return parts.joined(separator: ".")
     }
 
+    /// 极核 AE2 逻辑：只验尺寸范围，不再因编码值直接抛错。
+    /// 原逻辑要求 codec 只能是 0 或 2，2026-11-25 23:29 春风 CFDL16-6GUH
+    /// 在 10921 上报的媒体配置就是在这里被拦住的（“春风媒体尺寸、帧率或编码格式无效”），
+    /// 而且校验在打日志之前，日志里根本看不到仪表到底报了什么。
+    /// 现在：宽 240–1920、高 240–1080、帧率 0–60（仪表报 0 表示未指定帧率，按 25 FPS 兜底）；
+    /// codec 不在 0/2 时不再抛错，统一按 H.264 处理（本机只编 H.264）。
+    /// 尺寸对齐也改成只保证偶数（800×386 保持 800×386），
+    /// 不再按 16 对齐（原来 800×386 → 800×384，1024×515 → 1024×512）。
     static func validatedMediaSize(_ body: Data) throws -> MediaSize {
         guard body.count >= 12 else { throw TailingError.protocolFailure("春风媒体配置不完整") }
         let width = Int(body.uint16LE(0)), height = Int(body.uint16LE(2))
         let fps = Int(body.uint32LE(4)), codec = body.uint32LE(8)
         guard (240...1920).contains(width), (240...1080).contains(height),
-              (1...60).contains(fps), codec == 0 || codec == 2 else {
-            throw TailingError.protocolFailure("春风媒体尺寸、帧率或编码格式无效")
+              (0...60).contains(fps) else {
+            throw TailingError.protocolFailure("春风媒体尺寸、帧率无效：\(width)×\(height)@\(fps) 编码器=\(codec)")
         }
-        return MediaSize(width: width & ~0xF, height: height & ~0xF, fps: fps)
+        let evenHeight = height % 2 == 0 ? height : height + 1
+        let effectiveFps = fps > 0 ? fps : 25
+        return MediaSize(width: width & ~1, height: evenHeight, fps: effectiveFps)
     }
 
     func start() throws {
@@ -288,6 +298,7 @@ final class PxcConnection: @unchecked Sendable {
             let body = request.payload
             let size = try Self.validatedMediaSize(body)
             let width = Int(body.uint16LE(0)), height = Int(body.uint16LE(2))
+            let rawFps = Int(body.uint32LE(4))
             let fps = size.fps, encoder = Int(body.uint32LE(8))
             let ext = body.count >= 30 ? body[body.startIndex + 29] : 0
             let alignedWidth = size.width, alignedHeight = size.height
@@ -302,11 +313,11 @@ final class PxcConnection: @unchecked Sendable {
             payload.append(ext)
             try socket.write(TailingProtocol.auxiliary(Command.configCapture + 1, token: request.token, payload: payload))
             condition.lock()
-            negotiated = MediaSize(width: alignedWidth, height: alignedHeight, fps: fps > 0 ? fps : 30)
+            negotiated = MediaSize(width: alignedWidth, height: alignedHeight, fps: fps > 0 ? fps : 25)
             configured = true
             condition.broadcast()
             condition.unlock()
-            log("\(dashboard) 仪表要求 \(width)×\(height)@\(fps) 编码器=\(encoder) → 回 17（\(alignedWidth)×\(alignedHeight)）")
+            log("\(dashboard) 仪表要求 \(width)×\(height)@\(rawFps)（实际按 \(fps) FPS）编码器=\(encoder) → 回 17（\(alignedWidth)×\(alignedHeight)）")
         case Command.getVersion:
             var payload = Data()
             payload.appendLE(UInt32(3))

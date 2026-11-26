@@ -93,6 +93,13 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let sizeModeControl = ChoiceMenu(items: [CWL("跟随车机"), CWL("固定尺寸")])
     private let iconSizeControl = ChoiceMenu(items: ReceiverConfiguration.iconSizes.map { "\($0.title)（\($0.widthMM) mm）" })
     private let autoRestartSwitch = UISwitch()
+    private let autoStartOnInstrumentSwitch = UISwitch()
+    private let autoStartProbeQueue = DispatchQueue(label: "CarWithin.autoStartProbe", qos: .utility)
+    private var autoStartProbing = false
+    private var autoStartSuppressed = false
+    private var lastAutoStartWiFiIP: String?
+    private var autoStartTimer: Timer?
+    private var pendingShortcutURL: URL?
     private let performanceControl = ChoiceMenu(items: BrowserPerformance.allCases.map(\.title))
     private let showTouchesSwitch = UISwitch()
     private let carButtonSwitch = UISwitch()
@@ -343,6 +350,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private static let releasesURL = projectURL.appendingPathComponent("releases")
     private static let authorURL = URL(string: "https://v.douyin.com/x64M2NbYj0A/")!
     private var lines: [String] = []
+    private let logFileQueue = DispatchQueue(label: "CarWithin.logFile", qos: .utility)
+    private lazy var logFileURL: URL? = Self.prepareSessionLogFile()
     private var launchedTransportTest = false
 
     override func viewDidAppear(_ animated: Bool) {
@@ -384,6 +393,12 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             }
         }
         #endif
+        if let url = pendingShortcutURL {
+            pendingShortcutURL = nil
+            handleShortcutURL(url)
+        } else {
+            scheduleAutoStartProbeIfNeeded()
+        }
     }
 
     override func viewDidLoad() {
@@ -817,6 +832,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         NotificationCenter.default.addObserver(self, selector: #selector(becameActive), name: UIApplication.didBecomeActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(foregrounded), name: UIApplication.willEnterForegroundNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(backgrounded), name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(appWillTerminate), name: UIApplication.willTerminateNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(memoryWarningReceived), name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(airPlayAudioRouteChanged),
             name: AVAudioSession.routeChangeNotification, object: nil)
         updateTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
@@ -826,6 +843,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     deinit {
         wifiPathMonitor.cancel()
         networkStartupTask?.cancel()
+        autoStartTimer?.invalidate()
     }
 
     /// Presets are listed on their own settings page; refresh it if it is open.
@@ -889,9 +907,9 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private func planDisplay(for screen: CarScreen?) -> DisplayPlan {
         if let cfmoto = cfmotoProfile {
             let icon = ReceiverConfiguration.iconSizes[max(0, iconSizeControl.selectedSegmentIndex)].widthMM
-            // 按偶数对齐：H.264 4:2:0 不接受 515 这样的奇数高度。
+            // 按偶数对齐：H.264 4:2:0 不接受 515 这样的奇数高度；CarPlay 源帧率至少需 30 FPS。
             return DisplayPlan(width: cfmoto.encodeWidth, height: cfmoto.encodeHeight,
-                               fps: cfmoto.fps, codec: .h264, iconWidthMM: icon)
+                               fps: cfmoto.sourceFPS, codec: .h264, iconWidthMM: icon)
         }
         if let profile = outputMode.zeehoProfile {
             let icon = ReceiverConfiguration.iconSizes[max(0, iconSizeControl.selectedSegmentIndex)].widthMM
@@ -984,6 +1002,15 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         UserDefaults.standard.set(keepAliveSwitch.isOn, forKey: "backgroundKeepAlive")
         if !keepAliveSwitch.isOn { keepAlive.stop() }
         else if running, UIApplication.shared.applicationState == .active { keepAlive.start() }
+    }
+    @objc private func autoStartSettingChanged() {
+        UserDefaults.standard.set(autoStartOnInstrumentSwitch.isOn, forKey: "autoStartOnInstrument")
+        if autoStartOnInstrumentSwitch.isOn {
+            autoStartSuppressed = false
+            scheduleAutoStartProbeIfNeeded()
+        } else {
+            stopAutoStartTimer()
+        }
     }
     @objc private func appearanceChanged() {
         UserDefaults.standard.set(appearanceControl.selectedSegmentIndex, forKey: "carPlayAppearance")
@@ -1539,7 +1566,16 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         }
     }
     @objc private func toggleReceiver() {
-        if running || waitingForNetwork { stop(); return }
+        if running || waitingForNetwork {
+            if !restartingAutomatically {
+                autoStartSuppressed = true
+                lastAutoStartWiFiIP = ReceiverConfiguration.wifiIPv4Address()
+            }
+            stop()
+            return
+        }
+        autoStartSuppressed = false
+        stopAutoStartTimer()
         if !restartingAutomatically { networkRestartCount = 0 }
         clearStartupHint()
         updateCheckTask?.cancel()
@@ -1678,6 +1714,140 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
 
     private func refreshNetworkAddresses() {
         refreshBrowserAddressLabels()
+        let currentIP = ReceiverConfiguration.wifiIPv4Address()
+        if autoStartSuppressed && currentIP != lastAutoStartWiFiIP {
+            autoStartSuppressed = false
+            lastAutoStartWiFiIP = nil
+        }
+        scheduleAutoStartProbeIfNeeded()
+    }
+
+    func handleShortcutURL(_ url: URL) {
+        guard url.scheme?.lowercased() == "carwithin" else { return }
+        guard isViewLoaded, view.window != nil else {
+            pendingShortcutURL = url
+            return
+        }
+        let action = (url.host ?? url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))).lowercased()
+        switch action {
+        case "start", "":
+            autoStartSuppressed = false
+            stopAutoStartTimer()
+            if presentedViewController != nil {
+                dismiss(animated: false)
+            }
+            if modeControl.selectedSegmentIndex != 1 {
+                modeControl.selectedSegmentIndex = 1
+                modeChanged()
+            }
+            if !running && !waitingForNetwork {
+                log("收到快捷指令启动请求，正在启动本机 CarPlay")
+                toggleReceiver()
+            } else {
+                log("收到快捷指令启动请求，本机 CarPlay 已在运行")
+            }
+        case "stop":
+            if running || waitingForNetwork {
+                autoStartSuppressed = true
+                lastAutoStartWiFiIP = ReceiverConfiguration.wifiIPv4Address()
+                log("收到快捷指令停止请求")
+                stop()
+            }
+        default:
+            break
+        }
+    }
+
+    private func instrumentProbeEndpoint() -> (localIP: String, targetIP: String, port: UInt16)? {
+        guard let localIP = ReceiverConfiguration.wifiIPv4Address() else { return nil }
+        switch outputMode {
+        case .cfmoto5, .cfmoto62:
+            let typed = cfmotoAddressField.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let target = (typed?.isEmpty == false ? typed : nil) ?? PxcConnection.gateway(for: localIP) else { return nil }
+            return (localIP, target, 10930)
+        case .zeehoSEPlus, .zeehoAE2:
+            let typed = zeehoSEPlusAddressField.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let target = zeehoSEPlusAutomaticSwitch.isOn ? PxcConnection.gateway(for: localIP) : (typed?.isEmpty == false ? typed : PxcConnection.gateway(for: localIP))
+            guard let target else { return nil }
+            return (localIP, target, 10930)
+        case .zeeho:
+            let typed = zeehoAddressField.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let target = zeeho62AutomaticSwitch.isOn ? PxcConnection.gateway(for: localIP) : (typed?.isEmpty == false ? typed : PxcConnection.gateway(for: localIP))
+            guard let target else { return nil }
+            return (localIP, target, 10930)
+        default:
+            return nil
+        }
+    }
+
+    private func canAutoStartInstrument() -> Bool {
+        guard autoStartOnInstrumentSwitch.isOn,
+              !autoStartSuppressed,
+              !running,
+              !waitingForNetwork,
+              modeControl.selectedSegmentIndex == 1,
+              identity != nil,
+              UIApplication.shared.applicationState == .active,
+              presentedViewController == nil else {
+            return false
+        }
+        if needsNetworkDetails {
+            let ssid = ssidField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let hasPassword = openNetworkSwitch.isOn || !(passwordField.text ?? "").isEmpty
+            guard !ssid.isEmpty && hasPassword else { return false }
+        }
+        return true
+    }
+
+    private func scheduleAutoStartProbeIfNeeded() {
+        guard canAutoStartInstrument(), instrumentProbeEndpoint() != nil else {
+            stopAutoStartTimer()
+            return
+        }
+        startAutoStartTimerIfNeeded()
+        probeInstrumentForAutoStart()
+    }
+
+    private func startAutoStartTimerIfNeeded() {
+        guard autoStartTimer == nil else { return }
+        autoStartTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            guard self.canAutoStartInstrument(), self.instrumentProbeEndpoint() != nil else {
+                self.stopAutoStartTimer()
+                return
+            }
+            self.probeInstrumentForAutoStart()
+        }
+    }
+
+    private func stopAutoStartTimer() {
+        autoStartTimer?.invalidate()
+        autoStartTimer = nil
+    }
+
+    private func probeInstrumentForAutoStart() {
+        guard canAutoStartInstrument(), !autoStartProbing, let endpoint = instrumentProbeEndpoint() else { return }
+        autoStartProbing = true
+        autoStartProbeQueue.async { [weak self] in
+            let reachable: Bool = {
+                do {
+                    let socket = try TailingSocket.create()
+                    defer { socket.close() }
+                    try socket.connect(localIP: endpoint.localIP, remoteIP: endpoint.targetIP, port: endpoint.port, timeout: 0.6)
+                    return true
+                } catch {
+                    return false
+                }
+            }()
+            DispatchQueue.main.asyncAfter(deadline: .now() + (reachable ? 0.35 : 0)) { [weak self] in
+                guard let self else { return }
+                self.autoStartProbing = false
+                guard reachable, self.canAutoStartInstrument() else { return }
+                self.stopAutoStartTimer()
+                self.log("检测到仪表在线（\(endpoint.targetIP):\(endpoint.port)），已自动启动本机 CarPlay")
+                self.toggleReceiver()
+            }
+        }
     }
 
     private func waitForLocalNetwork() {
@@ -1860,6 +2030,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         carLifeAddressField.isEnabled = value
     }
     @objc private func willResignActive() {
+        stopAutoStartTimer()
         guard running else { return }
         // Normally already running; retry if foreground activation failed.
         if keepAliveSwitch.isOn { keepAlive.start() }
@@ -1884,6 +2055,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         resumeLocalVideo()
         pictureInPicture.sourceMayBeReady()
         if running, keepAliveSwitch.isOn { keepAlive.start() }
+        scheduleAutoStartProbeIfNeeded()
         if let reason = pendingRestartReason {
             pendingRestartReason = nil
             restartCarPlay(reason: reason, forPerformance: true)
@@ -2009,10 +2181,19 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             if !waitingForNetwork { modeChanged() }
             return
         }
+        log("App 已回到前台")
         // Light/dark changes were ignored while off screen; send the current state once.
         DispatchQueue.main.async { [weak self] in self?.applyAppearance() }
     }
+    @objc private func memoryWarningReceived() {
+        log("收到 iOS 系统内存警告（didReceiveMemoryWarning）")
+    }
+    @objc private func appWillTerminate() {
+        log("App 即将被系统终止（willTerminate）")
+        logFileQueue.sync {}
+    }
     @objc private func backgrounded() {
+        stopAutoStartTimer()
         updateCheckTask?.cancel()
         receiverBrowser.stop()
         guard running else { return }
@@ -2026,12 +2207,92 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             stop()
         }
     }
+    private static func prepareSessionLogFile() -> URL? {
+        guard let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            return nil
+        }
+        let directory = documents.appendingPathComponent("CarWithin-Logs", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        if let existing = try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.creationDateKey],
+            options: [.skipsHiddenFiles]
+        ) {
+            let logFiles = existing
+                .filter { $0.pathExtension == "log" }
+                .sorted { $0.lastPathComponent < $1.lastPathComponent }
+            if logFiles.count >= 10 {
+                for old in logFiles.dropLast(9) {
+                    try? FileManager.default.removeItem(at: old)
+                }
+            }
+        }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let filename = "CarWithin-\(formatter.string(from: Date())).log"
+        let fileURL = directory.appendingPathComponent(filename)
+        _ = FileManager.default.createFile(atPath: fileURL.path, contents: nil)
+        return fileURL
+    }
+
+    private func formattedPreviewLog() -> String {
+        let previewLimit = 2000
+        guard lines.count > previewLimit else {
+            return lines.joined(separator: "\n")
+        }
+        let header = "--- 共 \(lines.count) 条日志，界面仅预览最近 \(previewLimit) 条；点击下方“复制日志”或“导出完整日志文件”可获取全部 ---"
+        return ([header] + lines.suffix(previewLimit)).joined(separator: "\n")
+    }
+
     @objc private func copyLog() { UIPasteboard.general.string = lines.joined(separator: "\n") }
+
+    @objc private func exportLogFile() {
+        let content = lines.isEmpty ? "暂无日志记录\n" : (lines.joined(separator: "\n") + "\n")
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let exportURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CarWithin-完整日志-\(formatter.string(from: Date())).log")
+        do {
+            try content.write(to: exportURL, atomically: true, encoding: .utf8)
+        } catch {
+            alert("导出失败", error.localizedDescription)
+            return
+        }
+        let presenter = settingsNavigation ?? self
+        let activity = UIActivityViewController(activityItems: [exportURL], applicationActivities: nil)
+        if let popover = activity.popoverPresentationController {
+            popover.sourceView = presenter.view
+            popover.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 1, height: 1)
+            popover.permittedArrowDirections = []
+        }
+        presenter.present(activity, animated: true)
+    }
+
     private func log(_ message: String) {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [weak self] in self?.log(message) }
+            return
+        }
         let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
-        lines.append("\(timestamp)  \(message)"); if lines.count > 200 { lines.removeFirst(lines.count - 200) }
+        let entry = "\(timestamp)  \(message)"
+        lines.append(entry)
+        let targetURL = logFileURL
+        logFileQueue.async {
+            guard let targetURL, let data = (entry + "\n").data(using: .utf8) else { return }
+            if !FileManager.default.fileExists(atPath: targetURL.path) {
+                _ = FileManager.default.createFile(atPath: targetURL.path, contents: data)
+                return
+            }
+            if let handle = try? FileHandle(forWritingTo: targetURL) {
+                _ = try? handle.seekToEnd()
+                _ = try? handle.write(contentsOf: data)
+                _ = try? handle.close()
+            }
+        }
         if logView.window != nil {
-            logView.text = lines.joined(separator: "\n")
+            logView.text = formattedPreviewLog()
             if !logView.text.isEmpty { logView.scrollRangeToVisible(NSRange(location: logView.text.utf16.count - 1, length: 1)) }
         }
         NSLog("[CarWithin] %@", message)
@@ -2093,6 +2354,8 @@ extension ReceiverViewController {
         pictureInPictureTiming.addTarget(self, action: #selector(pictureInPictureTimingChanged), for: .valueChanged)
         keepAliveSwitch.isOn = defaults.object(forKey: "backgroundKeepAlive") as? Bool ?? true
         keepAliveSwitch.addTarget(self, action: #selector(keepAliveChanged), for: .valueChanged)
+        autoStartOnInstrumentSwitch.isOn = defaults.object(forKey: "autoStartOnInstrument") as? Bool ?? true
+        autoStartOnInstrumentSwitch.addTarget(self, action: #selector(autoStartSettingChanged), for: .valueChanged)
         let savedOutput = defaults.object(forKey: "headUnitOutputV2") as? Int
         let previousOutput = defaults.object(forKey: "headUnitOutput") as? Int
         let legacyOutput: HeadUnitOutput = defaults.bool(forKey: "carLifeEnabled") ? .carLife : .browser
@@ -2201,6 +2464,7 @@ extension ReceiverViewController {
         refreshVideoOutputSummary()
         updateVideoAspect()
         reloadVisibleSettings()
+        scheduleAutoStartProbeIfNeeded()
     }
     @objc private func audioSettingChanged() {
         UserDefaults.standard.set(selectedSoundOutput.rawValue, forKey: "soundOutput")
@@ -2404,6 +2668,7 @@ extension ReceiverViewController {
             connection.append(.page(CWL("Wi-Fi 预设"), icon: ("list.bullet", .systemBlue), detail: { WiFiPresetStore.selected()?.ssid ?? CWL("未选择") }) { [unowned self] in self.presetsPage() })
             connection.append(.control(CWL("当前输出"), icon: ("point.3.connected.trianglepath.dotted", .systemIndigo), headUnitOutput))
             connection.append(.page(CWL("输出设置"), icon: ("slider.horizontal.3", .systemGray)) { [unowned self] in self.headUnitPage() })
+            connection.append(.control("检测到仪表自动启动", icon: ("bolt.car.fill", .systemGreen), autoStartOnInstrumentSwitch))
             if outputMode == .browser {
                 connection.append(.page(CWL("HTTPS 设置"), icon: ("lock.shield", .systemBlue)) { [unowned self] in self.httpsSettingsPage() })
             }
@@ -3138,15 +3403,20 @@ extension ReceiverViewController {
     fileprivate func logPage() -> SettingsPageController {
         let controller = page(CWL("日志")) { [unowned self] in
             [
-                SettingsSection(footer: CWL("最近 200 条，不含 Wi-Fi 密码和 MFi 私钥。"), [.view(logView)]),
-                SettingsSection([.action(CWL("复制日志"), icon: ("doc.on.doc.fill", .systemBlue)) { [unowned self] in
-                    self.copyLog(); self.alert(CWL("已复制"), CWL("日志已复制到剪贴板。"))
-                }])
+                SettingsSection(footer: "保留本次运行完整日志（界面最多预览最近 2000 条，复制与导出均包含全部记录，同时自动保存至应用日志目录），不含 Wi-Fi 密码和 MFi 私钥。", [.view(logView)]),
+                SettingsSection([
+                    .action(CWL("复制日志"), icon: ("doc.on.doc.fill", .systemBlue)) { [unowned self] in
+                        self.copyLog(); self.alert(CWL("已复制"), CWL("日志已复制到剪贴板。"))
+                    },
+                    .action("导出完整日志文件", icon: ("square.and.arrow.up", .systemGreen)) { [unowned self] in
+                        self.exportLogFile()
+                    }
+                ])
             ]
         }
         logView.constraints.filter { $0.firstAttribute == .height }.forEach { $0.constant = 380 }
         controller.onAppear = { [unowned self] in
-            self.logView.text = self.lines.joined(separator: "\n")
+            self.logView.text = self.formattedPreviewLog()
             if !self.logView.text.isEmpty { self.logView.scrollRangeToVisible(NSRange(location: self.logView.text.utf16.count - 1, length: 1)) }
         }
         return controller

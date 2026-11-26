@@ -131,7 +131,12 @@ final class NativeReceiver {
                         sourceSize: InstrumentFrameSize(width: configuration.width, height: configuration.height), phone: phone,
                         onState: { [weak self] in self?.onZeehoState?($0) },
                         onLog: { [weak self] in self?.log($0) },
-                        requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: CWL("极核解码恢复")) })
+                        requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: CWL("极核解码恢复")) },
+                        onGiveUp: { [weak self] in
+                            self?.queue.async { [weak self] in
+                                self?.fail("已离开仪表 Wi-Fi 超过 3 分钟，已自动停止 CarPlay")
+                            }
+                        })
                 }
             }
             if let profile = configuration.cfmotoProfile,
@@ -145,7 +150,12 @@ final class NativeReceiver {
                 output.start(localAddress: configuration.address, targetAddress: target, phone: phone, profile: profile,
                              onState: { [weak self] in self?.onCfmotoState?($0) },
                              onLog: { [weak self] in self?.log($0) },
-                             requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "春风解码恢复") })
+                             requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "春风解码恢复") },
+                             onGiveUp: { [weak self] in
+                                 self?.queue.async { [weak self] in
+                                     self?.fail("已离开仪表 Wi-Fi 超过 3 分钟，已自动停止 CarPlay")
+                                 }
+                             })
             }
             if let target = configuration.ninebotAddress {
                 self.ninebot.start(localAddress: configuration.address, targetAddress: target, mode: configuration.ninebotMode,

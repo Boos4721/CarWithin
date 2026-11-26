@@ -111,7 +111,7 @@ final class BackgroundKeepAlive {
             try session.setActive(true)
             let player = try player ?? AVAudioPlayer(data: Self.silentWAV)
             player.numberOfLoops = -1
-            player.volume = 0
+            player.volume = 0.005
             self.player = player
             guard player.play() else {
                 self.player = nil
@@ -127,7 +127,8 @@ final class BackgroundKeepAlive {
         }
     }
 
-    /// One second of 8 kHz mono 16-bit silence.
+    /// One second of 8 kHz mono 16-bit ultra-low-amplitude 20 Hz PCM (-90 dBFS before volume scaling)
+    /// so iOS does not treat an all-zero buffer as inactive playback during background audits.
     private static let silentWAV: Data = {
         let rate: UInt32 = 8_000, samples = rate
         let dataBytes = samples * 2
@@ -137,7 +138,14 @@ final class BackgroundKeepAlive {
         wav.append(contentsOf: Array("RIFF".utf8)); u32(36 + dataBytes); wav.append(contentsOf: Array("WAVE".utf8))
         wav.append(contentsOf: Array("fmt ".utf8)); u32(16); u16(1); u16(1); u32(rate); u32(rate * 2); u16(2); u16(16)
         wav.append(contentsOf: Array("data".utf8)); u32(dataBytes)
-        wav.append(Data(count: Int(dataBytes)))
+        var pcm = Data(capacity: Int(dataBytes))
+        for index in 0..<Int(samples) {
+            let phase = 2.0 * Double.pi * 20.0 * Double(index) / Double(rate)
+            let sample = Int16((sin(phase) * 2.0).rounded())
+            var le = sample.littleEndian
+            withUnsafeBytes(of: &le) { pcm.append(contentsOf: $0) }
+        }
+        wav.append(pcm)
         return wav
     }()
 
