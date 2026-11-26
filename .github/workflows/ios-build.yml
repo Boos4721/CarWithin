@@ -1,0 +1,100 @@
+name: Validate multibrand BMS PR
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-15-intel
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 4
+      - name: Generate project
+        run: |
+          mkdir -p artifacts
+          xcodebuild -version
+          swift --version
+          git rev-parse HEAD > artifacts/validation-commit.txt
+          git rev-parse HEAD^ > artifacts/source-commit.txt
+          python3 Tools/generate_project.py
+      - name: Native protocol and BMS tests
+        shell: bash
+        run: |
+          set -o pipefail
+          bash Tools/test_bms.sh 2>&1 | tee artifacts/bms-tests.log
+          bash Tools/test.sh 2>&1 | tee artifacts/core-tests.log
+          bash Tools/test_ninebot_canvas.sh 2>&1 | tee artifacts/canvas-tests.log
+          bash Tools/test_zeeho_bms.sh 2>&1 | tee artifacts/zeeho-bms-tests.log
+      - name: Existing instrument regressions
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 Tools/verify_legacy62.py 2>&1 | tee artifacts/legacy62-tests.log
+          bash Tools/test_zeeho_seplus.sh 2>&1 | tee artifacts/zeeho-tests.log
+          bash Tools/test_tailing_discovery.sh 2>&1 | tee artifacts/tailing-discovery-tests.log
+          bash Tools/test_zeeho_control.sh 2>&1 | tee artifacts/zeeho-control-tests.log
+          bash Tools/test_tailing.sh 2>&1 | tee artifacts/tailing-tests.log
+      - name: Build iPhone and iPad Release
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild -project TDSCarKit.xcodeproj -scheme TDSCarKit \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/CarWithinBuild" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
+            build 2>&1 | tee artifacts/ios-build.log
+      - name: Package validation IPA
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/CarWithinPackage/Payload"
+          ditto "$RUNNER_TEMP/CarWithinBuild/Build/Products/Release-iphoneos/TDSCarKit.app" "$RUNNER_TEMP/CarWithinPackage/Payload/TDSCarKit.app"
+          cd "$RUNNER_TEMP/CarWithinPackage"
+          ditto -c -k --keepParent Payload "$GITHUB_WORKSPACE/artifacts/CarWithin-multibrand-bms-pr-unsigned.ipa"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: multibrand-bms-pr-${{ github.run_number }}
+          path: artifacts/
+          retention-days: 14
+  intermediate:
+    name: Verify ${{ matrix.revision }} independently
+    runs-on: macos-15-intel
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        revision: [f8f9a4b62bc877aa93304db9538dc8df001b43f2, c89d98a668248a2451336ec7dd49d630396befbe]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.revision }}
+      - name: Generate project and run native image tests
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts
+          git rev-parse HEAD > artifacts/source-commit.txt
+          python3 Tools/generate_project.py
+          bash Tools/test_bms.sh 2>&1 | tee artifacts/bms-tests.log
+          bash Tools/test_ninebot_canvas.sh 2>&1 | tee artifacts/canvas-tests.log
+          if test -f Tools/test_zeeho_bms.sh; then
+            bash Tools/test_zeeho_bms.sh 2>&1 | tee artifacts/zeeho-bms-tests.log
+            python3 Tools/verify_legacy62.py 2>&1 | tee artifacts/legacy62-tests.log
+          fi
+      - name: Build independent iPhone and iPad Release
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild -project TDSCarKit.xcodeproj -scheme TDSCarKit \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/CarWithinBuild" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
+            build 2>&1 | tee artifacts/ios-build.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr70-independent-${{ matrix.revision }}-${{ github.run_number }}
+          path: artifacts/
+          retention-days: 14
