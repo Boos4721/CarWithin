@@ -96,7 +96,7 @@ final class NinebotOutput {
         private var parameters = VideoParameterSets(codec: .h264)
         private var waitingForIDR = true
         private var latest: CVPixelBuffer?
-        private let canvas = NinebotVideoCanvas()
+        private let canvas = InstrumentVideoCanvas()
         private var fresh = false
         private let origin = ProcessInfo.processInfo.systemUptime
         private var lastFrame = -Double.infinity

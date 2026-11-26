@@ -1,3 +1,4 @@
+import AVFoundation
 import CoreImage
 import CoreVideo
 import Foundation
@@ -10,7 +11,7 @@ struct NinebotCanvasSmoke {
 
     static func main() throws {
         let source = try buffer(width: 960, height: 544)
-        let renderer = NinebotVideoCanvas()
+        let renderer = InstrumentVideoCanvas()
         let red = try overlay(CIColor(red: 1, green: 0, blue: 0))
         let green = try overlay(CIColor(red: 0, green: 1, blue: 0))
         var config = ANTBMSCardConfiguration()
@@ -57,6 +58,40 @@ struct NinebotCanvasSmoke {
         }
         print("PASS: 5/7-inch H.264 input canvases retain the same card composition")
 
+        for (width, height) in [(800, 480), (1600, 770), (1024, 480), (480, 800)] {
+            for position in ANTBMSCardConfiguration.Position.allCases {
+                for size in ANTBMSCardConfiguration.Size.allCases {
+                    config.position = position; config.size = size
+                    renderer.setBMSOverlay(red, configuration: config)
+                    let fitted = try renderer.fittedImage(source, width: width, height: height)
+                    precondition(CVPixelBufferGetWidth(fitted) == width && CVPixelBufferGetHeight(fitted) == height)
+                    let x: CGFloat = position.isAtRight ? CGFloat(width) - 60 : 60
+                    let y: CGFloat = position.isAtTop ? CGFloat(height) - 20 : 20
+                    try expectColor(CIImage(cvPixelBuffer: fitted), at: CGPoint(x: x, y: y), channel: 0)
+                    try expectColor(CIImage(cvPixelBuffer: fitted), at: CGPoint(x: width / 2, y: height / 2), channel: 2)
+                }
+            }
+        }
+        print("PASS: ZEEHO SE+/AE2/6.2 canvases support all corners and sizes, including reported portrait dimensions")
+
+        config.position = .topRight; config.size = .medium
+        for (width, height) in [(800, 480), (1600, 770), (1024, 480)] {
+            for (card, channel) in [(red, 0), (green, 1)] {
+                renderer.setBMSOverlay(card, configuration: config)
+                let fitted = try renderer.fittedImage(source, width: width, height: height)
+                let received = try h264RoundTrip(fitted, width: width, height: height)
+                try expectColor(CIImage(cvPixelBuffer: received),
+                    at: CGPoint(x: width - 60, y: height - 20), channel: channel)
+            }
+            renderer.setBMSOverlay(nil, configuration: config)
+            let fitted = try renderer.fittedImage(source, width: width, height: height)
+            let received = try h264RoundTrip(fitted, width: width, height: height)
+            let pixel = pixel(CIImage(cvPixelBuffer: received), at: CGPoint(x: width - 60, y: height - 20))
+            precondition(pixel[0] < 90 && pixel[1] < 90, "Disabled card remains in H.264")
+            try expectColor(CIImage(cvPixelBuffer: received), at: CGPoint(x: width / 2, y: height / 2), channel: 2)
+        }
+        print("PASS: actual H.264 encode/decode retains card updates and removes disabled cards for all ZEEHO formats")
+
         renderer.setBMSOverlay(nil, configuration: config)
         let sameSize = try buffer(width: 848, height: 480)
         let unchanged = try renderer.fittedImage(sameSize, width: 848, height: 480)
@@ -87,13 +122,53 @@ struct NinebotCanvasSmoke {
         return value
     }
     static func expectColor(_ image: CIImage, at point: CGPoint, channel: Int) throws {
+        let pixel = pixel(image, at: point)
+        precondition(pixel[channel] > 170 && (0..<3).filter { $0 != channel }.allSatisfy { pixel[$0] < 90 },
+            "Unexpected pixel at \(point): \(pixel), expected channel \(channel)")
+    }
+    static func pixel(_ image: CIImage, at point: CGPoint) -> [UInt8] {
         var pixel = [UInt8](repeating: 0, count: 4)
         pixel.withUnsafeMutableBytes { bytes in
             context.render(image, toBitmap: bytes.baseAddress!, rowBytes: 4,
                 bounds: CGRect(x: point.x, y: point.y, width: 1, height: 1), format: .RGBA8,
                 colorSpace: CGColorSpaceCreateDeviceRGB())
         }
-        precondition(pixel[channel] > 170 && (0..<3).filter { $0 != channel }.allSatisfy { pixel[$0] < 90 },
-            "Unexpected pixel at \(point): \(pixel), expected channel \(channel)")
+        return pixel
     }
+
+    static func h264RoundTrip(_ image: CVPixelBuffer, width: Int, height: Int) throws -> CVPixelBuffer {
+        let encoded = CanvasValue<Result<H264EncodedFrame, Error>?>(nil)
+        let encoder = try H264Encoder(width: width, height: height, fps: 25, bitrate: 2_500_000) { encoded.set($0) }
+        defer { encoder.invalidate() }
+        try encoder.encode(image, presentationTime: .zero, forceKeyframe: true)
+        encoder.complete()
+        let frame = try required(encoded.get()).get()
+        precondition(frame.isKeyframe)
+        var parameters = VideoParameterSets(codec: .h264)
+        var picture: [Data] = []
+        for unit in try AnnexB.units(in: frame.data) {
+            if VideoCodec.h264.parameterSet(unit) != nil { _ = parameters.absorb(unit) }
+            else { picture.append(unit) }
+        }
+        precondition(parameters.isComplete && !picture.isEmpty)
+        let decoded = CanvasValue<CVPixelBuffer?>(nil)
+        let failure = CanvasValue<Error?>(nil)
+        let decoder = try TailingH264Decoder(configuration: parameters.decoderConfigurationRecord(),
+            output: { decoded.set($0) }, failure: { failure.set($0) })
+        defer { decoder.invalidate() }
+        try decoder.decode(AnnexB.lengthPrefixed(picture), presentationTimeMicroseconds: 0, isKeyframe: true)
+        decoder.waitForFrames()
+        if let error = failure.get() { throw error }
+        let result = try required(decoded.get())
+        precondition(CVPixelBufferGetWidth(result) == width && CVPixelBufferGetHeight(result) == height)
+        return result
+    }
+}
+
+private final class CanvasValue<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Value
+    init(_ value: Value) { self.value = value }
+    func set(_ value: Value) { lock.withLock { self.value = value } }
+    func get() -> Value { lock.withLock { value } }
 }

@@ -1270,7 +1270,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         bmsOverlay.update(enabled: bmsEnabledSwitch.isOn, reading: reading, status: bmsClient.status,
                           configuration: cardConfiguration)
         bmsCardPreview.update(reading: reading, configuration: cardConfiguration,
-                             aspectRatio: outputMode == .ninebotSeven ? 1024 / 600 : outputMode == .ninebot43 ? 480 / 272 : 848 / 480, family: bmsClient.selectedFamily)
+                             aspectRatio: bmsPreviewAspectRatio, family: bmsClient.selectedFamily)
         bmsCardPreviewStatus.text = reading == nil ? "示例数据 · 当前没有实时读数" : "实时数据 · " + bmsClient.selectedFamily.title
         let ids = bmsClient.devices.map(\.id)
         let structureKey = "\(bmsClient.selectedID?.uuidString ?? "")|\(bmsClient.selectedFamily.rawValue)|\(bmsClient.isConfirmingSelection)|\(bmsClient.isScanning)|\(bmsClient.presentation.action)|\(cardConfiguration.fields.map(\.rawValue).joined(separator: ","))|\(bmsCapabilities.variant ?? "")"
@@ -2719,7 +2719,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             skippedLocalVideo = true
             pictureInPicture.stop()
             videoSurface.suspendForExternalOutput()
-            log("极核仪表继续输出，手机预览已暂停；直传模式不需要手机端视频解码和编码")
+            log("极核仪表继续输出，手机预览已暂停")
             return
         }
         pictureInPicture.awaitAutomaticStart()
@@ -4365,9 +4365,21 @@ extension ReceiverViewController {
         (settingsNavigation ?? self).present(prompt, animated: true)
     }
 
+    private var bmsPreviewAspectRatio: CGFloat {
+        if let profile = selectedZeehoProfile {
+            let size = profile == .zeehoSEPlus ? selectedZeehoCanvas.size : profile.preferredSize
+            return CGFloat(size.width) / CGFloat(size.height)
+        }
+        switch outputMode {
+        case .ninebotSeven: return 1024 / 600
+        case .ninebot43: return 480 / 272
+        default: return 848 / 480
+        }
+    }
+
     private func bmsCardPage() -> SettingsPageController {
         bmsCardPreview.update(reading: bmsClient.freshReading, configuration: effectiveBMSCardConfiguration,
-                             aspectRatio: outputMode == .ninebotSeven ? 1024 / 600 : outputMode == .ninebot43 ? 480 / 272 : 848 / 480, family: bmsClient.selectedFamily)
+                             aspectRatio: bmsPreviewAspectRatio, family: bmsClient.selectedFamily)
         return page("BMS 卡片显示") { [unowned self] in
             var sections = [SettingsSection("内容模式", footer: "自动推荐最多四项有效字段，短时缺失时保留位置。自定义保留你的字段与顺序，随车辆配置保存。旧版布局继续使用自定义模式。", [
                 .control("显示内容", self.bmsCardModeControl),
@@ -4380,6 +4392,7 @@ extension ReceiverViewController {
                     self.bmsCardOrderPage()
                 }
             ])]
+            sections.append(SettingsSection(footer: "支持手机预览、九号 4.3／5／7 寸和极核 5／6.2 寸。极核开启电池卡片后本次使用兼容转码；关闭卡片后，下次启动恢复所选视频模式。", []))
             sections.append(SettingsSection("布局预览", footer: "背景为布局示意，比例随所选仪表变化。没有实时读数时使用示例数据，示例不会写入电池记录或投屏画面。", [
                 .note(self.bmsCardPreviewStatus), .view(self.bmsCardPreview)
             ]))
@@ -4841,7 +4854,7 @@ extension ReceiverViewController {
                     rows.append(.control("CarPlay 画面", icon: ("aspectratio", .systemGreen), zeehoSEPlusCanvasControl))
                     rows.append(.control("视频发送方式", icon: ("film", .systemIndigo), zeehoSEPlusVideoModeControl))
                     rows.append(.info("当前发送方式", selectedZeehoVideoMode.title))
-                    rows.append(.info(CWL("使用说明"), "全宽适合本机 1600×770 仪表。直传兼容性待实测，黑屏时改回兼容转码。25 FPS 自动使用转码。锁屏时暂停手机预览，后台保持需开启。"))
+                    rows.append(.info(CWL("使用说明"), "全宽适合本机 1600×770 仪表。直传兼容性待实测，黑屏时改回兼容转码。25 FPS 或开启 BMS 电池卡片时自动使用转码。锁屏时暂停手机预览，后台保持需开启。"))
                 }
                 if usesAutomaticZeehoAddress {
                     rows.append(.info("仪表 IP", "连接时自动匹配，结果见日志"))

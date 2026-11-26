@@ -3,8 +3,8 @@ import CoreVideo
 import Foundation
 import ImageIO
 
-/// Shared canvas for Ninebot JPEG and H.264 outputs. Used only on the output queue.
-final class NinebotVideoCanvas {
+/// Shared canvas for Ninebot JPEG and Ninebot/ZEEHO H.264 outputs. Used only on the output queue.
+final class InstrumentVideoCanvas {
     private var bmsOverlay: CIImage?
     private var bmsConfiguration = ANTBMSCardConfiguration()
     private lazy var compositor = CIContext(options: [.useSoftwareRenderer: true, .cacheIntermediates: false])
@@ -30,7 +30,7 @@ final class NinebotVideoCanvas {
     private enum CanvasError: LocalizedError {
         case allocation(CVReturn)
         var errorDescription: String? {
-            switch self { case .allocation(let status): "无法分配九号缩放画面（\(status)）" }
+            switch self { case .allocation(let status): "无法分配仪表缩放画面（\(status)）" }
         }
     }
 
