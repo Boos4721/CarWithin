@@ -12,6 +12,11 @@ struct LocalizationSmoke {
         assert(!result.contains("{1}"))
         assert(CWL("版本 {1}（{2}）", ["1.0.4", "16"]) == (english ? "Version 1.0.4 (16)" : "版本 1.0.4（16）"))
         assert(CWL("An unknown key") == "An unknown key")
+        for (key, translation) in [("BMS 统计与记录", "BMS statistics and records"),
+                                   ("电池设备", "Battery device"), ("全部设备", "All devices"),
+                                   ("本次与历史记录", "Current and past records")] {
+            assert(CWL(key) == (english ? translation : key), "BMS record translation missing: \(key)")
+        }
         let page = String(decoding: BrowserReceiverPage.html, as: UTF8.self)
         assert(!page.contains("\\#(version)"), "Page version must be expanded")
         assert(page.contains("const PAGE_VERSION='" + BrowserReceiverPage.version + "'"))

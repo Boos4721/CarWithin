@@ -326,6 +326,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private var bmsSessionVehicleID: UUID?
     private var bmsSessionFamily: BMSFamily?
     private var bmsSessionDevice: UUID?
+    private var bmsSessionDeviceName: String?
+    private let bmsRecordStore = BMSRideRecordStore()
     private var bmsRecordFilter = BMSRecordFilter()
     private weak var liveBMSRecordSummary: StatusLabel?
     private weak var liveBMSRecordTrend: BMSVoltageTrendView?
@@ -3813,14 +3815,14 @@ extension ReceiverViewController {
             text.heightAnchor.constraint(equalToConstant: 360).isActive = true
             return page(title) { [weak self] in
                 [SettingsSection(footer: footer, [.view(text)]), SettingsSection([
-                    .action("复制内容", icon: ("doc.on.doc", .systemBlue)) { UIPasteboard.general.string = text.text },
+                    .action(CWL("复制内容"), icon: ("doc.on.doc", .systemBlue)) { UIPasteboard.general.string = text.text },
                     .action("分享 \(format) 文件", icon: ("square.and.arrow.up", .systemBlue)) {
                         self?.shareReport(snapshot, name: name)
                     }
                 ])]
             }
         } catch {
-            return page(title) { [SettingsSection([.info("报告生成失败", error.localizedDescription)])] }
+            return page(title) { [SettingsSection([.info(CWL("报告生成失败"), error.localizedDescription)])] }
         }
     }
 
@@ -3835,7 +3837,7 @@ extension ReceiverViewController {
             sheet.popoverPresentationController?.sourceView = presenter.view
             sheet.popoverPresentationController?.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 1, height: 1)
             presenter.present(sheet, animated: true)
-        } catch { alert("无法导出", error.localizedDescription) }
+        } catch { alert(CWL("无法导出"), error.localizedDescription) }
     }
 
     private func beginBMSSessionIfNeeded() {
@@ -3848,8 +3850,9 @@ extension ReceiverViewController {
         bmsSessionRecordID = UUID()
         bmsSessionStartedAt = Date(); bmsSessionVehicle = currentVehicleName
         bmsSessionVehicleID = VehicleProfileStore.selectedID; bmsSessionDevice = bmsClient.selectedID
+        bmsSessionDeviceName = bmsClient.selectedID.map { BMSDisplayNameStore.name(for: $0, fallback: bmsClient.selectedName) }
         bmsSessionFamily = bmsClient.selectedFamily
-        bmsSessionStatus.text = "等待新的 BMS 实时数据"
+        bmsSessionStatus.text = CWL("等待新的 BMS 实时数据")
     }
 
     @discardableResult
@@ -3861,7 +3864,7 @@ extension ReceiverViewController {
             showFinishedBMSSummary = publishSummary
             lastFinishedBMSRecord = BMSRideRecord(id: record.id, startedAt: record.startedAt, endedAt: record.endedAt,
                 vehicleName: record.vehicleName, statistics: record.statistics, completed: true,
-                vehicleID: record.vehicleID, bmsID: record.bmsID)
+                vehicleID: record.vehicleID, bmsID: record.bmsID, bmsName: record.bmsName)
         }
         checkpointBMSSession(completed: true)
         bmsSessionStartedAt = nil
@@ -3875,8 +3878,8 @@ extension ReceiverViewController {
         guard var record = currentBMSRecord else { return }
         record = BMSRideRecord(id: record.id, startedAt: record.startedAt, endedAt: record.endedAt,
             vehicleName: record.vehicleName, statistics: record.statistics, completed: completed,
-            vehicleID: record.vehicleID, bmsID: record.bmsID)
-        do { try BMSRideRecordStore.save(record) }
+            vehicleID: record.vehicleID, bmsID: record.bmsID, bmsName: record.bmsName)
+        do { try bmsRecordStore.save(record) }
         catch { log("BMS 记录保存失败，本次统计仍可导出：\(error.localizedDescription)") }
     }
 
@@ -3884,11 +3887,11 @@ extension ReceiverViewController {
         guard let startedAt = bmsSessionStartedAt, bmsSession.sampleCount > 0 else { return nil }
         return BMSRideRecord(id: bmsSessionRecordID, startedAt: startedAt, endedAt: Date(),
             vehicleName: bmsSessionVehicle, statistics: bmsSession, completed: false,
-            vehicleID: bmsSessionVehicleID, bmsID: bmsSessionDevice)
+            vehicleID: bmsSessionVehicleID, bmsID: bmsSessionDevice, bmsName: bmsSessionDeviceName)
     }
 
     private func bmsHistoryRecords() -> [BMSRideRecord] {
-        var records = BMSRideRecordStore.records()
+        var records = bmsRecordStore.records()
         if let current = currentBMSRecord {
             records.removeAll { $0.id == current.id }; records.insert(current, at: 0)
         }
@@ -3906,7 +3909,7 @@ extension ReceiverViewController {
     }
 
     private func bmsRecordSubtitle(_ record: BMSRideRecord, active: Bool) -> String {
-        let state = active ? "记录中" : record.completed ? "已结束" : "已保存片段"
+        let state = active ? CWL("记录中") : record.completed ? CWL("已结束") : CWL("已保存片段")
         let statistics = record.statistics
         let charge = statistics.firstCharge.flatMap { first in statistics.lastCharge.map { " · \(first)% → \($0)%" } } ?? ""
         let voltage = statistics.minimumVoltage.flatMap { low in statistics.maximumVoltage.map {
@@ -3915,7 +3918,8 @@ extension ReceiverViewController {
         let seconds = Int(statistics.sampledSeconds)
         let coverage = statistics.coverageRatio.map { String(format: " · 覆盖 %.0f%%", $0 * 100) } ?? ""
         let interruptions = statistics.coverage.map { " · 中断 \($0.interruptionCount) 次" } ?? ""
-        return "\(state) · 有效 \(seconds / 60) 分 \(seconds % 60) 秒\(coverage)\(interruptions)\(charge)\(voltage)"
+        let device = record.bmsName.map { " · " + $0 } ?? ""
+        return "\(state) · 有效 \(seconds / 60) 分 \(seconds % 60) 秒\(coverage)\(interruptions)\(charge)\(device)\(voltage)"
     }
 
     private func bmsCoverageText(_ statistics: ANTBMSSessionStatistics) -> String {
@@ -3959,35 +3963,39 @@ extension ReceiverViewController {
             self.bmsRecordFilter.completion = BMSRecordFilter.Completion(rawValue: completion.selectedSegmentIndex) ?? .all
             self.reloadVisibleSettings()
         }, for: .valueChanged)
-        return page("BMS 统计与记录") { [unowned self] in
-            var sections = [SettingsSection(self.bmsSessionStartedAt == nil ? "本次统计" : "正在记录", footer:
+        return page(CWL("BMS 统计与记录")) { [unowned self] in
+            var sections = [SettingsSection(self.bmsSessionStartedAt == nil ? CWL("本次统计") : CWL("正在记录"), footer:
                 "覆盖率按有效连续采样时间 / 记录时长计算，初次等待也计入记录时长。超过 5 秒未收到有效数据计为中断，中断时长从过期时起算，不推断失联原因。峰值取绝对值。", [.note(self.bmsSessionStatus), .view(self.bmsTrend)])]
             var controls: [SettingsRow] = []
             if self.bmsSessionStartedAt != nil {
-                controls.append(.action("结束并保存本次记录", icon: ("stop.circle", .systemBlue)) { [unowned self] in
+                controls.append(.action(CWL("结束并保存本次记录"), icon: ("stop.circle", .systemBlue)) { [unowned self] in
                     let finished = self.finishBMSSession(); self.reloadVisibleSettings()
                     if finished != nil { self.presentCompletedBMSSummaryIfNeeded() }
                 })
             } else {
-                controls.append(.action("开始新记录", icon: ("record.circle", .systemBlue)) { [unowned self] in
-                    guard self.bmsEnabledSwitch.isOn else { self.alert("先开启 BMS", "在电池与 BMS 页面开启读取并连接自己的设备。"); return }
+                controls.append(.action(CWL("开始新记录"), icon: ("record.circle", .systemBlue)) { [unowned self] in
+                    guard self.bmsEnabledSwitch.isOn else { self.alert(CWL("先开启 BMS"), "在电池与 BMS 页面开启读取并连接自己的设备。"); return }
                     guard !self.bmsClient.isConfirmingSelection else {
                         self.alert("先完成电池核对", "保存已确认的电池后再开始记录。"); return
                     }
                     self.beginBMSSessionIfNeeded(); self.reloadVisibleSettings()
                 })
             }
-            controls.append(.page("预览并导出本次统计", icon: ("square.and.arrow.up", .systemBlue)) { [unowned self] in
-                self.reportPreviewPage(title: "BMS 统计预览", name: "CarWithin-bms-statistics.json", data: {
+            controls.append(.page(CWL("预览并导出本次统计"), icon: ("square.and.arrow.up", .systemBlue)) { [unowned self] in
+                self.reportPreviewPage(title: CWL("BMS 统计预览"), name: "CarWithin-bms-statistics.json", data: {
                     let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
                     return try encoder.encode(self.bmsSession)
                 })
             })
             if !self.bmsSession.points.isEmpty { controls.append(self.bmsCSVRow { [unowned self] in self.bmsSession }) }
             sections.append(SettingsSection(controls))
-            sections.append(SettingsSection("筛选历史", [
-                .page("车辆", detail: { [unowned self] in self.bmsRecordFilter.vehicleName ?? "全部车辆" }) { [unowned self] in self.bmsRecordVehiclePage() },
-                .control("时间", period), .control("状态", completion)
+            sections.append(SettingsSection(CWL("筛选历史"), [
+                .page("车辆", detail: { [unowned self] in self.bmsRecordFilter.vehicleName ?? CWL("全部车辆") }) { [unowned self] in self.bmsRecordVehiclePage() },
+                .page(CWL("电池设备"), detail: { [unowned self] in
+                    guard let id = self.bmsRecordFilter.bmsID else { return CWL("全部设备") }
+                    return self.bmsHistoryRecords().first { $0.bmsID == id }?.bmsName ?? CWL("已保存设备")
+                }) { [unowned self] in self.bmsRecordDevicePage() },
+                .control(CWL("时间"), period), .control(CWL("状态"), completion)
             ]))
             let all = self.bmsHistoryRecords()
             let activeID = self.bmsSessionStartedAt == nil ? nil : self.bmsSessionRecordID
@@ -4000,14 +4008,14 @@ extension ReceiverViewController {
                 row.subtitle = { [unowned self] in self.bmsRecordSubtitle(record, active: active) }
                 if !active {
                     row.onDelete = { [unowned self] in
-                        do { try BMSRideRecordStore.remove(record.id) } catch { self.alert("删除失败", error.localizedDescription) }
+                        do { try self.bmsRecordStore.remove(record.id) } catch { self.alert(CWL("删除失败"), error.localizedDescription) }
                     }
                 }
                 return row
             }
             if history.isEmpty {
-                history.append(.info(all.isEmpty ? "还没有电池记录" : "没有符合条件的记录",
-                    all.isEmpty ? "连接 BMS 后开始记录" : "可调整上方筛选条件"))
+                history.append(.info(all.isEmpty ? CWL("还没有电池记录") : CWL("没有符合条件的记录"),
+                    all.isEmpty ? CWL("连接 BMS 后开始记录") : CWL("可调整上方筛选条件")))
             }
             sections.append(SettingsSection("最近记录 · \(records.count)/\(all.count)", footer:
                 "本机最多保存 20 次，每 15 秒保存片段。趋势保留最近 120 个五秒区间，全程范围包含全部有效帧。停止 CarPlay 或关闭 BMS 时完成记录。", history))
@@ -4016,14 +4024,14 @@ extension ReceiverViewController {
     }
 
     private func bmsRecordVehiclePage() -> SettingsPageController {
-        page("按车辆筛选") { [unowned self] in
+        page(CWL("按车辆筛选")) { [unowned self] in
             var choices: [(id: UUID?, name: String)] = VehicleProfileStore.profiles().map { ($0.id, $0.name) }
             choices.append(contentsOf: self.bmsHistoryRecords().map { ($0.vehicleID, $0.vehicleName) })
             var unique: [(id: UUID?, name: String)] = []
             for choice in choices where !unique.contains(where: { $0.id != nil ? $0.id == choice.id : $0.id == choice.id && $0.name == choice.name }) {
                 unique.append(choice)
             }
-            var all = SettingsRow.action("全部车辆") { [unowned self] in
+            var all = SettingsRow.action(CWL("全部车辆")) { [unowned self] in
                 self.bmsRecordFilter.vehicleID = nil; self.bmsRecordFilter.vehicleName = nil
                 self.settingsNavigation?.popViewController(animated: true)
             }
@@ -4043,9 +4051,30 @@ extension ReceiverViewController {
         }
     }
 
+    private func bmsRecordDevicePage() -> SettingsPageController {
+        page(CWL("按电池设备筛选")) { [unowned self] in
+            var seen = Set<UUID>()
+            var all = SettingsRow.action(CWL("全部设备")) { [unowned self] in
+                self.bmsRecordFilter.bmsID = nil
+                self.settingsNavigation?.popViewController(animated: true)
+            }
+            all.checked = { [unowned self] in self.bmsRecordFilter.bmsID == nil }
+            let rows = self.bmsHistoryRecords().compactMap { record -> SettingsRow? in
+                guard let id = record.bmsID, seen.insert(id).inserted else { return nil }
+                var row = SettingsRow.action(record.bmsName ?? "已保存设备 · \(id.uuidString.prefix(8))") { [unowned self] in
+                    self.bmsRecordFilter.bmsID = id
+                    self.settingsNavigation?.popViewController(animated: true)
+                }
+                row.checked = { [unowned self] in self.bmsRecordFilter.bmsID == id }
+                return row
+            }
+            return [SettingsSection(footer: "按已记录的 BMS 设备区分同名车辆。没有设备标识的旧记录仅在全部设备中显示。", [all] + rows)]
+        }
+    }
+
     private func bmsCSVRow(_ statistics: @escaping () -> ANTBMSSessionStatistics) -> SettingsRow {
-        .page("预览并导出电压 CSV", icon: ("tablecells", .systemGreen)) { [unowned self] in
-            self.reportPreviewPage(title: "电压 CSV 预览", name: "CarWithin-bms-voltage-\(UUID().uuidString).csv",
+        .page(CWL("预览并导出电压 CSV"), icon: ("tablecells", .systemGreen)) { [unowned self] in
+            self.reportPreviewPage(title: CWL("电压 CSV 预览"), name: "CarWithin-bms-voltage-\(UUID().uuidString).csv",
                 format: "CSV", footer: "仅导出曲线保留的最近 120 个区间，含最低、最高与最新电压，并非全程逐帧数据。旧版缺少的极值留空；时间单位为秒，电压单位为伏。") {
                     Data(statistics().voltageCSV.utf8)
                 }
@@ -4064,8 +4093,8 @@ extension ReceiverViewController {
             let date = DateFormatter.localizedString(from: current.startedAt, dateStyle: .medium, timeStyle: .short)
             return [SettingsSection("电池记录 · \(date)", footer: active ? "正在记录，读数与曲线持续更新。" : current.completed ? "已结束并保存。" : "这是最近保存的片段，可能尚未正常结束。", [.note(summary), .view(trend)]),
              SettingsSection([
-                .page("预览并导出完整统计 JSON", icon: ("square.and.arrow.up", .systemBlue)) { [unowned self] in
-                    self.reportPreviewPage(title: "记录预览", name: "CarWithin-bms-\(record.id.uuidString).json", data: {
+                .page(CWL("预览并导出完整统计 JSON"), icon: ("square.and.arrow.up", .systemBlue)) { [unowned self] in
+                    self.reportPreviewPage(title: CWL("记录预览"), name: "CarWithin-bms-\(record.id.uuidString).json", data: {
                         let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
                         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
                         return try encoder.encode(self.resolvedBMSRecord(record))
@@ -4155,7 +4184,7 @@ extension ReceiverViewController {
                 .page("显示设置", icon: ("rectangle.topthird.inset.filled", .systemBlue), detail: { [unowned self] in
                     "\(self.bmsCardConfiguration.mode.title) · \(self.effectiveBMSCardConfiguration.fields.count) 项"
                 }) { [unowned self] in self.bmsCardPage() },
-                .page("本次与历史记录", icon: ("chart.xyaxis.line", .systemGreen)) { [unowned self] in self.bmsStatisticsPage() },
+                .page(CWL("本次与历史记录"), icon: ("chart.xyaxis.line", .systemGreen)) { [unowned self] in self.bmsStatisticsPage() },
                 .page("设备管理", icon: ("antenna.radiowaves.left.and.right", .systemBlue), detail: { [unowned self] in
                     self.bmsClient.selectedID == nil ? "添加电池" : self.bmsClient.selectedFamily.shortName
                 }) { [unowned self] in self.bmsDevicesPage() }

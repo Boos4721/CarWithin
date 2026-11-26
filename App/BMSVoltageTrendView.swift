@@ -14,14 +14,14 @@ final class BMSVoltageTrendView: UIView, UIGestureRecognizerDelegate {
             accessibilityValue = selectionDescription(point)
         } else {
             if let low = points.map(\.lowerVoltage).min(), let high = points.map(\.upperVoltage).max() {
-                let source = points.allSatisfy { $0.minimumVoltage != nil } ? "包含区间极值" : "旧版抽样，可能遗漏瞬时压降"
+                let source = points.allSatisfy { $0.minimumVoltage != nil } ? CWL("包含区间极值") : CWL("旧版抽样，可能遗漏瞬时压降")
                 accessibilityValue = String(format: "曲线范围 %.2f 至 %.2f 伏，%@", low, high, source)
-            } else { accessibilityValue = "等待电压数据" }
+            } else { accessibilityValue = CWL("等待电压数据") }
         }
     }
     override init(frame: CGRect) {
         super.init(frame: frame)
-        isOpaque = false; isAccessibilityElement = true; accessibilityLabel = "本次电压趋势"
+        isOpaque = false; isAccessibilityElement = true; accessibilityLabel = CWL("本次电压趋势")
         accessibilityTraits.insert(.adjustable)
         accessibilityHint = "左右滑动查看区间；VoiceOver 下向上或向下轻扫切换区间。"
         heightAnchor.constraint(equalToConstant: 250).isActive = true
@@ -93,7 +93,7 @@ final class BMSVoltageTrendView: UIView, UIGestureRecognizerDelegate {
             .foregroundColor: UIColor.secondaryLabel]
         guard let first = points.first, let last = points.last,
               let minimum = points.map(\.lowerVoltage).min(), let maximum = points.map(\.upperVoltage).max() else {
-            ("收到数据后显示电压趋势" as NSString).draw(at: CGPoint(x: 8, y: 80), withAttributes: attributes)
+            (CWL("收到数据后显示电压趋势") as NSString).draw(at: CGPoint(x: 8, y: 80), withAttributes: attributes)
             return
         }
         let hasExtrema = points.allSatisfy { $0.minimumVoltage != nil && $0.maximumVoltage != nil }

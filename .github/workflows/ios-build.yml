@@ -52,6 +52,8 @@ jobs:
             Sources/TDSCarKitCore/ANTBMSProtocol.swift \
             Sources/TDSCarKitCore/ANTBMSSessionStatistics.swift \
             Sources/TDSCarKitCore/ANTBMSCardConfiguration.swift \
+            Sources/TDSCarKitCore/Localization.swift \
+            Sources/TDSCarKitCore/ANTBMSRideRecords.swift \
             App/VehicleProfileStore.swift Tools/ExperienceStoreSmoke.swift \
             -o "$RUNNER_TEMP/CarWithinExperienceStoreSmoke"
           "$RUNNER_TEMP/CarWithinExperienceStoreSmoke" | tee artifacts/profile-migration.log
