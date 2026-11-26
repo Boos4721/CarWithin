@@ -46,6 +46,10 @@ public final class BMSReadOnlyProtocol {
     var yySensors = (0, 0, 0)
     var page = [UInt8](repeating: 0, count: 124)
     var drainUntil = 0.0
+    var luxingRelay: [String: String] = [:]
+    var luxingCycles: Int?
+    var luxingRelayAt = -Double.infinity
+    var luxingCyclesAt = -Double.infinity
     var lanbaoMatch: [UInt8] = [6, 6, 6, 6, 6, 6]
     var accessPassword: [UInt8]?
     var accessMAC: [UInt8]?
@@ -109,6 +113,7 @@ public final class BMSReadOnlyProtocol {
                 else if command == 1 && !yyAddressTried { yyAddressTried = true; step = -1 }
                 else { yyLayout = 2; step = 0 }
             }
+        case .luxing: step = (step + 1) % 4
         case .jbd: authFailed(command: command)
         default: break
         }
@@ -158,6 +163,10 @@ public final class BMSReadOnlyProtocol {
             command = step; let offset = [0,60,119][step], count = [60,59,5][step]
             let body = Self.withCRC([0xf4,3,0x10,UInt8(offset),UInt8(count)])
             bytes = Array(body.map { String(format: "%02X", $0) }.joined().utf8)
+        case .luxing:
+            let block = Self.luxingBlocks[step % 4]
+            command = block.length
+            bytes = Self.withCRC([1, 3, UInt8(block.address >> 8), UInt8(block.address & 255), 0, UInt8(block.count)])
         case .mingtang: command = 1; bytes = Array("stateread".utf8)
         case .lanbao:
             command = step % 5 == 4 ? 2 : 1
@@ -183,6 +192,10 @@ public final class BMSReadOnlyProtocol {
             return b[2] == 0x15 && b[3] == 6 && b[4..<10].allSatisfy { (32...126).contains($0) }
                 || b[2] == 0x17 && b[3] == 0 || b[2] == 0x18 && b[3] == 6
         case .jikong: return b.count == 20 && [0x96,0x97].contains(b[4]) && b == jkRequest(b[4])
+        case .luxing:
+            return Self.luxingBlocks.contains { block in
+                b == Self.withCRC([1, 3, UInt8(block.address >> 8), UInt8(block.address & 255), 0, UInt8(block.count)])
+            }
         case .mingtang: return data == Data("stateread".utf8)
         case .yanyang:
             guard b.count == 8, b[0] <= 247, b[1] == 3, Self.withCRC(Array(b.prefix(6))) == b else { return false }
@@ -233,6 +246,7 @@ public final class BMSReadOnlyProtocol {
         case .yadi: return drainYadi(now)
         case .mingtang: return drainMingtang(now)
         case .lanbao: return drainLanbao(now)
+        case .luxing: return drainLuXing(now)
         default: return []
         }
     }

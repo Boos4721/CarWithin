@@ -2,13 +2,14 @@ import Foundation
 
 /// Selected support levels follow maibms 6bbb5d6 (2026-11-20); identification is not protocol validation.
 public enum BMSFamily: String, CaseIterable, Codable {
-    case ant, yanyang, jikong, lanbao, jbd, yadi, mingtang, xiaoha
+    case ant, yanyang, jikong, lanbao, jbd, yadi, mingtang, xiaoha, luxing
     public var title: String {
         switch self {
         case .ant: return "蚂蚁保护板"
         case .yanyang: return "彦阳保护板"
         case .jikong: return "极空保护板"
         case .lanbao: return "蓝宝电量计"
+        case .luxing: return "陆行电量计"
         case .jbd: return "嘉佰达保护板"
         case .yadi: return "亚迪保护板"
         case .mingtang: return "明唐保护板"
@@ -21,6 +22,7 @@ public enum BMSFamily: String, CaseIterable, Codable {
         case .yanyang: "彦阳"
         case .jikong: "极空"
         case .lanbao: "蓝宝"
+        case .luxing: "陆行"
         case .jbd: "嘉佰达"
         case .yadi: "亚迪"
         case .mingtang: "明唐"
@@ -33,6 +35,7 @@ public enum BMSFamily: String, CaseIterable, Codable {
         case .yanyang: "YYBMS B / 旧 A"
         case .jikong: "JK02 24S / 32S、JK04"
         case .lanbao: "FA50 双表"
+        case .luxing: "EM2APP / EM02 · FC03"
         case .jbd: "JBD 经典 BLE / DD"
         case .yadi: "FD / F403"
         case .mingtang: "FA00 / E1"
@@ -46,6 +49,7 @@ public enum BMSFamily: String, CaseIterable, Codable {
         case .yanyang: return "B 代与旧 A 基础布局；旧 A 的电流方向和 SOC 未确认，隐藏相关值。"
         case .jikong: return "JK02 24S / 32S；JK04 仅单体、总压和均衡，不提供电流或 SOC。"
         case .lanbao: return "FA50 双表及中继信息；没有逐串网格、MOS 或 SOH。匹配码可在本机配置。"
+        case .luxing: return "EM2APP / EM02 只读：自测总压、电流、功率、SOC、最多 30 串、有效温度和中继信息。剩余容量按 SOC × 额定容量计算；不提供保护控制或 SOH。待真机验证。"
         case .jbd: return "经典 DD 只读；需要登录的模块可填写自己的密码与真实 MAC，不修改设备密码。"
         case .yadi: return "Nordic UART F403 分块读取；仅确认总压、SOC、循环与单体。待真机验证。"
         case .mingtang: return "FA00 stateread / E1；字段按帧提供，总压倍率与型号范围仍待真机验证。"
@@ -66,7 +70,7 @@ public enum BMSFamily: String, CaseIterable, Codable {
         case .yanyang: return [.init("FFE0", "FFE2", "FFE1"), .init("FFE0", "FFE1", "FFE1"),
             .init("FEE9", "D44BC439-ABFD-45A2-B575-925416129600", "FEE1"),
             .init("FEE9", "8EC90001-F315-4F60-9FB8-838830DAEA50", "8EC90002-F315-4F60-9FB8-838830DAEA50")]
-        case .lanbao: return [.init("FFE0", "FFE2", "FFE1")]
+        case .lanbao, .luxing: return [.init("FFE0", "FFE2", "FFE1")]
         case .jbd: return [.init("FF00", "FF02", "FF01"), .init("FFE0", "FFE1", "FFE1")]
         case .yadi: return [.init("6E400001-B5A3-F393-E0A9-E50E24DCCA9E", "6E400002-B5A3-F393-E0A9-E50E24DCCA9E", "6E400003-B5A3-F393-E0A9-E50E24DCCA9E")]
         case .mingtang: return [.init("FA00", "", "")]
@@ -87,7 +91,7 @@ public enum BMSFamily: String, CaseIterable, Codable {
         if n.range(of: "^BT[0-9]+$", options: .regularExpression) != nil { return .yanyang }
         let prefixes: [(Self, [String])] = [(.ant,["ANT"]),(.yanyang,["YYBMS","YY-","彦阳"]),
             (.jikong,["JK-","JK_","极空"]),(.jbd,["JBD","SP","DB","嘉佰达","XIAOXIANG","DP04S","GJ-"]),
-            (.lanbao,["BLUEBABE","BLUE","LB"]),(.yadi,["亚迪智电"]),(.mingtang,["明唐","MINGTANG"]),
+            (.luxing,["EM2APP"]),(.lanbao,["BLUEBABE","BLUE","LB"]),(.yadi,["亚迪智电"]),(.mingtang,["明唐","MINGTANG"]),
             (.xiaoha,["小哈锂电","小哈智电"])]
         if let match = prefixes.first(where: { $0.1.contains { n.hasPrefix($0) } }) { return match.0 }
         if n.range(of: "^AP2[0-9]S", options: .regularExpression) != nil { return .jbd }
