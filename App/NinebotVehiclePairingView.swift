@@ -38,7 +38,7 @@ struct NinebotVehiclePairingView: View {
             Button("发送请求") { if !locked { connection.beginPairing(confirmedTarget: target) } }
             Button("取消", role: .cancel) {}
         } message: { target in
-            Text("蓝牙名称：\(target.bluetoothName)\n本机识别码：\(target.id.uuidString.suffix(6))\n确认后只按自己车辆上的 P 键，再等待身份认证完成。")
+            Text("蓝牙名称：\(target.bluetoothName)\n本机识别码：\(target.id.uuidString.suffix(6))\n确认后先等「车机已就绪」，再短按自己车辆上的 P 键，等待身份认证完成。")
         }
         .alert("车辆显示名称", isPresented: $showsRename) {
             TextField("最多 40 字，留空恢复蓝牙名称", text: $editedName)
@@ -65,6 +65,7 @@ struct NinebotVehiclePairingView: View {
     private var statusSection: some View {
         Section {
             Label(connection.presentation.title, systemImage: stateSymbol)
+                .foregroundStyle(connection.readyForButtonPress ? Color.green : Color.primary)
                 .font(.headline)
                 .foregroundStyle(connection.phase == .failed || connection.phase == .unavailable ? Color.orange : Color.primary)
             if let name = connection.attemptName { Text("当前操作：" + name).font(.subheadline) }
@@ -135,13 +136,19 @@ struct NinebotVehiclePairingView: View {
     @ViewBuilder private func pairingControls(now: TimeInterval) -> some View {
         if !locked {
             Section {
+                if connection.garage.selected != nil {
+                    Button(CWL("一键重新配对（按 P 键）")) { connection.rePairSelectedVehicle() }
+                        .disabled(!connection.canQuickRePair)
+                    Text("重新配对当前所选车辆，无需删除记录；等车机就绪后再按 P 键。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
                 if connection.canBeginPairing {
                     Button("发送配对请求") {
                         pairingToConfirm = connection.pairingTarget
                         confirmsPairing = pairingToConfirm != nil
                     }
                         .buttonStyle(.borderedProminent)
-                    Text("点击后再按一下车上的 P 键，等待车辆确认。")
+                    Text("发送请求后先等待「车机已就绪」，再按一下车上的 P 键。")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 if let window = connection.confirmationWindow {
@@ -339,6 +346,7 @@ struct NinebotVehiclePairingView: View {
     private var stateSymbol: String {
         if connection.phase == .failed || connection.phase == .unavailable { return "exclamationmark.circle" }
         if connection.phase == .paired { return "checkmark.shield.fill" }
+        if connection.readyForButtonPress { return "hand.tap.fill" }
         return "scooter"
     }
 
@@ -363,5 +371,89 @@ struct NinebotVehiclePairingView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+struct NinebotVehicleDiagnosticsLogView: View {
+    @ObservedObject var connection: NinebotVehicleConnection
+    @State private var copiedLogs = false
+
+    var body: some View {
+        Form {
+            Section {
+                if connection.debugLogs.isEmpty {
+                    Text(CWL("暂无九号蓝牙日志。"))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text(connection.debugLogs.joined(separator: "\n"))
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+            } header: {
+                Text(CWL("九号蓝牙诊断日志"))
+            } footer: {
+                Text(CWL("最近 80 条，不含蓝牙配对密钥或敏感载荷。同时也会写入「诊断与实验 › 日志」。"))
+            }
+
+            if !connection.debugLogs.isEmpty {
+                Section {
+                    Button {
+                        UIPasteboard.general.string = connection.debugLogs.joined(separator: "\n")
+                        copiedLogs = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copiedLogs = false }
+                    } label: {
+                        HStack(spacing: 14) {
+                            SettingsIconBadge(symbol: copiedLogs ? "checkmark" : "doc.on.doc.fill",
+                                              color: copiedLogs ? .systemGreen : .systemBlue)
+                            Text(copiedLogs ? CWL("已复制蓝牙日志") : CWL("复制蓝牙日志"))
+                                .font(.body)
+                                .foregroundStyle(.primary)
+                            Spacer(minLength: 4)
+                        }
+                        .padding(.vertical, 2)
+                        .contentShape(Rectangle())
+                    }
+
+                    Button(role: .destructive) {
+                        connection.clearDebugLogs()
+                    } label: {
+                        HStack(spacing: 14) {
+                            SettingsIconBadge(symbol: "trash.fill", color: .systemRed)
+                            Text(CWL("清空蓝牙日志"))
+                                .font(.body)
+                                .foregroundStyle(.red)
+                            Spacer(minLength: 4)
+                        }
+                        .padding(.vertical, 2)
+                        .contentShape(Rectangle())
+                    }
+                }
+            }
+        }
+        .navigationTitle(CWL("九号蓝牙日志"))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Rounded, colored icon tile matching `SettingsIcon` in `SettingsUI.swift`.
+private struct SettingsIconBadge: View {
+    let symbol: String
+    let color: UIColor
+    var size: CGFloat = 29
+    var cornerRadius: CGFloat = 7
+    var symbolSize: CGFloat = 14
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(Color(uiColor: color))
+            Image(systemName: symbol)
+                .font(.system(size: symbolSize, weight: .semibold))
+                .foregroundStyle(.white)
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
     }
 }

@@ -23,14 +23,14 @@ struct NinebotPairingPresentation {
     let title: String
     let step: Step?
     let isWorking: Bool
-    init(phase: NinebotPairingPhase, isPairing: Bool) {
+    init(phase: NinebotPairingPhase, isPairing: Bool, readyForButtonPress: Bool = true) {
         switch phase {
         case .idle: title = "添加或管理你的车辆"; step = nil; isWorking = false
         case .scanning: title = "正在查找附近车辆"; step = .choose; isWorking = true
         case .connecting, .discovering, .preparing:
             title = isPairing ? "正在连接并准备配对" : "正在连接车辆"; step = isPairing ? .prepare : nil; isWorking = true
         case .needsPairing: title = "可以发送本机配对请求"; step = .confirm; isWorking = false
-        case .pairing: title = "请按一下车上的 P 键"; step = .confirm; isWorking = true
+        case .pairing: title = readyForButtonPress ? "请按一下车上的 P 键" : "正在等待车机就绪，请先不要按 P 键"; step = readyForButtonPress ? .confirm : .prepare; isWorking = true
         case .authenticating: title = "正在验证车辆身份"; step = isPairing ? .authenticate : nil; isWorking = true
         case .paired: title = "车辆身份已验证"; step = .complete; isWorking = false
         case .starting: title = "正在等待仪表导航确认"; step = nil; isWorking = true

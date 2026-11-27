@@ -280,6 +280,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private static let ninebotOfficialInstructions = "点「启动本机 CarPlay」后，会先准备仪表投屏通道并发送握手，再自动启动 CarPlay。\n若仪表仍未出画，该型号可能仍需在九号出行开启投屏导航，并让九号出行留在后台。\n如启动时提示端口被占用，请结束官方投屏并关闭其后台实例后重试。"
     private let ninebotVehicle = NinebotVehicleConnection()
     private let ninebotVehicleButton = UIButton(type: .system)
+    private let ninebotQuickRePairButton = UIButton(type: .system)
     private let ninebotVehicleStatus = UILabel()
     private var ninebotVehicleObservation: AnyCancellable?
     private var requestedVehicleProjection = false
@@ -298,6 +299,14 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         return "可先在「车辆配对」配对并选择车辆，启用自动开启导航（待真车验证）。\n" +
             (outputMode == .ninebot ? Self.ninebotFiveInstructions : Self.ninebotOfficialInstructions)
     }
+    private func refreshNinebotQuickRePairButton() {
+        ninebotQuickRePairButton.isHidden = ninebotVehicle.garage.selected == nil
+        ninebotQuickRePairButton.configuration?.title = ninebotVehicle.isPairing
+            ? CWL("取消配对") : CWL("一键重新配对（按 P 键）")
+        ninebotQuickRePairButton.isEnabled = !running && !waitingForNetwork
+            && (ninebotVehicle.isPairing || ninebotVehicle.canQuickRePair)
+    }
+
     private func updateNinebotStatus(_ message: String) {
         ninebotStatus.text = message
         ninebotCardStatus.text = message
@@ -837,19 +846,30 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         ninebotVehicleButton.configuration?.title = "车辆配对 / 自动开启导航"
         ninebotVehicleButton.addAction(UIAction { [weak self] _ in self?.revealSettings(vehicle: true) }, for: .touchUpInside)
         ninebotCard.addArrangedSubview(ninebotVehicleButton)
+        ninebotQuickRePairButton.configuration = .tinted()
+        ninebotQuickRePairButton.configuration?.title = CWL("一键重新配对（按 P 键）")
+        ninebotQuickRePairButton.addAction(UIAction { [weak self] _ in
+            guard let self, !self.running, !self.waitingForNetwork else { return }
+            if self.ninebotVehicle.isPairing { self.ninebotVehicle.cancelPairing() }
+            else { self.ninebotVehicle.rePairSelectedVehicle() }
+        }, for: .touchUpInside)
+        ninebotCard.addArrangedSubview(ninebotQuickRePairButton)
         ninebotVehicle.onLog = { [weak self] message in
             self?.log("九号车辆：" + message)
         }
         ninebotVehicle.onSelectionChanged = { [weak self] in self?.saveActiveVehicleProfile() }
-        ninebotVehicleObservation = ninebotVehicle.$status.combineLatest(ninebotVehicle.$garage).sink { [weak self] status, garage in
+        ninebotVehicleObservation = ninebotVehicle.$status.combineLatest(ninebotVehicle.$garage, ninebotVehicle.$phase, ninebotVehicle.$readyForButtonPress)
+            .sink { [weak self] status, garage, _, ready in
             guard let self else { return }
             self.ninebotVehicleButton.configuration?.subtitle = garage.selected?.title ?? "尚未选择车辆"
             self.ninebotVehicleStatus.text = status
-            self.ninebotVehicleStatus.isHidden = garage.selected == nil
+            self.ninebotVehicleStatus.isHidden = garage.selected == nil && !self.ninebotVehicle.isPairing
+            self.ninebotVehicleStatus.textColor = ready ? .systemGreen : .secondaryLabel
             // @Published sends before mutation; render instructions on the next turn.
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.ninebotCardInstructions?.text = self.ninebotInstructions
+                self.refreshNinebotQuickRePairButton()
             }
         }
         stack.addArrangedSubview(ninebotCard)
@@ -2931,6 +2951,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         cfmotoAddressField.isEnabled = value
         ninebotAddressField.isEnabled = value
         ninebot43AddressField.isEnabled = value
+        refreshNinebotQuickRePairButton()
         tailingAddressField.isEnabled = value
         carLifeAddressField.isEnabled = value
     }
@@ -3468,6 +3489,13 @@ extension ReceiverViewController {
         let controller = UIHostingController(rootView: NinebotVehiclePairingView(
             connection: ninebotVehicle, locked: running || waitingForNetwork))
         controller.title = "九号车辆配对"
+        return controller
+    }
+
+    private func ninebotVehicleLogPage() -> UIViewController {
+        let controller = UIHostingController(rootView: NinebotVehicleDiagnosticsLogView(connection: ninebotVehicle))
+        controller.title = CWL("九号蓝牙日志")
+        controller.navigationItem.largeTitleDisplayMode = .never
         return controller
     }
 
@@ -5599,6 +5627,7 @@ extension ReceiverViewController {
         }
         return SettingsSection("诊断信息", [
             .page("日志", icon: ("doc.text.fill", .systemGray)) { [unowned self] in self.logPage() },
+            .page(CWL("九号蓝牙日志"), icon: ("antenna.radiowaves.left.and.right", .systemBlue)) { [unowned self] in self.ninebotVehicleLogPage() },
             .page("连接诊断报告", icon: ("doc.text.magnifyingglass", .systemBlue)) { [unowned self] in self.connectionReportPage() },
             .info("浏览器页面", BrowserReceiverPage.version),
             .info("设备", "\(model) · iOS \(UIDevice.current.systemVersion)"),

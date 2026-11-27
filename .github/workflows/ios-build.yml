@@ -47,6 +47,7 @@ jobs:
           bash Tools/test_ninebot_sockets.sh 2>&1 | tee artifacts/ninebot-socket-tests.log
           bash Tools/test_bms.sh 2>&1 | tee artifacts/bms-tests.log
           bash Tools/test.sh 2>&1 | tee artifacts/core-tests.log
+          bash Tools/test_ninebot_pairing.sh 2>&1 | tee artifacts/ninebot-pairing-tests.log
           bash Tools/test_upstream_sync.sh 2>&1 | tee artifacts/upstream-sync-tests.log
           swiftc -parse-as-library Sources/TDSCarKitCore/BMSFamily.swift \
             Sources/TDSCarKitCore/ANTBMSProtocol.swift \
