@@ -150,7 +150,7 @@ final class NativeReceiver {
                 output.start(localAddress: configuration.address, targetAddress: target, phone: phone, profile: profile,
                              onState: { [weak self] in self?.onCfmotoState?($0) },
                              onLog: { [weak self] in self?.log($0) },
-                             requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "春风解码恢复") })
+                             requestKeyframe: { [weak self] in self?.requestKeyFrame(reason: "春风解码恢复") }, onGiveUp: { [weak self] in self?.queue.async { [weak self] in self?.fail("春风仪表持续连接失败超过3分钟，已停止CarPlay") } })
             }
             if let target = configuration.ninebotAddress {
                 self.ninebot.start(localAddress: configuration.address, targetAddress: target, mode: configuration.ninebotMode,

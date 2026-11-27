@@ -173,6 +173,13 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let cfmotoCardStatus = UILabel()
     private let cfmotoStatus = StatusLabel()
     private let cfmotoAddressField = UITextField()
+    private let instrumentAutoStartSwitch = UISwitch()
+    private var instrumentAutoStartTimer: Timer?
+    private var instrumentAutoStartProbing = false
+    private var instrumentAutoStartSuppressed: String?
+    private var instrumentAutoStartGeneration = UUID()
+
+    /// 春风 5 寸 / 6.2 寸共用地址与端口，只有画面规格不同。
     /// 春风 5 寸 / 6.2 寸共用地址与端口，只有画面规格不同。
     private var cfmotoProfile: CfmotoProfile? {
         switch outputMode {
@@ -891,7 +898,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             let icon = ReceiverConfiguration.iconSizes[max(0, iconSizeControl.selectedSegmentIndex)].widthMM
             // 按偶数对齐：H.264 4:2:0 不接受 515 这样的奇数高度。
             return DisplayPlan(width: cfmoto.encodeWidth, height: cfmoto.encodeHeight,
-                               fps: cfmoto.fps, codec: .h264, iconWidthMM: icon)
+                               fps: cfmoto.sourceFPS, codec: .h264, iconWidthMM: icon)
         }
         if let profile = outputMode.zeehoProfile {
             let icon = ReceiverConfiguration.iconSizes[max(0, iconSizeControl.selectedSegmentIndex)].widthMM
@@ -1743,6 +1750,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     }
 
     private func stop() {
+        instrumentAutoStartGeneration = UUID()
+        instrumentAutoStartSuppressed = instrumentAutoStartEndpoint()?.key
         antBMS.setReceiving(false)
         localStartupID = nil
         networkStartupTask?.cancel()
@@ -1801,7 +1810,58 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         startupHintTask = task
         DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: task)
     }
+    private func instrumentAutoStartEndpoint() -> (local: String, target: String, key: String)? {
+        guard outputMode.cfmoto, let local = ReceiverConfiguration.wifiIPv4Address() else { return nil }
+        let typed = cfmotoAddressField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard let target = typed.isEmpty ? PxcConnection.gateway(for: local) : typed else { return nil }
+        return (local, target, "\(outputMode.rawValue):\(local):\(target)")
+    }
+    @objc private func instrumentAutoStartChanged() {
+        UserDefaults.standard.set(instrumentAutoStartSwitch.isOn, forKey: "experimentalInstrumentAutoStart")
+        instrumentAutoStartGeneration = UUID()
+        instrumentAutoStartSuppressed = nil
+        ensureInstrumentAutoStartTimer()
+    }
+    private func ensureInstrumentAutoStartTimer() {
+        guard instrumentAutoStartSwitch.isOn, UIApplication.shared.applicationState == .active else {
+            instrumentAutoStartTimer?.invalidate(); instrumentAutoStartTimer = nil
+            return
+        }
+        guard instrumentAutoStartTimer == nil else { return }
+        instrumentAutoStartTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
+            self?.probeInstrumentAutoStart()
+        }
+    }
+    private func probeInstrumentAutoStart() {
+        guard instrumentAutoStartSwitch.isOn, !instrumentAutoStartProbing, !running, !waitingForNetwork,
+              modeControl.selectedSegmentIndex == 1, identity != nil,
+              UIApplication.shared.applicationState == .active, presentedViewController == nil,
+              let endpoint = instrumentAutoStartEndpoint(), endpoint.key != instrumentAutoStartSuppressed else { return }
+        // Validate all normal start requirements before sending an experimental discovery request.
+        if needsNetworkDetails {
+            guard !(ssidField.text ?? "").isEmpty, openNetworkSwitch.isOn || !(passwordField.text ?? "").isEmpty else { return }
+        }
+        guard (1...196).contains(Int(channelField.text ?? "") ?? 36) else { return }
+        instrumentAutoStartProbing = true
+        let generation = instrumentAutoStartGeneration
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let verified = PxcAutoStartProbe.verify(localIP: endpoint.local, targetIP: endpoint.target)
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.instrumentAutoStartProbing = false
+                guard verified, generation == self.instrumentAutoStartGeneration,
+                      self.instrumentAutoStartSwitch.isOn, !self.running, !self.waitingForNetwork,
+                      self.modeControl.selectedSegmentIndex == 1,
+                      UIApplication.shared.applicationState == .active, self.presentedViewController == nil,
+                      self.instrumentAutoStartEndpoint()?.key == endpoint.key else { return }
+                self.instrumentAutoStartSuppressed = endpoint.key
+                self.log("实验自动启动：已核对春风 PXC 探测应答，启动本机 CarPlay")
+                self.toggleReceiver()
+            }
+        }
+    }
     @objc private func modeChanged() {
+        ensureInstrumentAutoStartTimer()
         if UIDevice.current.userInterfaceIdiom == .phone { modeControl.selectedSegmentIndex = 1 }
         UserDefaults.standard.set(modeControl.selectedSegmentIndex, forKey: "connectionMode")
         let local = modeControl.selectedSegmentIndex == 1
@@ -2009,6 +2069,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         skippedLocalVideo = false
     }
     @objc private func foregrounded() {
+        ensureInstrumentAutoStartTimer()
         refreshNetworkAddresses()
         guard running else {
             if !waitingForNetwork { modeChanged() }
@@ -2018,6 +2079,8 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         DispatchQueue.main.async { [weak self] in self?.applyAppearance() }
     }
     @objc private func backgrounded() {
+        instrumentAutoStartGeneration = UUID()
+        instrumentAutoStartTimer?.invalidate(); instrumentAutoStartTimer = nil
         updateCheckTask?.cancel()
         receiverBrowser.stop()
         guard running else { return }
@@ -2049,6 +2112,8 @@ extension ReceiverViewController {
     /// Initial values and change handlers for every setting control. The controls live on the
     /// settings pages; the rest of this controller reads them directly.
     fileprivate func configureSettingsControls() {
+        instrumentAutoStartSwitch.isOn = UserDefaults.standard.bool(forKey: "experimentalInstrumentAutoStart")
+        instrumentAutoStartSwitch.addTarget(self, action: #selector(instrumentAutoStartChanged), for: .valueChanged)
         let defaults = UserDefaults.standard
         if !defaults.bool(forKey: "didApplyLeftHandDefaultV2") {
             defaults.set(false, forKey: "rightHandDrive"); defaults.set(true, forKey: "didApplyLeftHandDefaultV2")
@@ -3163,6 +3228,9 @@ extension ReceiverViewController {
                 self.testSameDeviceTransport()
             }
         ])]
+        sections.append(SettingsSection(CWL("仪表自动启动（实验）"), footer: CWL("默认关闭。当前仅支持春风 5/6.2 寸：App 在前台、未运行且不在设置页面时，核对 PXC 投屏探测应答后启动。需先加入仪表 Wi-Fi 并填好本机 CarPlay 网络设置；不是后台唤醒。手动停止后，当前地址不再自动启动，可关闭再开启此开关重试。"), [
+            .control(CWL("检测到春风仪表自动启动"), icon: ("bolt.car.fill", .systemOrange), instrumentAutoStartSwitch)
+        ]))
         if UIDevice.current.userInterfaceIdiom == .pad {
             sections.append(SettingsSection(CWL("iPad 模式"), footer: CWL("接收其他 iPhone 的 CarPlay，或把这台设备的 CarPlay 投送到另一台 iPad。"), [.view(modeControl)]))
             if modeControl.selectedSegmentIndex == 0 {
