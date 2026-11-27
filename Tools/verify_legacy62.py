@@ -78,8 +78,9 @@ assert 'self.zeeho62.start(' in native and 'self.zeeho62.append(' in native and 
 settings = (root / 'App/ReceiverViewController.swift').read_text(encoding='utf-8')
 cases = re.search(r'private enum HeadUnitOutput: Int \{.*?\bcase ([^\n]+)', settings, re.S).group(1)
 assert [name.strip() for name in cases.split(',')] == [
-    'browser', 'carLife', 'airPlay', 'tailing', 'ninebot', 'zeeho', 'ninebotSeven', 'ninebot43', 'zeehoSEPlus', 'zeehoAE2', 'cfmoto5', 'cfmoto62', 'zeehoAE4i'
+    'browser', 'carLife', 'airPlay', 'tailing', 'ninebot', 'zeeho', 'ninebotSeven', 'ninebot43', 'zeehoSEPlus', 'zeehoAE2', 'cfmoto5', 'cfmoto62'
 ], 'persisted output IDs changed'
 print('PASS: original 6.2 output preserved except exact optional BMS render adapter; wire codec unchanged; original negotiation restored with IP-discovery-only changes; raw snapshots and shared socket/identity verified (allowing presentation localization)')
 print('PASS: upstream output IDs 0–7 preserved; SE+ appended as ID 8')
-print('PASS: AE4i Pro+ 6.2-inch appended as ID 12 after the 4K/CFMOTO additions')
+assert 'case zeehoAE4i = 26' in settings
+print('PASS: AE4i ID 26 reserved consistently with local development profiles')

@@ -6,18 +6,23 @@ func cfmotoNegotiationSmoke() throws {
     }
     let five = try PxcConnection.validatedMediaSize(body(800, 386))
     precondition(five.width == 800 && five.height == 386 && five.fps == 30)
+    let zeroFive = try PxcConnection.captureConfiguration(body(800, 386, 0))
+    precondition(zeroFive.size.fps == 25 && zeroFive.size.height == 386)
     let six = try PxcConnection.validatedMediaSize(body(1024, 515))
     precondition(six.width == 1024 && six.height == 516)
-    // 2026-11-26 改动（对齐极核 AE2）：编码值不再是拒绝理由，
-    // codec=3 等非 0/2 值也按 H.264 接受，只验尺寸和帧率。
-    let otherCodec = try PxcConnection.validatedMediaSize(body(800, 386, 25, 3))
-    precondition(otherCodec.width == 800 && otherCodec.height == 386 && otherCodec.fps == 25)
-    // 2026-11-26 实车抓包确认春风 5 寸仪表会报 800×386@0 编码器=2，fps=0 需兜底为 25 FPS。
-    let zeroFps = try PxcConnection.validatedMediaSize(body(800, 386, 0, 2))
-    precondition(zeroFps.width == 800 && zeroFps.height == 386 && zeroFps.fps == 25)
-    for invalid in [Data(), body(0, 480), body(65535, 480), body(800, 0), body(800, 480, 61)] {
+    let zero = try PxcConnection.captureConfiguration(body(1024, 515, 0))
+    precondition(zero.size.fps == 30 && zero.size.height == 516)
+    let otherEncoder = try PxcConnection.captureConfiguration(body(1024, 515, 30, 1))
+    precondition(otherEncoder.encoder == 1)
+    let defaultEncoder = try PxcConnection.captureConfiguration(body(800, 386, 30, 0))
+    precondition(defaultEncoder.encoder == 2)
+    let short = try PxcConnection.captureConfiguration(Data(body(800, 386).prefix(4)))
+    precondition(short.size.width == 800 && short.size.height == 386 && short.size.fps == 25 && short.encoder == 2)
+    let unusualFPS = try PxcConnection.captureConfiguration(body(800, 386, UInt32.max))
+    precondition(unusualFPS.size.fps == 25)
+    for invalid in [Data(), Data([0, 4, 0]), body(0, 480), body(65535, 480), body(800, 0)] {
         do { _ = try PxcConnection.validatedMediaSize(invalid); fatalError("Accepted invalid PXC media configuration") }
         catch TailingError.protocolFailure { }
     }
-    print("PASS: 春风媒体配置长度、尺寸、帧率边界与偶数对齐")
+    print("PASS: 春风媒体配置长度、尺寸、默认帧率、短配置、编码字段兼容与尺寸安全边界")
 }
