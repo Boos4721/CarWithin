@@ -70,6 +70,7 @@ let CBAdvertisementDataServiceDataKey = "serviceData"
 }
 
 final class V2Crypto {
+    func resetSerial() {}
     func setKey(_ key: Data, _ parameter: Data?) throws {}
     func setAuthParam(_ parameter: Data) throws {}
     func startSerial() {}
