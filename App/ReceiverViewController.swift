@@ -2531,7 +2531,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             statusLabel.text = "请输入 Wi-Fi 密码；开放网络请选择“无密码”。"
             revealSettings(wifi: true); return
         }
-        let password = !requiresWiFiCredentials || openNetworkSwitch.isOn ? "" : (passwordField.text ?? "")
+        let password = !needsNetworkDetails || openNetworkSwitch.isOn ? "" : (passwordField.text ?? "")
         if modeControl.selectedSegmentIndex == 2 {
             guard let identity, let target = remoteTarget else {
                 statusLabel.text = CWL("请先选择 iPad 接收端，并确保两台设备位于同一 Wi-Fi。"); return
