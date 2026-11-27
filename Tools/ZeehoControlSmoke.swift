@@ -34,7 +34,7 @@ struct ZeehoControlSmoke {
             let acknowledgement = try TailingProtocol.zeehoExtensionReply(to: request, profile: .zeehoSEPlus)
             precondition(acknowledgement == nil)
         }
-        precondition(TailingError.protocolFailure("test").localizedDescription.contains("PXC"))
+        precondition(TailingError.protocolFailure("test").localizedDescription == CWL("仪表协议错误：{1}", ["test"]))
         print("PASS: 5 SE+ notification acknowledgements, 6.2/4.3 profile isolation, identifiers, empty payloads, semantic-command and reply-loop exclusion")
     }
 }
