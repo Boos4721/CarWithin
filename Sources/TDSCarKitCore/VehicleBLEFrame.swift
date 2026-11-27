@@ -6,8 +6,8 @@ public enum VehicleBLEFrameError: Error, LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .malformed: return "蓝牙帧格式或长度不正确"
-        case .payloadTooLarge: return "蓝牙帧数据超过 242 字节"
+        case .malformed: return CWL("蓝牙帧格式或长度不正确")
+        case .payloadTooLarge: return CWL("蓝牙帧数据超过 242 字节")
         }
     }
 }

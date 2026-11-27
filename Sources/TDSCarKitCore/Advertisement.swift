@@ -7,9 +7,9 @@ public enum AdvertisementError: Error, LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .unsupportedManufacturer: return "不是支持的九号蓝牙广播"
-        case .malformed: return "九号蓝牙广播格式不完整"
-        case .checksumMismatch: return "九号蓝牙广播校验失败"
+        case .unsupportedManufacturer: return CWL("不是支持的九号蓝牙广播")
+        case .malformed: return CWL("九号蓝牙广播格式不完整")
+        case .checksumMismatch: return CWL("九号蓝牙广播校验失败")
         }
     }
 }

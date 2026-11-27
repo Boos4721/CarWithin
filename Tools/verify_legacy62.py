@@ -18,31 +18,22 @@ def original_body(name):
                      if not line.startswith('import ')).strip() + '\n'
 
 text = (root / 'App/Zeeho62Legacy.swift').read_text(encoding='utf-8')
-def without_bms_render_adapter(value):
-    # Only these exact additions are allowed: retain the original no-card scaler,
-    # wire codec, timing, transport and encoder. Do not update original hashes.
-    changes = [
-        ('    private var bmsImage: CGImage?\n    private var bmsConfiguration = ANTBMSCardConfiguration()\n\n    func setBMSOverlay(_ image: CGImage?, configuration: ANTBMSCardConfiguration) {\n        bmsImage = image; bmsConfiguration = configuration\n        let current = session\n        queue.async { current?.setBMSOverlay(image, configuration: configuration) }\n    }\n',
-         ''),
-        ('        let overlay = bmsImage, configuration = bmsConfiguration\n        queue.async {\n            next.setBMSOverlay(overlay, configuration: configuration)\n            next.start()\n        }\n',
-         '        next.start()\n'),
-        ('        private var bmsCanvas: InstrumentVideoCanvas?\n\n        func setBMSOverlay(_ image: CGImage?, configuration: ANTBMSCardConfiguration) {\n            guard let image else { bmsCanvas = nil; return }\n            if bmsCanvas == nil { bmsCanvas = InstrumentVideoCanvas() }\n            bmsCanvas?.setBMSOverlay(image, configuration: configuration)\n        }\n',
-         ''),
-        ('            if let bmsCanvas { return try bmsCanvas.fittedImage(image, width: width, height: height) }\n',
-         ''),
-    ]
-    for addition, original in changes:
-        assert value.count(addition) == 1, '6.2 BMS adapter changed unexpectedly'
-        value = value.replace(addition, original, 1)
-    return value
-
 blocks = {}
+adapters = json.loads((originals / 'ae6-484-adapter.json').read_text(encoding='utf-8'))
+bms_adapters = json.loads((originals / 'bms-overlay-adapter.json').read_text(encoding='utf-8'))
+for name, changes in bms_adapters.items():
+    adapters.setdefault(name, []).extend(changes)
+presentation = json.loads((originals / 'presentation-adapter.json').read_text(encoding='utf-8'))
+for name in ['errors']:
+    adapters.setdefault(name, []).extend(presentation.get(name, []))
 for name, expected in manifest['embedded_blocks'].items():
     start, end = '    // BEGIN ORIGINAL62 ' + name + '\n', '    // END ORIGINAL62 ' + name
     assert text.count(start) == 1 and text.count(end) == 1
     value = text.split(start, 1)[1].split(end, 1)[0]
     value = ''.join(line[4:] + '\n' for line in value.splitlines())
-    if name == 'output': value = without_bms_render_adapter(value)
+    for change in reversed(adapters.get(name, [])):
+        assert change['adapted'] in value, (name, 'missing approved dimension/BMS adapter')
+        value = value.replace(change['adapted'], change['original'])
     assert sha256(value.encode('utf-8')).hexdigest() == expected, name
     blocks[name] = value
 
@@ -69,7 +60,11 @@ def without_localization(text):
     return re.sub(r'CWL\(("[^"\n]*")\)', r'\1', text)
 
 for name in manifest['shared_original_files']:
-    assert without_localization((root / 'App' / name).read_text(encoding='utf-8')) == (originals / name).read_text(encoding='utf-8'), name
+    shared_text = (root / 'App' / name).read_text(encoding='utf-8')
+    for change in reversed(presentation.get('shared', {}).get(name, [])):
+        assert change['adapted'] in shared_text, (name, 'missing presentation adapter')
+        shared_text = shared_text.replace(change['adapted'], change['original'])
+    assert without_localization(shared_text) == (originals / name).read_text(encoding='utf-8'), name
 helpers = protocol[protocol.index('extension Data'):protocol.index('enum TailingError')].strip()
 assert helpers in (root / 'App/TailingProtocol.swift').read_text(encoding='utf-8')
 native = (root / 'App/NativeReceiver.swift').read_text(encoding='utf-8')
@@ -79,8 +74,14 @@ settings = (root / 'App/ReceiverViewController.swift').read_text(encoding='utf-8
 cases = re.search(r'private enum HeadUnitOutput: Int \{.*?\bcase ([^\n]+)', settings, re.S).group(1)
 assert [name.strip() for name in cases.split(',')] == [
     'browser', 'carLife', 'airPlay', 'tailing', 'ninebot', 'zeeho', 'ninebotSeven', 'ninebot43', 'zeehoFive'
-], 'persisted output IDs changed'
-print('PASS: original 6.2 output preserved except exact optional BMS render adapter; wire codec unchanged; original negotiation restored with IP-discovery-only changes; raw snapshots and shared socket/identity verified')
-assert 'case cfmoto5 = 10, cfmoto62 = 11' in settings, 'CFMOTO persisted IDs changed'
-assert 'headUnitOutput.selectedSegmentIndex = output.menuIndex' in settings, 'vehicle restore must use display menu mapping'
-print('PASS: output IDs 0–7 preserved; unified ZEEHO five-inch is ID 8; legacy ID 9 migrates separately; CFMOTO IDs 10/11 preserved')
+], 'original development IDs 0-8 changed'
+appended = re.search(r'case cfmoto5 = 10, cfmoto62 = 11([^\n]*)', settings).group(1)
+assert [name.strip() for name in appended.strip(', ').split(',')] == [
+    'cfmoto700MT', 'cfmoto800MT', 'cfmoto675SRR', 'benelliTRK', 'vogeDS800X', 'zontes368E',
+    'zontes368G', 'zontes703RR', 'qjSRT550', 'kove625X', 'moriniXCape1200', 'kove450Rally',
+    'kove800X', 'shouqu', 'zeehoAE4i', 'koveInstrument'
+], 'upstream profile IDs 10-27 changed'
+assert '.zeehoFive, .zeehoAE4i, .cfmoto5' in settings
+assert 'headUnitOutput.selectedSegmentIndex = output.menuIndex' in settings
+print('PASS: 6.2 baseline restored by approved upstream dimension/BMS/presentation adapters; original hashes and protocol preserved')
+print('PASS: development IDs 0-8 preserved, legacy AE2 9 migrates, upstream CFMOTO/motorcycle/AE4i IDs 10-27 preserved')

@@ -42,3 +42,5 @@ Build 33 历史验证（移除三项之前）：功能提交 `00343487066880f421
 - maibms docs/16-彦阳与嘉佰达只读接入.md 和 docs/17-多品牌生态适配.md：寄存器、通道、字段争议与第三方来源边界。
 - JK02 参考字节源 patman15/aiobmsble tests/bms/test_jikong_bms.py；JK04 来自 syssi/esphome-jk-bms issue 213。只引用线协议报文字节，未复制其执行代码。
 - 彦阳 B 参考字节来自 maibms 固定测试里的 NiuHelper 实录。其余新增帧在测试中明确标注 synthetic。
+
+主线 1.0.6 已合并 PR #70 的五类 BMS 接入与九号/极核显示修复。开发分支仍保留亚迪、明唐和小哈实验读取；此前移除的三项不恢复。极核 6.2 寸同步 AE6 1024×484 协商适配，AE4i Pro+ 支持 2048×968，详见上游对应文档。

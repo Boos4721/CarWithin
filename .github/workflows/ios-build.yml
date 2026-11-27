@@ -66,6 +66,10 @@ jobs:
           bash Tools/test_zeeho_seplus.sh 2>&1 | tee artifacts/zeeho-seplus-tests.log
           bash Tools/test_tailing_discovery.sh 2>&1 | tee artifacts/tailing-discovery-tests.log
           bash Tools/test_zeeho_control.sh 2>&1 | tee artifacts/zeeho-control-tests.log
+          bash Tools/test_zeeho_bms.sh 2>&1 | tee artifacts/zeeho-bms-tests.log
+          bash Tools/test_zeeho62_handshake.sh 2>&1 | tee artifacts/zeeho62-handshake-tests.log
+          bash Tools/test_motorcycle.sh 2>&1 | tee artifacts/motorcycle-tests.log
+          bash Tools/test_shouqu.sh 2>&1 | tee artifacts/shouqu-tests.log
           bash Tools/test_tailing.sh 2>&1 | tee artifacts/tailing-media-tests.log
 
       - name: Verify local identity packaging with generated test keys

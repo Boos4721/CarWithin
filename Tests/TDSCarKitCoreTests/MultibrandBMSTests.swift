@@ -246,6 +246,36 @@ final class MultibrandBMSTests: XCTestCase {
         XCTAssertNil(statistics.peakAbsoluteCurrent)
         XCTAssertEqual(statistics.firstCharge,45)
     }
+    func testSupportedScopeAndExplicitFamilyOverrideStayStable() {
+        XCTAssertEqual(Set(BMSFamily.allCases.map(\.rawValue)), ["ant", "yanyang", "jikong", "lanbao", "jbd", "yadi", "mingtang", "xiaoha", "luxing"])
+        XCTAssertEqual(BMSSelectionPolicy.family(saved: "jbd", inferred: .ant), .jbd)
+        XCTAssertNil(BMSSelectionPolicy.family(saved: "removed", inferred: .ant))
+        XCTAssertEqual(BMSSelectionPolicy.family(saved: nil, inferred: .luxing), .luxing)
+        XCTAssertNil(BMSFamily.identify(name: "unknown", services: ["FFE0"]))
+    }
+    func testHexCredentialsRejectUnicodeWithoutOutOfBoundsAccess() {
+        for value in ["a\u{301}b", "\u{1F600}a", "01GG", "A", String(repeating: "00", count: 1025)] {
+            XCTAssertNil(BMSReadOnlyProtocol.hex(value))
+        }
+        XCTAssertEqual(BMSReadOnlyProtocol.hex("001aFF"), [0, 26, 255])
+    }
+    func testEveryFamilyUsesItsOwnCardLabelAndMissingFieldsStayUnknown() {
+        for family in BMSFamily.allCases {
+            var values = BMSValues(); values.soc = 0
+            let reading = values.reading(family)
+            let lines = ANTBMSCardConfiguration().lines(for: reading)
+            XCTAssertTrue(lines[0].hasPrefix(family.shortName + "  0%"))
+            XCTAssertEqual(ANTBMSCardConfiguration.Field.voltage.text(reading), "--V")
+            XCTAssertEqual(ANTBMSCardConfiguration.Field.current.text(reading), "--A")
+            XCTAssertEqual(ANTBMSCardConfiguration.Field.power.text(reading), "--W")
+            var statistics = ANTBMSSessionStatistics()
+            XCTAssertTrue(statistics.append(.init(reading: reading, uptime: 1), now: 1))
+            XCTAssertEqual(statistics.firstCharge, 0)
+            XCTAssertNil(statistics.minimumVoltage)
+            XCTAssertNil(statistics.peakAbsoluteCurrent)
+            XCTAssertNil(statistics.peakAbsolutePower)
+        }
+    }
     func testMalformedNoiseIsBoundedForAllParsers() {
         for family in BMSFamily.allCases where family.supportsGATT {
             let p=BMSReadOnlyProtocol(family:family);_ = p.nextRequest(now:0)

@@ -5,12 +5,12 @@ public enum BMSFamily: String, CaseIterable, Codable {
     case ant, yanyang, jikong, lanbao, jbd, yadi, mingtang, xiaoha, luxing
     public var title: String {
         switch self {
-        case .ant: return "蚂蚁保护板"
-        case .yanyang: return "彦阳保护板"
-        case .jikong: return "极空保护板"
-        case .lanbao: return "蓝宝电量计"
-        case .luxing: return "陆行电量计"
-        case .jbd: return "嘉佰达保护板"
+        case .ant: return CWL("蚂蚁保护板")
+        case .yanyang: return CWL("彦阳保护板")
+        case .jikong: return CWL("极空保护板")
+        case .lanbao: return CWL("蓝宝电量计")
+        case .luxing: return CWL("陆行电量计")
+        case .jbd: return CWL("嘉佰达保护板")
         case .yadi: return "亚迪保护板"
         case .mingtang: return "明唐保护板"
         case .xiaoha: return "小哈锂电（广播电量）"
@@ -18,12 +18,12 @@ public enum BMSFamily: String, CaseIterable, Codable {
     }
     public var shortName: String {
         switch self {
-        case .ant: "蚂蚁"
-        case .yanyang: "彦阳"
-        case .jikong: "极空"
-        case .lanbao: "蓝宝"
-        case .luxing: "陆行"
-        case .jbd: "嘉佰达"
+        case .ant: CWL("蚂蚁")
+        case .yanyang: CWL("彦阳")
+        case .jikong: CWL("极空")
+        case .lanbao: CWL("蓝宝")
+        case .luxing: CWL("陆行")
+        case .jbd: CWL("嘉佰达")
         case .yadi: "亚迪"
         case .mingtang: "明唐"
         case .xiaoha: "小哈"
@@ -45,12 +45,12 @@ public enum BMSFamily: String, CaseIterable, Codable {
     public var supportsGATT: Bool { self != .xiaoha }
     public var supportDescription: String {
         switch self {
-        case .ant: return "只读实时帧；沿用已验证的 ANT 通道。"
-        case .yanyang: return "B 代与旧 A 基础布局；旧 A 的电流方向和 SOC 未确认，隐藏相关值。"
-        case .jikong: return "JK02 24S / 32S；JK04 仅单体、总压和均衡，不提供电流或 SOC。"
-        case .lanbao: return "FA50 双表及中继信息；没有逐串网格、MOS 或 SOH。匹配码可在本机配置。"
-        case .luxing: return "EM2APP / EM02 只读：自测总压、电流、功率、SOC、最多 30 串、有效温度和中继信息。剩余容量按 SOC × 额定容量计算；不提供保护控制或 SOH。待真机验证。"
-        case .jbd: return "经典 DD 只读；需要登录的模块可填写自己的密码与真实 MAC，不修改设备密码。"
+        case .ant: return CWL("只读实时帧；沿用已验证的 ANT 通道。")
+        case .yanyang: return CWL("B 代与旧 A 基础布局；旧 A 的电流方向和 SOC 未确认，隐藏相关值。")
+        case .jikong: return CWL("JK02 24S / 32S；JK04 仅单体、总压和均衡，不提供电流或 SOC。")
+        case .lanbao: return CWL("FA50 双表及中继信息；没有逐串网格、MOS 或 SOH。匹配码可在本机配置。")
+        case .luxing: return CWL("EM2APP / EM02 只读：自测总压、电流、功率、SOC、最多 30 串、有效温度和中继信息。剩余容量按 SOC × 额定容量计算；不提供保护控制或 SOH。待真机验证。")
+        case .jbd: return CWL("经典 DD 只读；需要登录的模块可填写自己的密码与真实 MAC，不修改设备密码。")
         case .yadi: return "Nordic UART F403 分块读取；仅确认总压、SOC、循环与单体。待真机验证。"
         case .mingtang: return "FA00 stateread / E1；字段按帧提供，总压倍率与型号范围仍待真机验证。"
         case .xiaoha: return "仅 HBB…SOCxxx 广播电量；没有已确认的 GATT 直连协议。"

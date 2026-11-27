@@ -20,7 +20,7 @@ def uid(name): return hashlib.sha1(name.encode()).hexdigest()[:24].upper()
 def q(value): return json.dumps(str(value))
 objects = []
 def add(key, value): objects.append(f'{uid(key)} = {{ {value} }};'); return uid(key)
-sources = sorted([*root.glob('App/*.swift'), *root.glob('App/*.m'), *root.glob('App/*.c'), *root.rglob('Sources/TDSCarKitCore/**/*.swift'), *root.glob('Sources/CTDSCarKitCrypto/*.c')])
+sources = sorted([*root.glob('App/*.swift'), *root.glob('App/*.m'), *root.glob('App/*.c'), *(root / 'Sources/TDSCarKitCore').rglob('*.swift'), *root.glob('Sources/CTDSCarKitCrypto/*.c')])
 refs = []; builds = []
 for path in sources:
     relative = str(path.relative_to(root))
@@ -44,7 +44,7 @@ for language in ['en', 'zh-Hans']:
 privacy_group = add('privacy-localizations', f'isa = PBXVariantGroup; children = ({",".join(privacy_children)},); name = InfoPlist.strings; sourceTree = "<group>";')
 refs.append(privacy_group)
 resource_builds.append(add('privacy-build', f'isa = PBXBuildFile; fileRef = {privacy_group};'))
-for license_path in ['App/KCP-LICENSE.txt', 'App/ANTBMS-LICENSE.txt', 'App/maibms-MIT.txt']:
+for license_path in ['App/KCP-LICENSE.txt', 'App/ANTBMS-LICENSE.txt', 'App/YANYANG-BMS-LICENSE.txt', 'App/MOTO-HUB-LICENSE.txt', 'App/maibms-MIT.txt']:
     license_ref = add('ref:'+license_path, f'isa = PBXFileReference; lastKnownFileType = text; path = {q(license_path)}; sourceTree = "<group>";')
     refs.append(license_ref)
     resource_builds.append(add('build:'+license_path, f'isa = PBXBuildFile; fileRef = {license_ref};'))
@@ -76,7 +76,7 @@ common = {
 'IPHONEOS_DEPLOYMENT_TARGET':'16.0', 'MACOSX_DEPLOYMENT_TARGET':'13.3', 'TARGETED_DEVICE_FAMILY':'1,2',
 'SDKROOT':'iphoneos','SUPPORTED_PLATFORMS':'iphoneos iphonesimulator macosx', 'SUPPORTS_MACCATALYST':'YES',
 'SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD':'YES', 'DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER':'NO',
-'INFOPLIST_FILE':'App/Info.plist', 'GENERATE_INFOPLIST_FILE':'NO', 'ASSETCATALOG_COMPILER_APPICON_NAME':'AppIcon', 'CODE_SIGN_STYLE':'Automatic', 'CODE_SIGN_ENTITLEMENTS':'$(TDS_WIFI_ENTITLEMENTS)', 'TDS_WIFI_NAME_DETECTION':'YES', 'TDS_WIFI_ENTITLEMENTS':'App/TDSCarKit.entitlements',
+'INFOPLIST_FILE':'App/Info.plist', 'GENERATE_INFOPLIST_FILE':'NO', 'ASSETCATALOG_COMPILER_APPICON_NAME':'AppIcon', 'CODE_SIGN_STYLE':'Automatic', 'CODE_SIGN_ENTITLEMENTS':'$(TDS_WIFI_ENTITLEMENTS)', 'TDS_WIFI_NAME_DETECTION':'NO',
 'SWIFT_OBJC_BRIDGING_HEADER':'App/TDSCarKit-Bridging-Header.h',
 'HEADER_SEARCH_PATHS':'$(SRCROOT)/Sources/CTDSCarKitCrypto/include', 'CLANG_ENABLE_MODULES':'YES',
 'CLANG_ENABLE_OBJC_ARC':'YES',

@@ -4,7 +4,8 @@ import Foundation
 
 public struct ANTBMSReading: Equatable {
     public let voltage: Double
-    /// Raw ANT signed current, in amperes. Use stateCode for charge/discharge labels.
+    /// Signed current in amperes. ANT / meter signs stay raw; other adapters normalize discharge positive.
+    /// Use stateCode for charge/discharge labels.
     public let current: Double
     public let power: Int
     public let stateOfCharge: Int

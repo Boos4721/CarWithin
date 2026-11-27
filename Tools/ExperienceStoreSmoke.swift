@@ -91,7 +91,7 @@ enum ExperienceStoreSmoke {
             ZeehoFivePreferences.migrate(defaults)
             precondition(defaults.integer(forKey: "headUnitOutputV2") == output)
         }
-        for output in [10, 11] {
+        for output in 10...27 {
             var cfmoto = profile; cfmoto.output = output; cfmoto.instrumentAddress = "192.168.0.1"
             let restored = try decoder.decode(VehicleProfile.self, from: encoder.encode(cfmoto)).migratedZeehoFive
             precondition(restored.output == output && restored.instrumentAddress == "192.168.0.1")

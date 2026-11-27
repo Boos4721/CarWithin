@@ -383,11 +383,12 @@ final class NinebotOutput {
             nextVideoFrame = max(nextVideoFrame, now - interval / 2) + interval
             lastFrame = now
             let bounds = CGRect(x: 0, y: 0, width: format.width, height: format.height)
-            guard let jpeg = canvas.jpeg(latest, in: bounds, refresh: fresh) else {
-                logCodecFailure(" JPEG 编码", ConfigurationError("无法生成九号 4.3 寸画面"))
+            let refresh = fresh
+            fresh = false
+            guard let jpeg = canvas.jpeg(latest, in: bounds, refresh: refresh) else {
+                logCodecFailure(CWL(" JPEG 编码"), ConfigurationError(CWL("无法生成九号 4.3 寸画面")))
                 return
             }
-            fresh = false
             jpegTimestamp = UInt32(truncatingIfNeeded: Self.unixMilliseconds)
             let packets = try jpegPacketizer.packets(for: jpeg, timestamp: jpegTimestamp)
             do {

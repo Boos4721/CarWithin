@@ -19,13 +19,23 @@ final class ZeehoOutput {
 
     func start(localAddress: String, targetAddress: String, profile: TailingDisplayProfile,
                frameRate: ZeehoFrameRate = .fps25,
+               bitrateOverride: Int? = nil, encodeProfile: ZeehoEncodeProfile = .baseline,
                videoMode: ZeehoVideoMode = .transcode, sourceSize: InstrumentFrameSize? = nil,
                phone: TailingPhoneInfo, onState: @escaping (String) -> Void,
                onLog: @escaping (String) -> Void, requestKeyframe: @escaping () -> Void) {
         stop()
+        // 自动档按像素数放大码率（2048×968 是旧款 1024×480 的 4 倍，再留余量给文字边缘），
+        // 手动档直接采用用户选的 Mbit/s；上限 24 Mbit/s 是为了压住帧率抖动。
+        let automatic = min(24_000_000, Int((Double(frameRate.bitrate) * profile.bitrateScale).rounded()))
+        let bitrate = bitrateOverride ?? automatic
+        let level: CFString = encodeProfile == .main
+            ? kVTProfileLevel_H264_Main_AutoLevel
+            : kVTProfileLevel_H264_Baseline_AutoLevel
         let next = Session(queue: queue, localAddress: localAddress, targetAddress: targetAddress,
                            profile: profile, frameRate: frameRate, videoMode: videoMode,
-                           sourceSize: sourceSize ?? profile.preferredSize, phone: phone,
+                           sourceSize: sourceSize ?? profile.preferredSize, bitrate: bitrate,
+                           prioritizeQuality: profile.prioritizesEncodingQuality,
+                           profileLevel: level, encodeProfileName: encodeProfile.title, phone: phone,
                            onState: onState, onLog: onLog, requestKeyframe: requestKeyframe)
         session = next
         let overlay = bmsImage, configuration = bmsConfiguration
@@ -64,6 +74,10 @@ final class ZeehoOutput {
         private let connection: TailingConnection
         private let frameRate: ZeehoFrameRate
         private let sourceSize: InstrumentFrameSize
+        private let bitrate: Int
+        private let prioritizeQuality: Bool
+        private let profileLevel: CFString
+        private let encodeProfileName: String
         private var usesRelay: Bool
         private var isRelaying: Bool { lock.withLock { usesRelay } }
         private let relayCondition = NSCondition()
@@ -88,18 +102,24 @@ final class ZeehoOutput {
         private var lastCodecFailure = -Double.infinity
         private var nextHeartbeat = 0.0
         private var counter: UInt32 = 0
+        private var loggedSource = false
         private var lastReply: Double?
         private var sentPicture = false
         private var status = ""
 
         init(queue: DispatchQueue, localAddress: String, targetAddress: String, profile: TailingDisplayProfile,
              frameRate: ZeehoFrameRate,
-             videoMode: ZeehoVideoMode, sourceSize: InstrumentFrameSize,
+             videoMode: ZeehoVideoMode, sourceSize: InstrumentFrameSize, bitrate: Int,
+             prioritizeQuality: Bool, profileLevel: CFString, encodeProfileName: String,
              phone: TailingPhoneInfo, onState: @escaping (String) -> Void, onLog: @escaping (String) -> Void,
              requestKeyframe: @escaping () -> Void) {
             self.queue = queue
             self.frameRate = frameRate
             self.sourceSize = sourceSize
+            self.bitrate = bitrate
+            self.prioritizeQuality = prioritizeQuality
+            self.profileLevel = profileLevel
+            self.encodeProfileName = encodeProfileName
             self.usesRelay = profile == .zeehoSEPlus && videoMode.effective(for: frameRate) == .relay
             self.connection = TailingConnection(localIP: localAddress, targetIP: targetAddress,
                 profile: profile, phone: phone, log: onLog)
@@ -120,7 +140,7 @@ final class ZeehoOutput {
             }
             if switched {
                 relayCondition.lock(); relayCondition.broadcast(); relayCondition.unlock()
-                onLog("BMS 电池卡片已启用，本次极核输出自动改用兼容转码")
+                onLog(CWL("BMS 电池卡片已启用，本次极核输出自动改用兼容转码"))
                 requestKeyframe()
             }
         }
@@ -361,10 +381,18 @@ final class ZeehoOutput {
 
         private func encode(_ image: CVPixelBuffer, size: InstrumentFrameSize, at now: Double, forceKeyframe: Bool) -> H264EncodedFrame? {
             do {
+                if !loggedSource {
+                    loggedSource = true
+                    let source = InstrumentFrameSize(width: CVPixelBufferGetWidth(image),
+                                                     height: CVPixelBufferGetHeight(image))
+                    onLog("极核源画面 \(source) → 输出 \(size)\(source == size ? "（一比一）" : "（\(source) 已缩放）")")
+                }
                 if encoder == nil {
                     guard now - lastCodecFailure >= 0.5 else { return nil }
                     encoder = try H264Encoder(width: size.width, height: size.height,
-                                              fps: frameRate.rawValue, bitrate: frameRate.bitrate) { [weak self] result in
+                                              fps: frameRate.rawValue, bitrate: bitrate,
+                                              prioritizeQuality: prioritizeQuality,
+                                              profileLevel: profileLevel) { [weak self] result in
                         guard let self else { return }
                         self.lock.withLock { self.encoded = result }
                     }
@@ -404,8 +432,8 @@ final class ZeehoOutput {
                 if isRelaying {
                     onLog("极核首帧已发送 · \(size) · H.264 直传 · 源目标 \(frameRate.rawValue) FPS · 码率由 CarPlay 决定")
                 } else {
-                    let bitrate = String(format: "%.1f", Double(frameRate.bitrate) / 1_000_000)
-                    onLog("极核首帧已发送 · \(size) · 兼容转码 · 目标 \(frameRate.rawValue) FPS · 码率 \(bitrate) Mbit/s")
+                    let actual = String(format: "%.1f", Double(bitrate) / 1_000_000)
+                    onLog("极核首帧已发送 · \(size) · 兼容转码 · 目标 \(frameRate.rawValue) FPS · 码率 \(actual) Mbit/s")
                 }
             }
             if let started = lastReply {

@@ -73,8 +73,9 @@ public final class BMSReadOnlyProtocol {
         if let mac, let data = Self.hex(mac.replacingOccurrences(of: ":", with: "")), data.count == 6 { accessMAC = data }
     }
     static func hex(_ s: String) -> [UInt8]? {
-        guard s.count % 2 == 0, s.count <= 2048 else { return nil }
-        let chars = Array(s.utf8); var result: [UInt8] = []
+        let chars = Array(s.utf8)
+        guard chars.count % 2 == 0, chars.count <= 2048 else { return nil }
+        var result: [UInt8] = []
         func digit(_ b: UInt8) -> UInt8? {
             switch b { case 48...57: b - 48; case 65...70: b - 55; case 97...102: b - 87; default: nil }
         }
