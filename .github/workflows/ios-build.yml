@@ -39,6 +39,13 @@ jobs:
       - name: Generate Xcode project
         run: python3 Tools/generate_project.py
 
+      - name: Run Ninebot pairing lifecycle tests
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          set -o pipefail
+          bash Tools/test_ninebot_pairing.sh 2>&1 | tee artifacts/ninebot-pairing-tests.log
+
       - name: Run core protocol tests
         shell: bash
         run: |
@@ -47,7 +54,6 @@ jobs:
           bash Tools/test_ninebot_sockets.sh 2>&1 | tee artifacts/ninebot-socket-tests.log
           bash Tools/test_bms.sh 2>&1 | tee artifacts/bms-tests.log
           bash Tools/test.sh 2>&1 | tee artifacts/core-tests.log
-          bash Tools/test_ninebot_pairing.sh 2>&1 | tee artifacts/ninebot-pairing-tests.log
           bash Tools/test_upstream_sync.sh 2>&1 | tee artifacts/upstream-sync-tests.log
           swiftc -parse-as-library Sources/TDSCarKitCore/BMSFamily.swift \
             Sources/TDSCarKitCore/ANTBMSProtocol.swift \

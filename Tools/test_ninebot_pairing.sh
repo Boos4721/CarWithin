@@ -27,4 +27,11 @@ swiftc -swift-version 5 -parse-as-library \
   "$project_root/Sources/TDSCarKitCore/NinebotScanDiagnostics.swift" \
   "$project_root/Sources/TDSCarKitCore/VehiclePairingReadiness.swift" \
   "$pairing_test_dir/PairingLifecycle.swift" -o "$pairing_test_dir/pairing-test"
-"$pairing_test_dir/pairing-test"
+python3 - "$pairing_test_dir/pairing-test" <<'PYTEST'
+import subprocess, sys
+try:
+    subprocess.run([sys.argv[1]], check=True, timeout=30)
+except subprocess.TimeoutExpired:
+    print('FAIL: pairing lifecycle smoke exceeded 30 seconds', file=sys.stderr, flush=True)
+    raise SystemExit(1)
+PYTEST
