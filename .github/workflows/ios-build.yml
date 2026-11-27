@@ -62,15 +62,25 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          python3 Tools/verify_legacy62.py 2>&1 | tee artifacts/zeeho-legacy-tests.log
-          bash Tools/test_zeeho_seplus.sh 2>&1 | tee artifacts/zeeho-seplus-tests.log
-          bash Tools/test_tailing_discovery.sh 2>&1 | tee artifacts/tailing-discovery-tests.log
-          bash Tools/test_zeeho_control.sh 2>&1 | tee artifacts/zeeho-control-tests.log
-          bash Tools/test_zeeho_bms.sh 2>&1 | tee artifacts/zeeho-bms-tests.log
-          bash Tools/test_zeeho62_handshake.sh 2>&1 | tee artifacts/zeeho62-handshake-tests.log
-          bash Tools/test_motorcycle.sh 2>&1 | tee artifacts/motorcycle-tests.log
-          bash Tools/test_shouqu.sh 2>&1 | tee artifacts/shouqu-tests.log
-          bash Tools/test_tailing.sh 2>&1 | tee artifacts/tailing-media-tests.log
+          instrument_check_status=0
+          run_instrument_check() {
+            local check_script="$1" check_log="$2"
+            if ! bash "$check_script" 2>&1 | tee "artifacts/$check_log"; then
+              instrument_check_status=1
+            fi
+          }
+          if ! python3 Tools/verify_legacy62.py 2>&1 | tee artifacts/zeeho-legacy-tests.log; then
+            instrument_check_status=1
+          fi
+          run_instrument_check Tools/test_zeeho_seplus.sh zeeho-seplus-tests.log
+          run_instrument_check Tools/test_tailing_discovery.sh tailing-discovery-tests.log
+          run_instrument_check Tools/test_zeeho_control.sh zeeho-control-tests.log
+          run_instrument_check Tools/test_zeeho_bms.sh zeeho-bms-tests.log
+          run_instrument_check Tools/test_zeeho62_handshake.sh zeeho62-handshake-tests.log
+          run_instrument_check Tools/test_motorcycle.sh motorcycle-tests.log
+          run_instrument_check Tools/test_shouqu.sh shouqu-tests.log
+          run_instrument_check Tools/test_tailing.sh tailing-media-tests.log
+          exit "$instrument_check_status"
 
       - name: Verify local identity packaging with generated test keys
         shell: bash

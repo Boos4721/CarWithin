@@ -26,6 +26,7 @@ tests=tests[:a]+'''    static func main() throws {
 a=tests.index('    private static func simulatedInstrument(');b=tests.index('    private static func rejectedInstrument(',a);fn=tests[a:b]
 fn=fn.replace('TailingPorts(', 'Zeeho62Legacy.TailingPorts(').replace('TailingConnection(', 'Zeeho62Legacy.TailingConnection(').replace('TailingPhoneInfo(', 'Zeeho62Legacy.TailingPhoneInfo(').replace('profile: profile,','profile: .zeeho62,')
 fn=fn.replace('let sizeForEncoder = try connection.start()','try connection.start()\n        let dimensions = connection.outputDimensions\n        let sizeForEncoder = InstrumentFrameSize(width: dimensions.width, height: dimensions.height)')
+fn=fn.replace('connection.outputSize', 'InstrumentFrameSize(width: connection.outputDimensions.width, height: connection.outputDimensions.height)')
 tests=tests[:a]+fn+tests[b:];(stage/'LegacyHandshakeSmoke.swift').write_text(tests)
 PY
 swiftc -swift-version 5 \
