@@ -6,6 +6,8 @@
 
 CarWithin runs CarPlay on the same iPhone that generates its interface. Use CarPlay directly on your iPhone for navigation and music, or send the display to a head unit, tablet, computer, or another phone on the local network. A receiving browser can send touch input back to CarPlay.
 
+**Android version** · [Install, supported dashboards, and source builds](android/README.en.md)
+
 ![CarWithin connection diagram showing playback on iPhone and output to a browser, wireless CarLife, compatible dashboards, or experimental AirPlay.](docs/images/carwithin-connections-en.png)
 
 ## Download and install

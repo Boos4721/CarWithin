@@ -6,6 +6,8 @@
 
 CarWithin 在同一台 iPhone 上启动、显示和触控本机 CarPlay。你可以直接在 iPhone 上用导航、音乐等 CarPlay 应用，也可以把画面送到同一局域网的车机浏览器、平板、电脑或另一台手机。浏览器接收支持触控回传。
 
+**Android 版** · [安装、兼容仪表与源码构建](android/README.md)
+
 ![CarWithin 连接示意图：iPhone 本机显示，也可输出到浏览器、无线 CarLife、兼容仪表或实验性 AirPlay。](docs/images/carwithin-connections-zh.png)
 
 ## 下载与安装
