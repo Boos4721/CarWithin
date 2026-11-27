@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 extension NinebotVehicleConnection {
     private func fixtureChannel(_ item: CBPeripheral) {
@@ -88,6 +89,9 @@ extension NinebotVehicleConnection {
             precondition(oldCentral !== newCentral && oldCentral.delegate == nil)
             client.centralManagerDidUpdateState(newCentral)
             precondition(client.reconnectCount == 1)
+            // The OS releases the old transport before reconnecting. Its delegate
+            // callbacks can still be queued and arrive after the new connection.
+            item.state = .disconnected
             client.reconnectTask?.perform()
             client.discover(item)
             precondition(client.phase == .discovering)
@@ -116,5 +120,8 @@ extension NinebotVehicleConnection {
 }
 
 @main struct NinebotPairingLifecycleSmoke {
-    @MainActor static func main() { NinebotVehicleConnection.runLifecycleSmoke() }
+    @MainActor static func main() {
+        setbuf(stdout, nil)
+        NinebotVehicleConnection.runLifecycleSmoke()
+    }
 }

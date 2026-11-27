@@ -118,7 +118,7 @@ SE+ offers a 1600×770 wide canvas or 800×480 compatibility canvas, plus 25/30/
 These steps apply to source builds that include the Vehicle pairing menu.
 
 1. Power on the vehicle and select the matching display size under **Settings → Current output**. Open **Vehicle pairing**, scan, and select your vehicle.
-2. Start local pairing and press the vehicle's P button to confirm. Once paired, select the vehicle in the paired list for automatic connection.
+2. Send the pairing request and confirm the target. Wait for the green vehicle-ready message before briefly pressing the vehicle's P button. Once paired, select the vehicle in the paired list for automatic connection.
 3. Join the instrument Wi-Fi on the iPhone and select its saved preset. Starting CarPlay connects to the selected vehicle over BLE and opens instrument navigation. If the instrument Wi-Fi only becomes visible after navigation starts, disconnect the iPhone from any other Wi-Fi network, start CarPlay, then join the instrument Wi-Fi in iOS settings.
 4. When you stop casting, CarWithin requests that navigation stop if the BLE link is available, then disconnects. If the instrument exits navigation on its own, CarWithin respects that exit for the current cast. Choose the no-automatic-connection option to disable automatic vehicle connection.
 
