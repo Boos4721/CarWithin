@@ -6,6 +6,14 @@ import VideoToolbox
 final class ZeehoOutput {
     private let queue = DispatchQueue(label: "CarWithin.zeeho", qos: .userInitiated)
     private var session: Session?
+    private var bmsImage: CGImage?
+    private var bmsConfiguration = ANTBMSCardConfiguration()
+
+    func setBMSOverlay(_ image: CGImage?, configuration: ANTBMSCardConfiguration) {
+        bmsImage = image; bmsConfiguration = configuration
+        let current = session
+        queue.async { current?.setBMSOverlay(image, configuration: configuration) }
+    }
 
     deinit { stop() }
 
@@ -20,7 +28,11 @@ final class ZeehoOutput {
                            sourceSize: sourceSize ?? profile.preferredSize, phone: phone,
                            onState: onState, onLog: onLog, requestKeyframe: requestKeyframe)
         session = next
-        next.start()
+        let overlay = bmsImage, configuration = bmsConfiguration
+        queue.async {
+            next.setBMSOverlay(overlay, configuration: configuration)
+            next.start()
+        }
     }
 
     func append(_ data: Data, codec: VideoCodec, keyframe: Bool) {
@@ -68,7 +80,7 @@ final class ZeehoOutput {
         private var parameters = VideoParameterSets(codec: .h264)
         private var waitingForIDR = true
         private var latest: CVPixelBuffer?
-        private lazy var compositor = CIContext(options: [.useSoftwareRenderer: true, .cacheIntermediates: false])
+        private let canvas = InstrumentVideoCanvas()
         private var fresh = false
         private let origin = ProcessInfo.processInfo.systemUptime
         private var lastFrame = -Double.infinity
@@ -96,6 +108,23 @@ final class ZeehoOutput {
             self.requestKeyframe = requestKeyframe
         }
 
+        // Output-queue only. Once compositing is needed, remain in transcode
+        // until the next session to avoid switching codecs on a dependent P-frame.
+        func setBMSOverlay(_ image: CGImage?, configuration: ANTBMSCardConfiguration) {
+            canvas.setBMSOverlay(image, configuration: configuration)
+            guard image != nil else { return }
+            let switched = lock.withLock {
+                guard usesRelay else { return false }
+                usesRelay = false
+                return true
+            }
+            if switched {
+                relayCondition.lock(); relayCondition.broadcast(); relayCondition.unlock()
+                onLog(CWL("BMS 电池卡片已启用，本次极核输出自动改用兼容转码"))
+                requestKeyframe()
+            }
+        }
+
         func start() {
             report(CWL("正在连接极核仪表…"))
             DispatchQueue.global(qos: .userInitiated).async { [self] in
@@ -111,7 +140,8 @@ final class ZeehoOutput {
                     if isRelaying {
                         onLog("极核使用 H.264 原码流直传，不执行手机端解码、缩放或编码；仪表兼容性需实测")
                         try runRelay(size: size)
-                    } else {
+                    }
+                    if active {
                         onLog("极核使用兼容转码，CarPlay 源画面 \(sourceSize)，仪表输出 \(size)")
                         var first = true
                         var nextFrame = ProcessInfo.processInfo.systemUptime
@@ -260,10 +290,10 @@ final class ZeehoOutput {
 
         private func runRelay(size: InstrumentFrameSize) throws {
             var lastPicture = ProcessInfo.processInfo.systemUptime
-            while active {
+            while active && isRelaying {
                 try connection.checkHealth()
                 guard let frame = try nextRelayFrame() else {
-                    guard active else { break }
+                    guard active, isRelaying else { break }
                     requestRelayKeyframe()
                     if ProcessInfo.processInfo.systemUptime - lastPicture >= 10 {
                         throw ConfigurationError("H.264 直传连续 10 秒未收到完整源画面，请查看锁屏前后日志或改用兼容转码")
@@ -364,23 +394,7 @@ final class ZeehoOutput {
         }
 
         private func fittedImage(_ image: CVPixelBuffer, to size: InstrumentFrameSize) throws -> CVPixelBuffer {
-            let width = size.width, height = size.height
-            if CVPixelBufferGetWidth(image) == width, CVPixelBufferGetHeight(image) == height { return image }
-            var buffer: CVPixelBuffer?
-            let status = CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA,
-                                             [kCVPixelBufferIOSurfacePropertiesKey: [:]] as CFDictionary, &buffer)
-            guard status == kCVReturnSuccess, let buffer else { throw ConfigurationError(CWL("无法分配极核缩放画面（{1}）", [String(describing: status)])) }
-            let source = CIImage(cvPixelBuffer: image)
-            let destination = size.fittedRect(for: source.extent.size)
-            let scale = destination.width / source.extent.width
-            let scaled = source.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-            let positioned = scaled.transformed(by: CGAffineTransform(
-                translationX: destination.minX - scaled.extent.minX,
-                y: destination.minY - scaled.extent.minY))
-            let bounds = CGRect(x: 0, y: 0, width: width, height: height)
-            compositor.render(positioned.composited(over: CIImage(color: .black)).cropped(to: bounds),
-                              to: buffer, bounds: bounds, colorSpace: CGColorSpaceCreateDeviceRGB())
-            return buffer
+            try canvas.fittedImage(image, width: size.width, height: size.height)
         }
 
         private func reportFrameSent(size: InstrumentFrameSize) {
