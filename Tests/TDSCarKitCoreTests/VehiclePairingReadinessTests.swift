@@ -29,6 +29,12 @@ final class VehiclePairingReadinessTests: XCTestCase {
         }
     }
 
+    func testLateReadyReplyCannotReopenAnExpiredPreparationWindow() {
+        var state = VehiclePairingReadiness(startedAt: 10)
+        XCTAssertFalse(state.acceptReady(ready(), at: 30))
+        XCTAssertNil(state.confirmationWindow)
+    }
+
     func testReadinessRecoveryCountsSentRequestsAndStopsAfterReady() {
         var state = VehiclePairingReadiness(startedAt: 0)
         for _ in 0..<7 { state.didSendRequest() }

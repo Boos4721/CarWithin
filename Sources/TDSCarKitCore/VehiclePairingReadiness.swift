@@ -9,7 +9,7 @@ struct VehiclePairingReadiness {
     mutating func didSendRequest() { requestsSent += 1 }
 
     mutating func acceptReady(_ frame: VehicleBLEFrame, at now: TimeInterval) -> Bool {
-        guard readyAt == nil, now.isFinite, now >= startedAt,
+        guard readyAt == nil, !hasExpired(at: now),
               frame.src == 0x04, frame.dst == 0x3e, frame.command == 0x5c,
               frame.index == 0, frame.payload.isEmpty else { return false }
         readyAt = now

@@ -86,6 +86,601 @@
         }
       }
     },
+    "，低延迟" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", Low Latency"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "，低延迟"
+          }
+        }
+      }
+    },
+    "，全屏" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", Full Screen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "，全屏"
+          }
+        }
+      }
+    },
+    "，减轻档 {1}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", reduced-load level {1}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "，减轻档 {1}"
+          }
+        }
+      }
+    },
+    "，在「设置」安装。之后进入「通用 → 关于本机 → 证书信任设置」，为该证书启用完全信任。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", install it in Settings, then go to General → About → Certificate Trust Settings and enable full trust for this certificate."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "，在「设置」安装。之后进入「通用 → 关于本机 → 证书信任设置」，为该证书启用完全信任。"
+          }
+        }
+      }
+    },
+    "，在系统「设置」搜索「安装证书」，选择「CA 证书」，安装下载的文件。不同机型的菜单名称可能不同。安装后用支持系统用户证书的浏览器打开 HTTPS 接收页。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", search for “Install certificate” in system Settings, select “CA certificate”, and install the downloaded file. Menu names vary by device. Then open the HTTPS receiver page in a browser that supports user-installed system certificates."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "，在系统「设置」搜索「安装证书」，选择「CA 证书」，安装下载的文件。不同机型的菜单名称可能不同。安装后用支持系统用户证书的浏览器打开 HTTPS 接收页。"
+          }
+        }
+      }
+    },
+    "{1} {2} [{3} 字节]" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} {2} [{3} bytes]"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} {2} [{3} 字节]"
+          }
+        }
+      }
+    },
+    "{1} TCP 已监听 {2}:{3}/{4}/{5}，正在协商" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} TCP listening on {2}:{3}/{4}/{5}; negotiating"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} TCP 已监听 {2}:{3}/{4}/{5}，正在协商"
+          }
+        }
+      }
+    },
+    "{1} 使用{2}解码" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} is using {2} decoding"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 使用{2}解码"
+          }
+        }
+      }
+    },
+    "{1} 协议错误：{2}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} protocol error: {2}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 协议错误：{2}"
+          }
+        }
+      }
+    },
+    "{1} 参数无效（{2}）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid {1} parameters ({2})"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 参数无效（{2}）"
+          }
+        }
+      }
+    },
+    "{1} 媒体协商完成，等待仪表逐帧请求" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} media negotiation completed; waiting for per-frame requests from the dashboard"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 媒体协商完成，等待仪表逐帧请求"
+          }
+        }
+      }
+    },
+    "{1} 将重新握手尝试另一份已保存密钥。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} Reconnecting to try another saved key."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 将重新握手尝试另一份已保存密钥。"
+          }
+        }
+      }
+    },
+    "{1} 屏幕 {2}×{3}（像素比 {4}，{5} Hz，H.265 {6}硬解{7}）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} display {2}×{3} (pixel ratio {4}, {5} Hz, H.265 {6} hardware decoding{7})"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 屏幕 {2}×{3}（像素比 {4}，{5} Hz，H.265 {6}硬解{7}）"
+          }
+        }
+      }
+    },
+    "{1} 已停止自动重试。可在「车辆配对」重新扫描，或删除旧记录后重新配对。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} Automatic retries have stopped. Scan again in Vehicle Pairing, or delete the old record and pair again."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 已停止自动重试。可在「车辆配对」重新扫描，或删除旧记录后重新配对。"
+          }
+        }
+      }
+    },
+    "{1} 已开始显示 CarPlay（{2}{3}）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} started displaying CarPlay ({2}{3})"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 已开始显示 CarPlay（{2}{3}）"
+          }
+        }
+      }
+    },
+    "{1} 已断开（剩余 {2} 台）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} disconnected ({2} devices remaining)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 已断开（剩余 {2} 台）"
+          }
+        }
+      }
+    },
+    "{1} 已连接原始视频流（共 {2} 台）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} connected to the raw video stream ({2} devices total)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 已连接原始视频流（共 {2} 台）"
+          }
+        }
+      }
+    },
+    "{1} 已连接浏览器{2}（共 {3} 台）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} connected to the browser{2} ({3} devices total)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 已连接浏览器{2}（共 {3} 台）"
+          }
+        }
+      }
+    },
+    "{1} 新连接" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} new connection"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 新连接"
+          }
+        }
+      }
+    },
+    "{1} 未等到新关键帧，改用缓存画面（{2} 帧）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} did not receive a new keyframe; using cached video ({2} frames)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 未等到新关键帧，改用缓存画面（{2} 帧）"
+          }
+        }
+      }
+    },
+    "{1} 网络积压" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} network backlog"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 网络积压"
+          }
+        }
+      }
+    },
+    "{1} 网络跟不上，跳到下一个关键帧（第 {2} 次）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} network cannot keep up; skipping to the next keyframe (occurrence {2})"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 网络跟不上，跳到下一个关键帧（第 {2} 次）"
+          }
+        }
+      }
+    },
+    "{1} 解码器不可用" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} decoder unavailable"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 解码器不可用"
+          }
+        }
+      }
+    },
+    "{1} 读取过慢，已断开" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} reading too slowly; disconnected"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 读取过慢，已断开"
+          }
+        }
+      }
+    },
+    "{1} 输入过大，已断开" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} input too large; disconnected"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 输入过大，已断开"
+          }
+        }
+      }
+    },
+    "{1} 麦克风已启动：{2} Hz 单声道" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} microphone started: {2} Hz mono"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} 麦克风已启动：{2} Hz 单声道"
+          }
+        }
+      }
+    },
+    "{1}（配置记录 {2} 字节：{3}）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} (configuration record {2} bytes: {3})"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1}（配置记录 {2} 字节：{3}）"
+          }
+        }
+      }
+    },
+    "{1}写入失败：{2}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to write {1}: {2}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1}写入失败：{2}"
+          }
+        }
+      }
+    },
+    "{1}启动失败：{2}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to start {1}: {2}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1}启动失败：{2}"
+          }
+        }
+      }
+    },
+    "{1}失败：{2} (errno {3})" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} failed: {2} (errno {3})"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1}失败：{2} (errno {3})"
+          }
+        }
+      }
+    },
+    "{1}失败（{2}）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} failed ({2})"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1}失败（{2}）"
+          }
+        }
+      }
+    },
+    "{1}已开启，端口 {2}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} started on port {2}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1}已开启，端口 {2}"
+          }
+        }
+      }
+    },
+    "{1}浏览器 HTTPS 证书（{2}）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1} browser HTTPS certificate ({2})"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1}浏览器 HTTPS 证书（{2}）"
+          }
+        }
+      }
+    },
+    "{1}端口无效" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid port for {1}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{1}端口无效"
+          }
+        }
+      }
+    },
+    "<meta charset=utf-8><h1>HTTPS 已配置证书</h1><p>使用公开 CA 证书时无需安装本地根证书。</p><a href=\"https://{1}:{2}/\">打开 HTTPS 接收页</a>" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "<meta charset=utf-8><h1>HTTPS Certificate Configured</h1><p>No local root certificate is needed when using a public CA certificate.</p><a href=\"https://{1}:{2}/\">Open HTTPS Receiver Page</a>"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "<meta charset=utf-8><h1>HTTPS 已配置证书</h1><p>使用公开 CA 证书时无需安装本地根证书。</p><a href=\"https://{1}:{2}/\">打开 HTTPS 接收页</a>"
+          }
+        }
+      }
+    },
     "1. 先连 Wi-Fi" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -99,57 +694,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "1. 先连 Wi-Fi"
-          }
-        }
-      }
-    },
-    "1. 扫描并连接车辆" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1. Scan & Connect"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1. 扫描并连接车辆"
-          }
-        }
-      }
-    },
-    "1024×600 · H.264 · 最高 25 FPS" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1024×600 · H.264 · Up to 25 FPS"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1024×600 · H.264 · 最高 25 FPS"
-          }
-        }
-      }
-    },
-    "2. 等待就绪再按 P 键" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "2. Wait Before Pressing P"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "2. 等待就绪再按 P 键"
           }
         }
       }
@@ -184,23 +728,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "3. 常见问题"
-          }
-        }
-      }
-    },
-    "3. 选中自动连接" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "3. Select for Auto-Connect"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "3. 选中自动连接"
           }
         }
       }
@@ -300,19 +827,19 @@
         }
       }
     },
-    "<meta charset=utf-8><h1>HTTPS 已配置证书</h1><p>使用公开 CA 证书时无需安装本地根证书。</p><a href=\"https://{1}:{2}/\">打开 HTTPS 接收页</a>" : {
+    "1024×600 · H.264 · 最高 25 FPS" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "<meta charset=utf-8><h1>HTTPS Certificate Configured</h1><p>No local root certificate is needed when using a public CA certificate.</p><a href=\"https://{1}:{2}/\">Open HTTPS Receiver Page</a>"
+            "value" : "1024×600 · H.264 · Up to 25 FPS"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "<meta charset=utf-8><h1>HTTPS 已配置证书</h1><p>使用公开 CA 证书时无需安装本地根证书。</p><a href=\"https://{1}:{2}/\">打开 HTTPS 接收页</a>"
+            "value" : "1024×600 · H.264 · 最高 25 FPS"
           }
         }
       }
@@ -330,40 +857,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "AAC 输出缓冲区"
-          }
-        }
-      }
-    },
-    "AVC 参数内容" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "AVC parameter content"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "AVC 参数内容"
-          }
-        }
-      }
-    },
-    "AVC 参数长度" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "AVC parameter length"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "AVC 参数长度"
           }
         }
       }
@@ -584,23 +1077,6 @@
         }
       }
     },
-    "App 已进入后台且没有画中画或后台保持，iOS 会挂起 App，已停止 CarPlay" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "App entered the background without Picture in Picture or background keep-alive. iOS will suspend the app; CarPlay stopped"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "App 已进入后台且没有画中画或后台保持，iOS 会挂起 App，已停止 CarPlay"
-          }
-        }
-      }
-    },
     "App 已进入后台，CarPlay 继续运行" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -635,6 +1111,23 @@
         }
       }
     },
+    "App 已进入后台且没有画中画或后台保持，iOS 会挂起 App，已停止 CarPlay" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App entered the background without Picture in Picture or background keep-alive. iOS will suspend the app; CarPlay stopped"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App 已进入后台且没有画中画或后台保持，iOS 会挂起 App，已停止 CarPlay"
+          }
+        }
+      }
+    },
     "App 的 Documents 目录不可用" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -648,6 +1141,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "App 的 Documents 目录不可用"
+          }
+        }
+      }
+    },
+    "AVC 参数内容" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AVC parameter content"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AVC 参数内容"
+          }
+        }
+      }
+    },
+    "AVC 参数长度" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AVC parameter length"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AVC 参数长度"
           }
         }
       }
@@ -668,6 +1195,22 @@
         }
       }
     },
+    "Baseline（兼容）" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baseline (compatible)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baseline（兼容）"
+          }
+        }
+      }
+    },
     "BLE 输出队列" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -681,6 +1224,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "BLE 输出队列"
+          }
+        }
+      }
+    },
+    "blocked: CarPlay 正在运行" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "blocked: CarPlay is running"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "blocked: CarPlay 正在运行"
           }
         }
       }
@@ -733,22 +1293,6 @@
         }
       }
     },
-    "Baseline（兼容）" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Baseline (compatible)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Baseline（兼容）"
-          }
-        }
-      }
-    },
     "Bonjour 注册状态：{1}" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -762,23 +1306,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bonjour 注册状态：{1}"
-          }
-        }
-      }
-    },
-    "CPU 软件解码" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CPU Software Decoding"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CPU 软件解码"
           }
         }
       }
@@ -1566,6 +2093,23 @@
         }
       }
     },
+    "CPU 软件解码" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CPU Software Decoding"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CPU 软件解码"
+          }
+        }
+      }
+    },
     "DuckDNS 拒绝更新，请检查域名和 Token。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1583,6 +2127,16 @@
         }
       }
     },
+    "EasyConn / PXC · H.264 · 尺寸由仪表协商" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "EasyConn / PXC - H.264 - Display-negotiated size"
+          }
+        }
+      }
+    },
     "EM2APP / EM02 只读：自测总压、电流、功率、SOC、最多 30 串、有效温度和中继信息。剩余容量按 SOC × 额定容量计算；不提供保护控制或 SOH。待真机验证。" : {
       "localizations" : {
         "en" : {
@@ -1595,33 +2149,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "EM2APP / EM02 只读：自测总压、电流、功率、SOC、最多 30 串、有效温度和中继信息。剩余容量按 SOC × 额定容量计算；不提供保护控制或 SOH。待真机验证。"
-          }
-        }
-      }
-    },
-    "EasyConn / PXC · H.264 · 尺寸由仪表协商" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "EasyConn / PXC - H.264 - Display-negotiated size"
-          }
-        }
-      }
-    },
-    "Erya · JPEG · 目标 10 FPS · 尺寸由仪表协商" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erya · JPEG · Target 10 FPS · Display size negotiated with instrument"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erya · JPEG · 目标 10 FPS · 尺寸由仪表协商"
           }
         }
       }
@@ -2084,6 +2611,142 @@
         }
       }
     },
+    "iAP2 SYN 长度不足" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iAP2 SYN is too short"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iAP2 SYN 长度不足"
+          }
+        }
+      }
+    },
+    "iAP2 控制消息重组" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iAP2 control message reassembly"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iAP2 控制消息重组"
+          }
+        }
+      }
+    },
+    "iOS 已接受配件认证" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS accepted accessory authentication"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 已接受配件认证"
+          }
+        }
+      }
+    },
+    "iOS 已接受配件识别，正在等待 CarPlay 可用通知" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS accepted accessory identification; waiting for CarPlay availability notification"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 已接受配件识别，正在等待 CarPlay 可用通知"
+          }
+        }
+      }
+    },
+    "iOS 拒绝了配件认证（0xAA04）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS rejected accessory authentication (0xAA04)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 拒绝了配件认证（0xAA04）"
+          }
+        }
+      }
+    },
+    "iOS 拒绝了配件识别（0x1D03）：{1}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS rejected accessory identification (0x1D03): {1}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 拒绝了配件识别（0x1D03）：{1}"
+          }
+        }
+      }
+    },
+    "iOS 未自动开启画中画，请检查系统的自动画中画设置" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS did not start Picture in Picture automatically. Check the system’s automatic Picture in Picture setting"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 未自动开启画中画，请检查系统的自动画中画设置"
+          }
+        }
+      }
+    },
+    "iOS 重置了 iAP2 链路" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS reset the iAP2 link"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 重置了 iAP2 链路"
+          }
+        }
+      }
+    },
     "IPA 需自行签名安装；下载后可分享给签名工具或保存到文件。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2097,6 +2760,176 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "IPA 需自行签名安装；下载后可分享给签名工具或保存到文件。"
+          }
+        }
+      }
+    },
+    "iPad 模式" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPad Mode"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPad 模式"
+          }
+        }
+      }
+    },
+    "iPhone 加入仪表的 Wi-Fi，打开仪表投屏，再启动本机 CarPlay。画面在仪表上显示，操作在 iPhone 上完成。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect the iPhone to the dashboard’s Wi-Fi, enable screen projection on the dashboard, then start CarPlay. Video appears on the dashboard; control it from the iPhone."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone 加入仪表的 Wi-Fi，打开仪表投屏，再启动本机 CarPlay。画面在仪表上显示，操作在 iPhone 上完成。"
+          }
+        }
+      }
+    },
+    "iPhone 和 iPad" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone and iPad"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone 和 iPad"
+          }
+        }
+      }
+    },
+    "iPhone 已打开蓝牙控制通道" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The iPhone opened the Bluetooth control channel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone 已打开蓝牙控制通道"
+          }
+        }
+      }
+    },
+    "iPhone 拒绝了事件命令（状态 {1}，CSeq {2}）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The iPhone rejected an event command (status {1}, CSeq {2})"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone 拒绝了事件命令（状态 {1}，CSeq {2}）"
+          }
+        }
+      }
+    },
+    "iPhone 提议的会话功能：{1}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session features proposed by the iPhone: {1}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone 提议的会话功能：{1}"
+          }
+        }
+      }
+    },
+    "iPhone 未响应关键帧请求（已重试 {1} 次），等待自然关键帧" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The iPhone did not respond to the keyframe request ({1} retries); waiting for a natural keyframe"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone 未响应关键帧请求（已重试 {1} 次），等待自然关键帧"
+          }
+        }
+      }
+    },
+    "iPhone 输出" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone Output"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone 输出"
+          }
+        }
+      }
+    },
+    "iPhone 连上仪表 Wi-Fi，选择对应预设，先在 CarWithin 启动本机 CarPlay。没有画面时，保持 CarWithin 运行，再到九号出行开启投屏导航。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect the iPhone to the dashboard’s Wi-Fi and select the matching preset. Start CarPlay on this iPhone in CarWithin first. If no video appears, keep CarWithin running and enable navigation projection in the Ninebot app."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone 连上仪表 Wi-Fi，选择对应预设，先在 CarWithin 启动本机 CarPlay。没有画面时，保持 CarWithin 运行，再到九号出行开启投屏导航。"
+          }
+        }
+      }
+    },
+    "iPhone 连上仪表 Wi-Fi，选择对应预设，在 CarWithin 启动 CarPlay。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect your iPhone to the dashboard Wi-Fi, select the matching preset, and start CarPlay in CarWithin."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone 连上仪表 Wi-Fi，选择对应预设，在 CarWithin 启动 CarPlay。"
           }
         }
       }
@@ -2303,6 +3136,22 @@
         }
       }
     },
+    "Main（更清晰）" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Main (higher quality)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Main（更清晰）"
+          }
+        }
+      }
+    },
     "MFi 身份" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2333,22 +3182,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "MFi 身份验证通过并已保存到本机 Keychain"
-          }
-        }
-      }
-    },
-    "Main（更清晰）" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Main (higher quality)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Main（更清晰）"
           }
         }
       }
@@ -2404,36 +3237,19 @@
         }
       }
     },
-    "PCM 帧大小" : {
+    "pair-setup 不可用" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "PCM frame size"
+            "value" : "pair-setup unavailable"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "PCM 帧大小"
-          }
-        }
-      }
-    },
-    "PCM 输出缓冲区" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PCM output buffer"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PCM 输出缓冲区"
+            "value" : "pair-setup 不可用"
           }
         }
       }
@@ -2472,6 +3288,23 @@
         }
       }
     },
+    "pair-verify 不可用" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pair-verify unavailable"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pair-verify 不可用"
+          }
+        }
+      }
+    },
     "Pair-Verify 已通过，已启用加密控制" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2485,6 +3318,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pair-Verify 已通过，已启用加密控制"
+          }
+        }
+      }
+    },
+    "PCM 帧大小" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PCM frame size"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PCM 帧大小"
+          }
+        }
+      }
+    },
+    "PCM 输出缓冲区" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PCM output buffer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PCM 输出缓冲区"
           }
         }
       }
@@ -2536,6 +3403,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Siri 未发送：事件通道尚未连接"
+          }
+        }
+      }
+    },
+    "success: CoreAccessories 已发布 protocol-4 iAP2 endpoint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "success: CoreAccessories published a protocol-4 iAP2 endpoint"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "success: CoreAccessories 已发布 protocol-4 iAP2 endpoint"
+          }
+        }
+      }
+    },
+    "success: MFi 身份已验证并保存到 Keychain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "success: MFi identity verified and saved to Keychain"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "success: MFi 身份已验证并保存到 Keychain"
           }
         }
       }
@@ -2788,890 +3689,6 @@
         }
       }
     },
-    "blocked: CarPlay 正在运行" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "blocked: CarPlay is running"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "blocked: CarPlay 正在运行"
-          }
-        }
-      }
-    },
-    "iAP2 SYN 长度不足" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iAP2 SYN is too short"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iAP2 SYN 长度不足"
-          }
-        }
-      }
-    },
-    "iAP2 控制消息重组" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iAP2 control message reassembly"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iAP2 控制消息重组"
-          }
-        }
-      }
-    },
-    "iOS 已接受配件认证" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iOS accepted accessory authentication"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iOS 已接受配件认证"
-          }
-        }
-      }
-    },
-    "iOS 已接受配件识别，正在等待 CarPlay 可用通知" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iOS accepted accessory identification; waiting for CarPlay availability notification"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iOS 已接受配件识别，正在等待 CarPlay 可用通知"
-          }
-        }
-      }
-    },
-    "iOS 拒绝了配件认证（0xAA04）" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iOS rejected accessory authentication (0xAA04)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iOS 拒绝了配件认证（0xAA04）"
-          }
-        }
-      }
-    },
-    "iOS 拒绝了配件识别（0x1D03）：{1}" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iOS rejected accessory identification (0x1D03): {1}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iOS 拒绝了配件识别（0x1D03）：{1}"
-          }
-        }
-      }
-    },
-    "iOS 未自动开启画中画，请检查系统的自动画中画设置" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iOS did not start Picture in Picture automatically. Check the system’s automatic Picture in Picture setting"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iOS 未自动开启画中画，请检查系统的自动画中画设置"
-          }
-        }
-      }
-    },
-    "iOS 重置了 iAP2 链路" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iOS reset the iAP2 link"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iOS 重置了 iAP2 链路"
-          }
-        }
-      }
-    },
-    "iPad 模式" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iPad Mode"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iPad 模式"
-          }
-        }
-      }
-    },
-    "iPhone 加入仪表的 Wi-Fi，打开仪表投屏，再启动本机 CarPlay。画面在仪表上显示，操作在 iPhone 上完成。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connect the iPhone to the dashboard’s Wi-Fi, enable screen projection on the dashboard, then start CarPlay. Video appears on the dashboard; control it from the iPhone."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iPhone 加入仪表的 Wi-Fi，打开仪表投屏，再启动本机 CarPlay。画面在仪表上显示，操作在 iPhone 上完成。"
-          }
-        }
-      }
-    },
-    "iPhone 和 iPad" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iPhone and iPad"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iPhone 和 iPad"
-          }
-        }
-      }
-    },
-    "iPhone 已打开蓝牙控制通道" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The iPhone opened the Bluetooth control channel"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iPhone 已打开蓝牙控制通道"
-          }
-        }
-      }
-    },
-    "iPhone 拒绝了事件命令（状态 {1}，CSeq {2}）" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The iPhone rejected an event command (status {1}, CSeq {2})"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iPhone 拒绝了事件命令（状态 {1}，CSeq {2}）"
-          }
-        }
-      }
-    },
-    "iPhone 提议的会话功能：{1}" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Session features proposed by the iPhone: {1}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iPhone 提议的会话功能：{1}"
-          }
-        }
-      }
-    },
-    "iPhone 未响应关键帧请求（已重试 {1} 次），等待自然关键帧" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The iPhone did not respond to the keyframe request ({1} retries); waiting for a natural keyframe"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iPhone 未响应关键帧请求（已重试 {1} 次），等待自然关键帧"
-          }
-        }
-      }
-    },
-    "iPhone 输出" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iPhone Output"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iPhone 输出"
-          }
-        }
-      }
-    },
-    "iPhone 连上仪表 Wi-Fi，选择对应预设，先在 CarWithin 启动本机 CarPlay。没有画面时，保持 CarWithin 运行，再到九号出行开启投屏导航。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connect the iPhone to the dashboard’s Wi-Fi and select the matching preset. Start CarPlay on this iPhone in CarWithin first. If no video appears, keep CarWithin running and enable navigation projection in the Ninebot app."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iPhone 连上仪表 Wi-Fi，选择对应预设，先在 CarWithin 启动本机 CarPlay。没有画面时，保持 CarWithin 运行，再到九号出行开启投屏导航。"
-          }
-        }
-      }
-    },
-    "iPhone 连上仪表 Wi-Fi，选择对应预设，在 CarWithin 启动 CarPlay。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connect your iPhone to the dashboard Wi-Fi, select the matching preset, and start CarPlay in CarWithin."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iPhone 连上仪表 Wi-Fi，选择对应预设，在 CarWithin 启动 CarPlay。"
-          }
-        }
-      }
-    },
-    "pair-setup 不可用" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "pair-setup unavailable"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "pair-setup 不可用"
-          }
-        }
-      }
-    },
-    "pair-verify 不可用" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "pair-verify unavailable"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "pair-verify 不可用"
-          }
-        }
-      }
-    },
-    "success: CoreAccessories 已发布 protocol-4 iAP2 endpoint" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "success: CoreAccessories published a protocol-4 iAP2 endpoint"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "success: CoreAccessories 已发布 protocol-4 iAP2 endpoint"
-          }
-        }
-      }
-    },
-    "success: MFi 身份已验证并保存到 Keychain" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "success: MFi identity verified and saved to Keychain"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "success: MFi 身份已验证并保存到 Keychain"
-          }
-        }
-      }
-    },
-    "{1} TCP 已监听 {2}:{3}/{4}/{5}，正在协商" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} TCP listening on {2}:{3}/{4}/{5}; negotiating"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} TCP 已监听 {2}:{3}/{4}/{5}，正在协商"
-          }
-        }
-      }
-    },
-    "{1} {2} [{3} 字节]" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} {2} [{3} bytes]"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} {2} [{3} 字节]"
-          }
-        }
-      }
-    },
-    "{1} 使用{2}解码" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} is using {2} decoding"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 使用{2}解码"
-          }
-        }
-      }
-    },
-    "{1} 协议错误：{2}" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} protocol error: {2}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 协议错误：{2}"
-          }
-        }
-      }
-    },
-    "{1} 参数无效（{2}）" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Invalid {1} parameters ({2})"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 参数无效（{2}）"
-          }
-        }
-      }
-    },
-    "{1} 媒体协商完成，等待仪表逐帧请求" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} media negotiation completed; waiting for per-frame requests from the dashboard"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 媒体协商完成，等待仪表逐帧请求"
-          }
-        }
-      }
-    },
-    "{1} 将重新握手尝试另一份已保存密钥。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} Reconnecting to try another saved key."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 将重新握手尝试另一份已保存密钥。"
-          }
-        }
-      }
-    },
-    "{1} 屏幕 {2}×{3}（像素比 {4}，{5} Hz，H.265 {6}硬解{7}）" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} display {2}×{3} (pixel ratio {4}, {5} Hz, H.265 {6} hardware decoding{7})"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 屏幕 {2}×{3}（像素比 {4}，{5} Hz，H.265 {6}硬解{7}）"
-          }
-        }
-      }
-    },
-    "{1} 已停止自动重试。可在「车辆配对」重新扫描，或删除旧记录后重新配对。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} Automatic retries have stopped. Scan again in Vehicle Pairing, or delete the old record and pair again."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 已停止自动重试。可在「车辆配对」重新扫描，或删除旧记录后重新配对。"
-          }
-        }
-      }
-    },
-    "{1} 已开始显示 CarPlay（{2}{3}）" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} started displaying CarPlay ({2}{3})"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 已开始显示 CarPlay（{2}{3}）"
-          }
-        }
-      }
-    },
-    "{1} 已断开（剩余 {2} 台）" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} disconnected ({2} devices remaining)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 已断开（剩余 {2} 台）"
-          }
-        }
-      }
-    },
-    "{1} 已连接原始视频流（共 {2} 台）" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} connected to the raw video stream ({2} devices total)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 已连接原始视频流（共 {2} 台）"
-          }
-        }
-      }
-    },
-    "{1} 已连接浏览器{2}（共 {3} 台）" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} connected to the browser{2} ({3} devices total)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 已连接浏览器{2}（共 {3} 台）"
-          }
-        }
-      }
-    },
-    "{1} 新连接" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} new connection"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 新连接"
-          }
-        }
-      }
-    },
-    "{1} 未等到新关键帧，改用缓存画面（{2} 帧）" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} did not receive a new keyframe; using cached video ({2} frames)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 未等到新关键帧，改用缓存画面（{2} 帧）"
-          }
-        }
-      }
-    },
-    "{1} 网络积压" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} network backlog"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 网络积压"
-          }
-        }
-      }
-    },
-    "{1} 网络跟不上，跳到下一个关键帧（第 {2} 次）" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} network cannot keep up; skipping to the next keyframe (occurrence {2})"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 网络跟不上，跳到下一个关键帧（第 {2} 次）"
-          }
-        }
-      }
-    },
-    "{1} 解码器不可用" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} decoder unavailable"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 解码器不可用"
-          }
-        }
-      }
-    },
-    "{1} 读取过慢，已断开" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} reading too slowly; disconnected"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 读取过慢，已断开"
-          }
-        }
-      }
-    },
-    "{1} 输入过大，已断开" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} input too large; disconnected"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 输入过大，已断开"
-          }
-        }
-      }
-    },
-    "{1} 麦克风已启动：{2} Hz 单声道" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} microphone started: {2} Hz mono"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} 麦克风已启动：{2} Hz 单声道"
-          }
-        }
-      }
-    },
-    "{1}写入失败：{2}" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Failed to write {1}: {2}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1}写入失败：{2}"
-          }
-        }
-      }
-    },
-    "{1}启动失败：{2}" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Failed to start {1}: {2}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1}启动失败：{2}"
-          }
-        }
-      }
-    },
-    "{1}失败（{2}）" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} failed ({2})"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1}失败（{2}）"
-          }
-        }
-      }
-    },
-    "{1}失败：{2} (errno {3})" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} failed: {2} (errno {3})"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1}失败：{2} (errno {3})"
-          }
-        }
-      }
-    },
-    "{1}已开启，端口 {2}" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} started on port {2}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1}已开启，端口 {2}"
-          }
-        }
-      }
-    },
-    "{1}浏览器 HTTPS 证书（{2}）" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} browser HTTPS certificate ({2})"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1}浏览器 HTTPS 证书（{2}）"
-          }
-        }
-      }
-    },
-    "{1}端口无效" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Invalid port for {1}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1}端口无效"
-          }
-        }
-      }
-    },
-    "{1}（配置记录 {2} 字节：{3}）" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1} (configuration record {2} bytes: {3})"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "{1}（配置记录 {2} 字节：{3}）"
-          }
-        }
-      }
-    },
     "一起让更多车型用上 CarPlay。感谢大家的代码、适配测试、资料与赞赏支持。" : {
       "localizations" : {
         "en" : {
@@ -3684,23 +3701,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "一起让更多车型用上 CarPlay。感谢大家的代码、适配测试、资料与赞赏支持。"
-          }
-        }
-      }
-    },
-    "一键重新配对（按 P 键）" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "One-Tap Re-pair (Press P Button)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "一键重新配对（按 P 键）"
           }
         }
       }
@@ -4252,19 +4252,19 @@
         }
       }
     },
-    "九号 4.3 寸收到 RTCP 回应 #{1}" : {
+    "九号 4.3 寸：JPEG/RTP UDP 5012 · RTCP UDP 5013 · 480×272 · 最高 10 FPS" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ninebot 4.3-inch RTCP response #{1} received"
+            "value" : "Ninebot 4.3-inch: JPEG/RTP UDP 5012 · RTCP UDP 5013 · 480×272 · Up to 10 FPS"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "九号 4.3 寸收到 RTCP 回应 #{1}"
+            "value" : "九号 4.3 寸：JPEG/RTP UDP 5012 · RTCP UDP 5013 · 480×272 · 最高 10 FPS"
           }
         }
       }
@@ -4286,19 +4286,19 @@
         }
       }
     },
-    "九号 4.3 寸：JPEG/RTP UDP 5012 · RTCP UDP 5013 · 480×272 · 最高 10 FPS" : {
+    "九号 4.3 寸收到 RTCP 回应 #{1}" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ninebot 4.3-inch: JPEG/RTP UDP 5012 · RTCP UDP 5013 · 480×272 · Up to 10 FPS"
+            "value" : "Ninebot 4.3-inch RTCP response #{1} received"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "九号 4.3 寸：JPEG/RTP UDP 5012 · RTCP UDP 5013 · 480×272 · 最高 10 FPS"
+            "value" : "九号 4.3 寸收到 RTCP 回应 #{1}"
           }
         }
       }
@@ -4354,6 +4354,23 @@
         }
       }
     },
+    "九号 7 寸：KCP/UDP 5012 · RTCP/UDP 5013 · 1024×600 · H.264 Baseline 3.1 · 25 FPS" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ninebot 7-inch: KCP/UDP 5012 · RTCP/UDP 5013 · 1024×600 · H.264 Baseline 3.1 · 25 FPS"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "九号 7 寸：KCP/UDP 5012 · RTCP/UDP 5013 · 1024×600 · H.264 Baseline 3.1 · 25 FPS"
+          }
+        }
+      }
+    },
     "九号 7 寸仪表已确认收到 KCP 视频数据" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4384,23 +4401,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "九号 7 寸已协商 KCP 会话号：{1}"
-          }
-        }
-      }
-    },
-    "九号 7 寸：KCP/UDP 5012 · RTCP/UDP 5013 · 1024×600 · H.264 Baseline 3.1 · 25 FPS" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ninebot 7-inch: KCP/UDP 5012 · RTCP/UDP 5013 · 1024×600 · H.264 Baseline 3.1 · 25 FPS"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "九号 7 寸：KCP/UDP 5012 · RTCP/UDP 5013 · 1024×600 · H.264 Baseline 3.1 · 25 FPS"
           }
         }
       }
@@ -4520,40 +4520,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "九号蓝牙广播格式不完整"
-          }
-        }
-      }
-    },
-    "九号蓝牙日志" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ninebot Bluetooth Logs"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "九号蓝牙日志"
-          }
-        }
-      }
-    },
-    "九号蓝牙诊断日志" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ninebot Bluetooth Diagnostics Log"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "九号蓝牙诊断日志"
           }
         }
       }
@@ -4843,23 +4809,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "仪表媒体尺寸 {1}×{2} 与 {3} 配置不符"
-          }
-        }
-      }
-    },
-    "仪表导航已开启" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dashboard navigation active"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "仪表导航已开启"
           }
         }
       }
@@ -6340,6 +6289,123 @@
         }
       }
     },
+    "最多支持 {1} 台设备同时观看" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up to {1} devices can watch at the same time"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最多支持 {1} 台设备同时观看"
+          }
+        }
+      }
+    },
+    "最小" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Smallest"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最小"
+          }
+        }
+      }
+    },
+    "最新发布" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Latest Release"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最新发布"
+          }
+        }
+      }
+    },
+    "最近 7 天" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last 7 days"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最近 7 天"
+          }
+        }
+      }
+    },
+    "最近 30 天" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last 30 days"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最近 30 天"
+          }
+        }
+      }
+    },
+    "最近 200 条，不含 Wi-Fi 密码和 MFi 私钥。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The latest 200 entries. Wi-Fi passwords and MFi private keys are excluded."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最近 200 条，不含 Wi-Fi 密码和 MFi 私钥。"
+          }
+        }
+      }
+    },
+    "最高分辨率" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maximum Resolution"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最高分辨率"
+          }
+        }
+      }
+    },
     "准备就绪" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6383,23 +6449,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "KOVE 800X"
-          }
-        }
-      }
-    },
-    "凯越仪表" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "KOVE instrument"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "凯越仪表"
           }
         }
       }
@@ -6659,23 +6708,6 @@
         }
       }
     },
-    "删除后需要重新扫描并按 P 键配对。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "You will need to scan and press the P button to pair again."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "删除后需要重新扫描并按 P 键配对。"
-          }
-        }
-      }
-    },
     "删除失败" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6744,23 +6776,6 @@
         }
       }
     },
-    "加入仪表 Wi-Fi 后启动 CarPlay，CarWithin 将尝试连接所选车辆并开启仪表导航。失败时可选择“不自动连接”，按原方式使用九号出行。" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Join the dashboard Wi-Fi and start CarPlay. CarWithin will try to authenticate the selected vehicle and enable dashboard navigation. If this fails, select Do not connect automatically and use the Ninebot app as before."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "加入仪表 Wi-Fi 后启动 CarPlay，CarWithin 将尝试连接所选车辆并开启仪表导航。失败时可选择“不自动连接”，按原方式使用九号出行。"
-          }
-        }
-      }
-    },
     "加入仪表 Wi-Fi 后，先在这里启动 CarPlay，再到九号出行开启投屏导航，并让九号出行留在后台。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6774,6 +6789,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "加入仪表 Wi-Fi 后，先在这里启动 CarPlay，再到九号出行开启投屏导航，并让九号出行留在后台。"
+          }
+        }
+      }
+    },
+    "加入仪表 Wi-Fi 后启动 CarPlay，CarWithin 将尝试连接所选车辆并开启仪表导航。失败时可选择“不自动连接”，按原方式使用九号出行。" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Join the dashboard Wi-Fi and start CarPlay. CarWithin will try to authenticate the selected vehicle and enable dashboard navigation. If this fails, select Do not connect automatically and use the Ninebot app as before."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加入仪表 Wi-Fi 后启动 CarPlay，CarWithin 将尝试连接所选车辆并开启仪表导航。失败时可选择“不自动连接”，按原方式使用九号出行。"
           }
         }
       }
@@ -7009,6 +7041,23 @@
         }
       }
     },
+    "原生 {1} 播放已开始：{2} Hz，{3} 声道" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Native {1} playback started: {2} Hz, {3} channels"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原生 {1} 播放已开始：{2} Hz，{3} 声道"
+          }
+        }
+      }
+    },
     "原生 Opus 语音编解码器可用（16/24/48 kHz）" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7039,23 +7088,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "原生 RTSP 监听器已在端口 {1} 就绪"
-          }
-        }
-      }
-    },
-    "原生 {1} 播放已开始：{2} Hz，{3} 声道" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Native {1} playback started: {2} Hz, {3} channels"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "原生 {1} 播放已开始：{2} Hz，{3} 声道"
           }
         }
       }
@@ -7178,23 +7210,6 @@
         }
       }
     },
-    "发起配对后请等待约 5–8 秒，待提示「车机已就绪」并震动后再短按车上的 P 键。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wait about 5–8 seconds after starting pairing until prompted and haptic feedback triggers, then press the vehicle’s P button."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "发起配对后请等待约 5–8 秒，待提示「车机已就绪」并震动后再短按车上的 P 键。"
-          }
-        }
-      }
-    },
     "发送 H.264" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7208,6 +7223,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "发送 H.264"
+          }
+        }
+      }
+    },
+    "发送 iAP2 消息 0x%04X" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sending iAP2 message 0x%04X"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发送 iAP2 消息 0x%04X"
           }
         }
       }
@@ -7263,23 +7295,6 @@
         }
       }
     },
-    "发送 iAP2 消息 0x%04X" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sending iAP2 message 0x%04X"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "发送 iAP2 消息 0x%04X"
-          }
-        }
-      }
-    },
     "发送仪表数据" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7327,22 +7342,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "发送失败：{1}"
-          }
-        }
-      }
-    },
-    "发送请求后先等待「车机已就绪」，再按一下车上的 P 键。" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "After sending the request, wait for the vehicle-ready message before pressing P."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "发送请求后先等待「车机已就绪」，再按一下车上的 P 键。"
           }
         }
       }
@@ -8241,23 +8240,6 @@
         }
       }
     },
-    "启动 CarPlay 后即可打开上方地址。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start CarPlay to open the address above."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "启动 CarPlay 后即可打开上方地址。"
-          }
-        }
-      }
-    },
     "启动 CarPlay 后，在车机浏览器打开接收页，屏幕会自动记录在这里。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8271,6 +8253,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "启动 CarPlay 后，在车机浏览器打开接收页，屏幕会自动记录在这里。"
+          }
+        }
+      }
+    },
+    "启动 CarPlay 后即可打开上方地址。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start CarPlay to open the address above."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "启动 CarPlay 后即可打开上方地址。"
           }
         }
       }
@@ -8319,23 +8318,6 @@
         }
       }
     },
-    "启动后就可以在本机浏览器查看画面。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start CarPlay to view video in this device’s browser."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "启动后就可以在本机浏览器查看画面。"
-          }
-        }
-      }
-    },
     "启动后最多 {1} 台同时观看。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8353,19 +8335,19 @@
         }
       }
     },
-    "启动投屏时不自动连接车辆蓝牙" : {
+    "启动后就可以在本机浏览器查看画面。" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Will not connect to a vehicle when casting starts"
+            "value" : "Start CarPlay to view video in this device’s browser."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "启动投屏时不自动连接车辆蓝牙"
+            "value" : "启动后就可以在本机浏览器查看画面。"
           }
         }
       }
@@ -8742,23 +8724,6 @@
         }
       }
     },
-    "在 SETUP 前收到 RECORD" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Received RECORD before SETUP"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在 SETUP 前收到 RECORD"
-          }
-        }
-      }
-    },
     "在 iPhone 上启动 CarPlay，通过浏览器或兼容的 CarLife 车机查看和操控。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8776,19 +8741,19 @@
         }
       }
     },
-    "在下方扫描并选择车辆完成首次配对" : {
+    "在 SETUP 前收到 RECORD" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scan below and choose your vehicle to pair"
+            "value" : "Received RECORD before SETUP"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在下方扫描并选择车辆完成首次配对"
+            "value" : "在 SETUP 前收到 RECORD"
           }
         }
       }
@@ -9188,23 +9153,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "复制日志"
-          }
-        }
-      }
-    },
-    "复制蓝牙日志" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copy Bluetooth Logs"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "复制蓝牙日志"
           }
         }
       }
@@ -9722,23 +9670,6 @@
         }
       }
     },
-    "尚未实现广播版本 v{1} 的握手。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pairing for advertisement version {1} is unavailable."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "尚未实现广播版本 v{1} 的握手。"
-          }
-        }
-      }
-    },
     "尚未实现：{1} {2}；未占用会话" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9752,6 +9683,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "尚未实现：{1} {2}；未占用会话"
+          }
+        }
+      }
+    },
+    "尚未实现广播版本 v{1} 的握手。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pairing for advertisement version {1} is unavailable."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚未实现广播版本 v{1} 的握手。"
           }
         }
       }
@@ -9952,6 +9900,23 @@
         }
       }
     },
+    "已保存，启动时校验" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved; Validated at Startup"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已保存，启动时校验"
+          }
+        }
+      }
+    },
     "已保存到相册" : {
       "localizations" : {
         "en" : {
@@ -9996,23 +9961,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已保存设备"
-          }
-        }
-      }
-    },
-    "已保存，启动时校验" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Saved; Validated at Startup"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已保存，启动时校验"
           }
         }
       }
@@ -10170,23 +10118,6 @@
         }
       }
     },
-    "已启用自动连接 · 蓝牙广播 v{1}" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auto-Connect Enabled · BLE v{1}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已启用自动连接 · 蓝牙广播 v{1}"
-          }
-        }
-      }
-    },
     "已启用（PCM/AAC/Opus）" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10217,23 +10148,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已复制"
-          }
-        }
-      }
-    },
-    "已复制蓝牙日志" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bluetooth Logs Copied"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已复制蓝牙日志"
           }
         }
       }
@@ -10753,23 +10667,6 @@
         }
       }
     },
-    "已锁定" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Locked"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已锁定"
-          }
-        }
-      }
-    },
     "希望保留金额但隐藏昵称，请备注「匿名」；不希望列入名单，请备注「不上名单」。也可以发邮件申请修改或移除。" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -10972,23 +10869,6 @@
         }
       }
     },
-    "开放网络留空" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Leave blank for an open network"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "开放网络留空"
-          }
-        }
-      }
-    },
     "开放网络（无密码）" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11002,6 +10882,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "开放网络（无密码）"
+          }
+        }
+      }
+    },
+    "开放网络留空" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave blank for an open network"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开放网络留空"
           }
         }
       }
@@ -11627,23 +11524,6 @@
         }
       }
     },
-    "投屏运行中 · 停止后可修改" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Casting Active · Stop to Edit"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "投屏运行中 · 停止后可修改"
-          }
-        }
-      }
-    },
     "投送到 iPad" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11751,16 +11631,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "按屏幕设置图标大小"
-          }
-        }
-      }
-    },
-    "按电池设备筛选" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Filter by battery device"
           }
         }
       }
@@ -12016,23 +11886,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "控制 JSON 无效"
-          }
-        }
-      }
-    },
-    "控制 TCP 端口" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Control TCP port"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "控制 TCP 端口"
           }
         }
       }
@@ -12815,6 +12668,23 @@
         }
       }
     },
+    "无法启动：{1}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cannot start: {1}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法启动：{1}"
+          }
+        }
+      }
+    },
     "无法启动本机 CarPlay：{1}" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12845,23 +12715,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无法启动麦克风：{1}"
-          }
-        }
-      }
-    },
-    "无法启动：{1}" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cannot start: {1}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无法启动：{1}"
           }
         }
       }
@@ -13460,23 +13313,6 @@
         }
       }
     },
-    "暂无九号蓝牙日志。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No Ninebot Bluetooth logs yet."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "暂无九号蓝牙日志。"
-          }
-        }
-      }
-    },
     "暂无公开版本" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13494,23 +13330,6 @@
         }
       }
     },
-    "暂无已配对车辆" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No Paired Vehicles"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "暂无已配对车辆"
-          }
-        }
-      }
-    },
     "暂时无法开启画中画" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13524,40 +13343,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "暂时无法开启画中画"
-          }
-        }
-      }
-    },
-    "暂未发现附近车辆，请确保车辆已通电并靠近车头。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No vehicles found yet. Power on the vehicle and stay near the dashboard."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "暂未发现附近车辆，请确保车辆已通电并靠近车头。"
-          }
-        }
-      }
-    },
-    "暂未选择自动连接车辆" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No vehicle selected for auto-connect"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "暂未选择自动连接车辆"
           }
         }
       }
@@ -13592,140 +13377,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "更新到当前 IP"
-          }
-        }
-      }
-    },
-    "最多支持 {1} 台设备同时观看" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Up to {1} devices can watch at the same time"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最多支持 {1} 台设备同时观看"
-          }
-        }
-      }
-    },
-    "最小" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Smallest"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最小"
-          }
-        }
-      }
-    },
-    "最新发布" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Latest Release"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最新发布"
-          }
-        }
-      }
-    },
-    "最近 200 条，不含 Wi-Fi 密码和 MFi 私钥。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The latest 200 entries. Wi-Fi passwords and MFi private keys are excluded."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最近 200 条，不含 Wi-Fi 密码和 MFi 私钥。"
-          }
-        }
-      }
-    },
-    "最近 30 天" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Last 30 days"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最近 30 天"
-          }
-        }
-      }
-    },
-    "最近 7 天" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Last 7 days"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最近 7 天"
-          }
-        }
-      }
-    },
-    "最近 80 条，不含蓝牙配对密钥或敏感载荷。同时也会写入「诊断与实验 › 日志」。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Last 80 entries, excluding pairing keys and sensitive payloads. Also recorded in Diagnostics & Labs › Logs."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最近 80 条，不含蓝牙配对密钥或敏感载荷。同时也会写入「诊断与实验 › 日志」。"
-          }
-        }
-      }
-    },
-    "最高分辨率" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Maximum Resolution"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最高分辨率"
           }
         }
       }
@@ -14223,23 +13874,6 @@
         }
       }
     },
-    "本机 IP 地址" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Local IP Address"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "本机 IP 地址"
-          }
-        }
-      }
-    },
     "本机 iAP2 链路已连接，正在等待配件认证" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14270,6 +13904,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "本机 iOS 服务已响应 iAP2 在线探测"
+          }
+        }
+      }
+    },
+    "本机 IP 地址" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local IP Address"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本机 IP 地址"
           }
         }
       }
@@ -14472,16 +14123,6 @@
         }
       }
     },
-    "本次与历史记录" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Current and past records"
-          }
-        }
-      }
-    },
     "本次电压趋势" : {
       "localizations" : {
         "en" : {
@@ -14527,22 +14168,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "本次连接已自动重启 2 次，不再重启：{1}"
-          }
-        }
-      }
-    },
-    "板型与支持范围" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "BMS type and support"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "板型与支持范围"
           }
         }
       }
@@ -14864,6 +14489,22 @@
         }
       }
     },
+    "板型与支持范围" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "BMS type and support"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "板型与支持范围"
+          }
+        }
+      }
+    },
     "查找证书" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15115,23 +14756,6 @@
         }
       }
     },
-    "正在 Mac Catalyst 上运行原生 UIKit 接收端" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Running the native UIKit receiver on Mac Catalyst"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在 Mac Catalyst 上运行原生 UIKit 接收端"
-          }
-        }
-      }
-    },
     "正在 iPhone/iPad 真机上运行" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15149,6 +14773,23 @@
         }
       }
     },
+    "正在 Mac Catalyst 上运行原生 UIKit 接收端" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Running the native UIKit receiver on Mac Catalyst"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在 Mac Catalyst 上运行原生 UIKit 接收端"
+          }
+        }
+      }
+    },
     "正在下载 {1}%" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15162,40 +14803,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在下载 {1}%"
-          }
-        }
-      }
-    },
-    "正在与车辆建立蓝牙握手" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Establishing Bluetooth handshake"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在与车辆建立蓝牙握手"
-          }
-        }
-      }
-    },
-    "正在停止仪表导航" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stopping dashboard navigation"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在停止仪表导航"
           }
         }
       }
@@ -15251,23 +14858,6 @@
         }
       }
     },
-    "正在开启仪表导航" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Starting dashboard navigation"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在开启仪表导航"
-          }
-        }
-      }
-    },
     "正在扫描九号车辆…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15295,23 +14885,6 @@
         }
       }
     },
-    "正在投屏 · 1024×480 · H.264" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Projecting · 1024×480 · H.264"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在投屏 · 1024×480 · H.264"
-          }
-        }
-      }
-    },
     "正在投屏 · 480×272 · JPEG · 最高 20 FPS" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15325,6 +14898,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在投屏 · 480×272 · JPEG · 最高 20 FPS"
+          }
+        }
+      }
+    },
+    "正在投屏 · 1024×480 · H.264" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projecting · 1024×480 · H.264"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在投屏 · 1024×480 · H.264"
           }
         }
       }
@@ -15376,40 +14966,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在搜索 iPad 接收端…"
-          }
-        }
-      }
-    },
-    "正在搜索附近九号车辆…" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Searching for nearby Ninebot vehicles…"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在搜索附近九号车辆…"
-          }
-        }
-      }
-    },
-    "正在搜索附近的九号车辆" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Searching for nearby Ninebot vehicles"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在搜索附近的九号车辆"
           }
         }
       }
@@ -15510,23 +15066,6 @@
         }
       }
     },
-    "正在等待 Wi-Fi 分配 IP 地址…" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Waiting for a Wi-Fi IP Address…"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在等待 Wi-Fi 分配 IP 地址…"
-          }
-        }
-      }
-    },
     "正在等待 iPhone 连接" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15540,6 +15079,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在等待 iPhone 连接"
+          }
+        }
+      }
+    },
+    "正在等待 Wi-Fi 分配 IP 地址…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for a Wi-Fi IP Address…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在等待 Wi-Fi 分配 IP 地址…"
           }
         }
       }
@@ -15578,22 +15134,6 @@
         }
       }
     },
-    "正在等待车机就绪，请先不要按 P 键" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Waiting for the vehicle to be ready. Do not press P yet."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在等待车机就绪，请先不要按 P 键"
-          }
-        }
-      }
-    },
     "正在等待车机连接…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15607,23 +15147,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在等待车机连接…"
-          }
-        }
-      }
-    },
-    "正在自动重连车辆" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reconnecting to vehicle"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在自动重连车辆"
           }
         }
       }
@@ -15695,6 +15218,23 @@
         }
       }
     },
+    "正在连接 {1}…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecting to {1}…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在连接 {1}…"
+          }
+        }
+      }
+    },
     "正在连接 CarLink 中继…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15742,23 +15282,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在连接 iPad…"
-          }
-        }
-      }
-    },
-    "正在连接 {1}…" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connecting to {1}…"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在连接 {1}…"
           }
         }
       }
@@ -15875,23 +15398,6 @@
         }
       }
     },
-    "正在通过 AirPlay 投放" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Streaming via AirPlay"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在通过 AirPlay 投放"
-          }
-        }
-      }
-    },
     "正在通过 {1} 发布 {2}" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15905,6 +15411,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在通过 {1} 发布 {2}"
+          }
+        }
+      }
+    },
+    "正在通过 AirPlay 投放" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Streaming via AirPlay"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在通过 AirPlay 投放"
           }
         }
       }
@@ -15933,23 +15456,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verifying the pending local key..."
-          }
-        }
-      }
-    },
-    "正在验证本机配对密钥" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verifying local pairing key"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在验证本机配对密钥"
           }
         }
       }
@@ -16303,23 +15809,6 @@
         }
       }
     },
-    "浏览器视频格式生成失败：{1}" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Failed to generate the browser video format: {1}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "浏览器视频格式生成失败：{1}"
-          }
-        }
-      }
-    },
     "浏览器视频格式：{1}（{2}）" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -16333,6 +15822,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "浏览器视频格式：{1}（{2}）"
+          }
+        }
+      }
+    },
+    "浏览器视频格式生成失败：{1}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to generate the browser video format: {1}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "浏览器视频格式生成失败：{1}"
           }
         }
       }
@@ -16456,23 +15962,6 @@
         }
       }
     },
-    "清空蓝牙日志" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clear Bluetooth Logs"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "清空蓝牙日志"
-          }
-        }
-      }
-    },
     "清除本机记录" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -16513,23 +16002,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Clear this vehicle’s old local key?"
-          }
-        }
-      }
-    },
-    "清除残留配对密钥并重配" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clear Stale Key & Re-pair"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "清除残留配对密钥并重配"
           }
         }
       }
@@ -16886,23 +16358,6 @@
         }
       }
     },
-    "画面 TCP 端口" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video TCP port"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "画面 TCP 端口"
-          }
-        }
-      }
-    },
     "画面卡顿，改用 30 FPS" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -17216,6 +16671,312 @@
         }
       }
     },
+    "视频 NAL 内容" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video NAL content"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频 NAL 内容"
+          }
+        }
+      }
+    },
+    "视频 NAL 长度" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video NAL length"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频 NAL 长度"
+          }
+        }
+      }
+    },
+    "视频 TCP 通道已连接" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video TCP channel connected"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频 TCP 通道已连接"
+          }
+        }
+      }
+    },
+    "视频分段" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video segment"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频分段"
+          }
+        }
+      }
+    },
+    "视频已送入本机显示层" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video delivered to the local display layer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频已送入本机显示层"
+          }
+        }
+      }
+    },
+    "视频帧" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video frame"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频帧"
+          }
+        }
+      }
+    },
+    "视频帧转换失败：{1}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video frame conversion failed: {1}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频帧转换失败：{1}"
+          }
+        }
+      }
+    },
+    "视频数据被拒绝：{1}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video data rejected: {1}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频数据被拒绝：{1}"
+          }
+        }
+      }
+    },
+    "视频显示失败：{1}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video display failed: {1}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频显示失败：{1}"
+          }
+        }
+      }
+    },
+    "视频显示异常" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video Display Error"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频显示异常"
+          }
+        }
+      }
+    },
+    "视频流已关闭" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video stream closed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频流已关闭"
+          }
+        }
+      }
+    },
+    "视频渲染器将在下一个关键帧恢复：{1}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The video renderer will recover at the next keyframe: {1}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频渲染器将在下一个关键帧恢复：{1}"
+          }
+        }
+      }
+    },
+    "视频监听器已在端口 {1} 就绪" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video listener ready on port {1}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频监听器已在端口 {1} 就绪"
+          }
+        }
+      }
+    },
+    "视频缓冲区" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video buffer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频缓冲区"
+          }
+        }
+      }
+    },
+    "视频编码" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video Codec"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频编码"
+          }
+        }
+      }
+    },
+    "视频编码已切换为 {1}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video codec switched to {1}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频编码已切换为 {1}"
+          }
+        }
+      }
+    },
+    "视频通道已关闭" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video channel closed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频通道已关闭"
+          }
+        }
+      }
+    },
+    "视频通道收到 0x%04x（%d 字节），预期空载荷 0x72" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video channel received 0x%04x (%d bytes); expected 0x72 with an empty payload"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频通道收到 0x%04x（%d 字节），预期空载荷 0x72"
+          }
+        }
+      }
+    },
     "离开 App 时" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -17482,23 +17243,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "等待视频拉帧请求"
-          }
-        }
-      }
-    },
-    "等待车机就绪（约 5–8 秒）· 先别按 P 键" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Waiting for vehicle (5–8 s) · Don’t press P yet"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "等待车机就绪（约 5–8 秒）· 先别按 P 键"
           }
         }
       }
@@ -17801,23 +17545,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "结束并保存本次记录"
-          }
-        }
-      }
-    },
-    "给车辆通电并靠近车头，点击「扫描附近车辆」后点选自己的车辆。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Power on your vehicle, stay close to the dashboard, tap “Scan Nearby Vehicles”, and select it."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "给车辆通电并靠近车头，点击「扫描附近车辆」后点选自己的车辆。"
           }
         }
       }
@@ -18209,6 +17936,22 @@
         }
       }
     },
+    "自动（随帧率）" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto (based on frame rate)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动（随帧率）"
+          }
+        }
+      }
+    },
     "自动帧率根据主网页选择 30 或 60 FPS。支持 H.265 的主网页会优先使用 H.265。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -18222,23 +17965,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "自动帧率根据主网页选择 30 或 60 FPS。支持 H.265 的主网页会优先使用 H.265。"
-          }
-        }
-      }
-    },
-    "自动连接 · 蓝牙广播 v{1}" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auto-Connect · BLE v{1}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "自动连接 · 蓝牙广播 v{1}"
           }
         }
       }
@@ -18273,22 +17999,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "自动重启 CarPlay：{1}"
-          }
-        }
-      }
-    },
-    "自动（随帧率）" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auto (based on frame rate)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "自动（随帧率）"
           }
         }
       }
@@ -18510,23 +18220,6 @@
         }
       }
     },
-    "蓝牙已连接 · 等待建立配对" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connected · Ready to start pairing"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "蓝牙已连接 · 等待建立配对"
-          }
-        }
-      }
-    },
     "蓝牙帧数据超过 242 字节" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -18574,23 +18267,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "蓝牙帧被拒绝：{1}"
-          }
-        }
-      }
-    },
-    "蓝牙广播 v{1}" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "BLE v{1}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "蓝牙广播 v{1}"
           }
         }
       }
@@ -18659,23 +18335,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "蓝牙控制通道已发布（PSM {1}）"
-          }
-        }
-      }
-    },
-    "蓝牙暂不可用" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bluetooth unavailable"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "蓝牙暂不可用"
           }
         }
       }
@@ -18950,312 +18609,6 @@
         }
       }
     },
-    "视频 NAL 内容" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video NAL content"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频 NAL 内容"
-          }
-        }
-      }
-    },
-    "视频 NAL 长度" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video NAL length"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频 NAL 长度"
-          }
-        }
-      }
-    },
-    "视频 TCP 通道已连接" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video TCP channel connected"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频 TCP 通道已连接"
-          }
-        }
-      }
-    },
-    "视频分段" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video segment"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频分段"
-          }
-        }
-      }
-    },
-    "视频已送入本机显示层" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video delivered to the local display layer"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频已送入本机显示层"
-          }
-        }
-      }
-    },
-    "视频帧" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video frame"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频帧"
-          }
-        }
-      }
-    },
-    "视频帧转换失败：{1}" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video frame conversion failed: {1}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频帧转换失败：{1}"
-          }
-        }
-      }
-    },
-    "视频数据被拒绝：{1}" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video data rejected: {1}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频数据被拒绝：{1}"
-          }
-        }
-      }
-    },
-    "视频显示失败：{1}" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video display failed: {1}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频显示失败：{1}"
-          }
-        }
-      }
-    },
-    "视频显示异常" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video Display Error"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频显示异常"
-          }
-        }
-      }
-    },
-    "视频流已关闭" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video stream closed"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频流已关闭"
-          }
-        }
-      }
-    },
-    "视频渲染器将在下一个关键帧恢复：{1}" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The video renderer will recover at the next keyframe: {1}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频渲染器将在下一个关键帧恢复：{1}"
-          }
-        }
-      }
-    },
-    "视频监听器已在端口 {1} 就绪" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video listener ready on port {1}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频监听器已在端口 {1} 就绪"
-          }
-        }
-      }
-    },
-    "视频缓冲区" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video buffer"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频缓冲区"
-          }
-        }
-      }
-    },
-    "视频编码" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video Codec"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频编码"
-          }
-        }
-      }
-    },
-    "视频编码已切换为 {1}" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video codec switched to {1}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频编码已切换为 {1}"
-          }
-        }
-      }
-    },
-    "视频通道已关闭" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video channel closed"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频通道已关闭"
-          }
-        }
-      }
-    },
-    "视频通道收到 0x%04x（%d 字节），预期空载荷 0x72" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Video channel received 0x%04x (%d bytes); expected 0x72 with an empty payload"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视频通道收到 0x%04x（%d 字节），预期空载荷 0x72"
-          }
-        }
-      }
-    },
     "解析已更新到 {1}，DNS 缓存生效可能需要稍等。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -19454,23 +18807,6 @@
         }
       }
     },
-    "让 iPhone 加入仪表 Wi-Fi。配对并选择车辆后，CarWithin 会在启动投屏时自动开启仪表导航。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Join the dashboard Wi-Fi. Once you pair and select a vehicle, CarWithin starts dashboard navigation when you start casting."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "让 iPhone 加入仪表 Wi-Fi。配对并选择车辆后，CarWithin 会在启动投屏时自动开启仪表导航。"
-          }
-        }
-      }
-    },
     "让 iPhone 加入仪表 Wi-Fi，选择同名预设。结束其他投屏，打开仪表投屏后启动 CarPlay。声音由 iPhone 或蓝牙输出。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -19484,6 +18820,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "让 iPhone 加入仪表 Wi-Fi，选择同名预设。结束其他投屏，打开仪表投屏后启动 CarPlay。声音由 iPhone 或蓝牙输出。"
+          }
+        }
+      }
+    },
+    "让 iPhone 加入仪表 Wi-Fi。配对并选择车辆后，CarWithin 会在启动投屏时自动开启仪表导航。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Join the dashboard Wi-Fi. Once you pair and select a vehicle, CarWithin starts dashboard navigation when you start casting."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "让 iPhone 加入仪表 Wi-Fi。配对并选择车辆后，CarWithin 会在启动投屏时自动开启仪表导航。"
           }
         }
       }
@@ -20217,23 +19570,6 @@
         }
       }
     },
-    "请求 CPU 软件解码（系统未提供类型查询）" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CPU software decoding requested (the system provides no decoder type query)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "请求 CPU 软件解码（系统未提供类型查询）"
-          }
-        }
-      }
-    },
     "请求 {1}×{2} @ {3} FPS，{4}；音频{5}" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -20251,6 +19587,23 @@
         }
       }
     },
+    "请求 CPU 软件解码（系统未提供类型查询）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CPU software decoding requested (the system provides no decoder type query)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请求 CPU 软件解码（系统未提供类型查询）"
+          }
+        }
+      }
+    },
     "请求不受支持" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -20264,23 +19617,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "请求不受支持"
-          }
-        }
-      }
-    },
-    "请短按一下车上的 P 键确认" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Press the vehicle’s P button to confirm"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "请短按一下车上的 P 键确认"
           }
         }
       }
@@ -20329,23 +19665,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "请说明当前昵称和修改内容。漏登、累计有误或需要合并时，可提供支付截图或订单号，并遮挡无关信息。"
-          }
-        }
-      }
-    },
-    "请输入 1–65535 范围内的不同画面和控制端口。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enter different video and control ports from 1 to 65535."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "请输入 1–65535 范围内的不同画面和控制端口。"
           }
         }
       }
@@ -21059,23 +20378,6 @@
         }
       }
     },
-    "车机 IP 地址" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Head Unit IP Address"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "车机 IP 地址"
-          }
-        }
-      }
-    },
     "车机 {1} 已连接" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -21089,6 +20391,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "车机 {1} 已连接"
+          }
+        }
+      }
+    },
+    "车机 IP 地址" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Head Unit IP Address"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "车机 IP 地址"
           }
         }
       }
@@ -21545,39 +20864,6 @@
         }
       }
     },
-    "轻点切换自动连接车辆，左滑可删除记录。切回九号出行连过蓝牙导致认证失败时，可直接点「一键重新配对（按 P 键）」。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tap to switch auto-connect vehicle, or swipe left to delete. If authentication fails after using the Ninebot app, tap “One-Tap Re-pair (Press P Button)”."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "轻点切换自动连接车辆，左滑可删除记录。切回九号出行连过蓝牙导致认证失败时，可直接点「一键重新配对（按 P 键）」。"
-          }
-        }
-      }
-    },
-    "轻点打开支付宝" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tap to open Alipay"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "轻点打开支付宝"
-          }
-        }
-      }
-    },
     "轻点打开，长按保存二维码" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -21595,19 +20881,18 @@
         }
       }
     },
-    "轻点选择启动投屏时自动连接的车辆，左滑可删除记录。" : {
-      "extractionState" : "manual",
+    "轻点打开支付宝" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tap to choose a vehicle for auto-connect when casting starts, or swipe left to delete."
+            "value" : "Tap to open Alipay"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "轻点选择启动投屏时自动连接的车辆，左滑可删除记录。"
+            "value" : "轻点打开支付宝"
           }
         }
       }
@@ -21713,19 +20998,19 @@
         }
       }
     },
-    "连接" : {
+    "连接 {1}:{2}" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connect"
+            "value" : "Connect to {1}:{2}"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "连接"
+            "value" : "连接 {1}:{2}"
           }
         }
       }
@@ -21760,23 +21045,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "连接 TCP{1}"
-          }
-        }
-      }
-    },
-    "连接 {1}:{2}" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connect to {1}:{2}"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "连接 {1}:{2}"
           }
         }
       }
@@ -21862,23 +21130,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "连接已断开"
-          }
-        }
-      }
-    },
-    "连接或认证未完成" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connection or authentication failed"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "连接或认证未完成"
           }
         }
       }
@@ -22025,23 +21276,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "适用于 TL-DASH-V2 仪表。iPhone 加入仪表 Wi-Fi，在「Wi-Fi 与网络」填写该网络信息；开启仪表投屏后启动 CarPlay。请先退出其他投屏 App。"
-          }
-        }
-      }
-    },
-    "适用于官方凯越 App 的 Wi-Fi 仪表方案，尚未确认具体车型。先手动加入仪表 Wi-Fi，IP 与端口按仪表二维码填写；默认画面端口 11111、控制端口 11113。仅支持 JPEG 420，暂不包含蓝牙配网、二维码扫描和车把控制。测试后请导出诊断日志，并反馈车型、仪表固件及官方 App 是否能投屏。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Experimental Wi-Fi instrument connection based on the official KOVE app. Compatible models are unconfirmed. Join the instrument Wi-Fi manually and enter the IP and ports from its QR code; defaults are video 11111 and control 11113. JPEG 420 only. Bluetooth setup, QR scanning and handlebar controls are not included. Export diagnostic logs and report your model, instrument firmware and whether the official app can project."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "适用于官方凯越 App 的 Wi-Fi 仪表方案，尚未确认具体车型。先手动加入仪表 Wi-Fi，IP 与端口按仪表二维码填写；默认画面端口 11111、控制端口 11113。仅支持 JPEG 420，暂不包含蓝牙配网、二维码扫描和车把控制。测试后请导出诊断日志，并反馈车型、仪表固件及官方 App 是否能投屏。"
           }
         }
       }
@@ -22269,23 +21503,6 @@
         }
       }
     },
-    "配对前请确保车辆已通电，且未在系统蓝牙或「九号出行」中保持连接。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Make sure the vehicle is powered on and disconnected from system Bluetooth and the Ninebot app."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "配对前请确保车辆已通电，且未在系统蓝牙或「九号出行」中保持连接。"
-          }
-        }
-      }
-    },
     "配对发送失败，待确认密钥仍已保存。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -22320,23 +21537,6 @@
         }
       }
     },
-    "配对完成后在「已配对车辆」勾选车辆，启动投屏时会自动开启仪表导航。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Select your vehicle under Paired Vehicles to automatically start dashboard navigation when casting."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "配对完成后在「已配对车辆」勾选车辆，启动投屏时会自动开启仪表导航。"
-          }
-        }
-      }
-    },
     "配对恢复" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -22344,23 +21544,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pairing recovery"
-          }
-        }
-      }
-    },
-    "配对步骤" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pairing Steps"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "配对步骤"
           }
         }
       }
@@ -22457,39 +21640,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重复的初始 SETUP"
-          }
-        }
-      }
-    },
-    "重新配对 {1}，无需删除重扫" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Re-pair {1} without deleting or rescanning"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "重新配对 {1}，无需删除重扫"
-          }
-        }
-      }
-    },
-    "重新配对当前所选车辆，无需删除记录；等车机就绪后再按 P 键。" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pair the selected vehicle again without deleting its record. Wait for the ready message before pressing P."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "重新配对当前所选车辆，无需删除记录；等车机就绪后再按 P 键。"
           }
         }
       }
@@ -22950,17 +22100,6 @@
         }
       }
     },
-    "首驱 480×208 已收到实车投屏成功反馈。先让 iPhone 加入仪表 Wi-Fi，启动仪表互联页面，再在这里启动 CarPlay。声音沿用 iPhone 或蓝牙。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Successful projection has been reported on a Shouqu 480×208 instrument. Join its Wi-Fi on your iPhone, open the instrument connection page, then start CarPlay here. Audio stays on the iPhone or Bluetooth."
-          }
-        }
-      }
-    },
     "首驱 JPEG 不完整或超过 40 KiB。" : {
       "localizations" : {
         "en" : {
@@ -23220,87 +22359,948 @@
         }
       }
     },
-    "，低延迟" : {
+    "凯越仪表" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : ", Low Latency"
+            "value" : "KOVE instrument"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "，低延迟"
+            "value" : "凯越仪表"
           }
         }
       }
     },
-    "，全屏" : {
+    "Erya · JPEG · 目标 10 FPS · 尺寸由仪表协商" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : ", Full Screen"
+            "value" : "Erya · JPEG · Target 10 FPS · Display size negotiated with instrument"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "，全屏"
+            "value" : "Erya · JPEG · 目标 10 FPS · 尺寸由仪表协商"
           }
         }
       }
     },
-    "，减轻档 {1}" : {
+    "画面 TCP 端口" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : ", reduced-load level {1}"
+            "value" : "Video TCP port"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "，减轻档 {1}"
+            "value" : "画面 TCP 端口"
           }
         }
       }
     },
-    "，在「设置」安装。之后进入「通用 → 关于本机 → 证书信任设置」，为该证书启用完全信任。" : {
+    "控制 TCP 端口" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : ", install it in Settings, then go to General → About → Certificate Trust Settings and enable full trust for this certificate."
+            "value" : "Control TCP port"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "，在「设置」安装。之后进入「通用 → 关于本机 → 证书信任设置」，为该证书启用完全信任。"
+            "value" : "控制 TCP 端口"
           }
         }
       }
     },
-    "，在系统「设置」搜索「安装证书」，选择「CA 证书」，安装下载的文件。不同机型的菜单名称可能不同。安装后用支持系统用户证书的浏览器打开 HTTPS 接收页。" : {
+    "请输入 1–65535 范围内的不同画面和控制端口。" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : ", search for “Install certificate” in system Settings, select “CA certificate”, and install the downloaded file. Menu names vary by device. Then open the HTTPS receiver page in a browser that supports user-installed system certificates."
+            "value" : "Enter different video and control ports from 1 to 65535."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "，在系统「设置」搜索「安装证书」，选择「CA 证书」，安装下载的文件。不同机型的菜单名称可能不同。安装后用支持系统用户证书的浏览器打开 HTTPS 接收页。"
+            "value" : "请输入 1–65535 范围内的不同画面和控制端口。"
+          }
+        }
+      }
+    },
+    "适用于官方凯越 App 的 Wi-Fi 仪表方案，尚未确认具体车型。先手动加入仪表 Wi-Fi，IP 与端口按仪表二维码填写；默认画面端口 11111、控制端口 11113。仅支持 JPEG 420，暂不包含蓝牙配网、二维码扫描和车把控制。测试后请导出诊断日志，并反馈车型、仪表固件及官方 App 是否能投屏。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Experimental Wi-Fi instrument connection based on the official KOVE app. Compatible models are unconfirmed. Join the instrument Wi-Fi manually and enter the IP and ports from its QR code; defaults are video 11111 and control 11113. JPEG 420 only. Bluetooth setup, QR scanning and handlebar controls are not included. Export diagnostic logs and report your model, instrument firmware and whether the official app can project."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "适用于官方凯越 App 的 Wi-Fi 仪表方案，尚未确认具体车型。先手动加入仪表 Wi-Fi，IP 与端口按仪表二维码填写；默认画面端口 11111、控制端口 11113。仅支持 JPEG 420，暂不包含蓝牙配网、二维码扫描和车把控制。测试后请导出诊断日志，并反馈车型、仪表固件及官方 App 是否能投屏。"
+          }
+        }
+      }
+    },
+    "首驱 480×208 已收到实车投屏成功反馈。先让 iPhone 加入仪表 Wi-Fi，启动仪表互联页面，再在这里启动 CarPlay。声音沿用 iPhone 或蓝牙。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Successful projection has been reported on a Shouqu 480×208 instrument. Join its Wi-Fi on your iPhone, open the instrument connection page, then start CarPlay here. Audio stays on the iPhone or Bluetooth."
+          }
+        }
+      }
+    },
+    "按电池设备筛选" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter by battery device"
+          }
+        }
+      }
+    },
+    "本次与历史记录" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current and past records"
+          }
+        }
+      }
+    },
+    "1. 扫描并连接车辆" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1. Scan & Connect"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1. 扫描并连接车辆"
+          }
+        }
+      }
+    },
+    "2. 等待就绪再按 P 键" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2. Wait Before Pressing P"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2. 等待就绪再按 P 键"
+          }
+        }
+      }
+    },
+    "3. 选中自动连接" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3. Select for Auto-Connect"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3. 选中自动连接"
+          }
+        }
+      }
+    },
+    "一键重新配对（按 P 键）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One-Tap Re-pair (Press P Button)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一键重新配对（按 P 键）"
+          }
+        }
+      }
+    },
+    "九号蓝牙日志" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ninebot Bluetooth Logs"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "九号蓝牙日志"
+          }
+        }
+      }
+    },
+    "九号蓝牙诊断日志" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ninebot Bluetooth Diagnostics Log"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "九号蓝牙诊断日志"
+          }
+        }
+      }
+    },
+    "仪表导航已开启" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dashboard navigation active"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仪表导航已开启"
+          }
+        }
+      }
+    },
+    "删除后需要重新扫描并按 P 键配对。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You will need to scan and press the P button to pair again."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除后需要重新扫描并按 P 键配对。"
+          }
+        }
+      }
+    },
+    "发起配对后请等待约 5–8 秒，待提示「车机已就绪」并震动后再短按车上的 P 键。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wait about 5–8 seconds after starting pairing until prompted and haptic feedback triggers, then press the vehicle’s P button."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发起配对后请等待约 5–8 秒，待提示「车机已就绪」并震动后再短按车上的 P 键。"
+          }
+        }
+      }
+    },
+    "发送请求后先等待「车机已就绪」，再按一下车上的 P 键。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After sending the request, wait for the vehicle-ready message before pressing P."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发送请求后先等待「车机已就绪」，再按一下车上的 P 键。"
+          }
+        }
+      }
+    },
+    "启动投屏时不自动连接车辆蓝牙" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Will not connect to a vehicle when casting starts"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "启动投屏时不自动连接车辆蓝牙"
+          }
+        }
+      }
+    },
+    "在下方扫描并选择车辆完成首次配对" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan below and choose your vehicle to pair"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在下方扫描并选择车辆完成首次配对"
+          }
+        }
+      }
+    },
+    "复制蓝牙日志" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy Bluetooth Logs"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制蓝牙日志"
+          }
+        }
+      }
+    },
+    "已启用自动连接 · 蓝牙广播 v{1}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto-Connect Enabled · BLE v{1}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已启用自动连接 · 蓝牙广播 v{1}"
+          }
+        }
+      }
+    },
+    "已复制蓝牙日志" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth Logs Copied"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已复制蓝牙日志"
+          }
+        }
+      }
+    },
+    "已锁定" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Locked"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已锁定"
+          }
+        }
+      }
+    },
+    "投屏运行中 · 停止后可修改" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Casting Active · Stop to Edit"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "投屏运行中 · 停止后可修改"
+          }
+        }
+      }
+    },
+    "暂无九号蓝牙日志。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Ninebot Bluetooth logs yet."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无九号蓝牙日志。"
+          }
+        }
+      }
+    },
+    "暂无已配对车辆" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Paired Vehicles"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无已配对车辆"
+          }
+        }
+      }
+    },
+    "暂未发现附近车辆，请确保车辆已通电并靠近车头。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No vehicles found yet. Power on the vehicle and stay near the dashboard."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂未发现附近车辆，请确保车辆已通电并靠近车头。"
+          }
+        }
+      }
+    },
+    "暂未选择自动连接车辆" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No vehicle selected for auto-connect"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂未选择自动连接车辆"
+          }
+        }
+      }
+    },
+    "最近 80 条，不含蓝牙配对密钥或敏感载荷。同时也会写入「诊断与实验 › 日志」。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last 80 entries, excluding pairing keys and sensitive payloads. Also recorded in Diagnostics & Labs › Logs."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最近 80 条，不含蓝牙配对密钥或敏感载荷。同时也会写入「诊断与实验 › 日志」。"
+          }
+        }
+      }
+    },
+    "正在与车辆建立蓝牙握手" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Establishing Bluetooth handshake"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在与车辆建立蓝牙握手"
+          }
+        }
+      }
+    },
+    "正在停止仪表导航" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stopping dashboard navigation"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在停止仪表导航"
+          }
+        }
+      }
+    },
+    "正在开启仪表导航" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starting dashboard navigation"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在开启仪表导航"
+          }
+        }
+      }
+    },
+    "正在搜索附近九号车辆…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Searching for nearby Ninebot vehicles…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在搜索附近九号车辆…"
+          }
+        }
+      }
+    },
+    "正在搜索附近的九号车辆" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Searching for nearby Ninebot vehicles"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在搜索附近的九号车辆"
+          }
+        }
+      }
+    },
+    "正在等待车机就绪，请先不要按 P 键" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for the vehicle to be ready. Do not press P yet."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在等待车机就绪，请先不要按 P 键"
+          }
+        }
+      }
+    },
+    "正在自动重连车辆" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconnecting to vehicle"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在自动重连车辆"
+          }
+        }
+      }
+    },
+    "正在验证本机配对密钥" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verifying local pairing key"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在验证本机配对密钥"
+          }
+        }
+      }
+    },
+    "清空蓝牙日志" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear Bluetooth Logs"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清空蓝牙日志"
+          }
+        }
+      }
+    },
+    "清除残留配对密钥并重配" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear Stale Key & Re-pair"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除残留配对密钥并重配"
+          }
+        }
+      }
+    },
+    "等待车机就绪（约 5–8 秒）· 先别按 P 键" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for vehicle (5–8 s) · Don’t press P yet"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "等待车机就绪（约 5–8 秒）· 先别按 P 键"
+          }
+        }
+      }
+    },
+    "给车辆通电并靠近车头，点击「扫描附近车辆」后点选自己的车辆。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Power on your vehicle, stay close to the dashboard, tap “Scan Nearby Vehicles”, and select it."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "给车辆通电并靠近车头，点击「扫描附近车辆」后点选自己的车辆。"
+          }
+        }
+      }
+    },
+    "自动连接 · 蓝牙广播 v{1}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto-Connect · BLE v{1}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动连接 · 蓝牙广播 v{1}"
+          }
+        }
+      }
+    },
+    "蓝牙已连接 · 等待建立配对" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connected · Ready to start pairing"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "蓝牙已连接 · 等待建立配对"
+          }
+        }
+      }
+    },
+    "蓝牙广播 v{1}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "BLE v{1}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "蓝牙广播 v{1}"
+          }
+        }
+      }
+    },
+    "蓝牙暂不可用" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth unavailable"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "蓝牙暂不可用"
+          }
+        }
+      }
+    },
+    "请短按一下车上的 P 键确认" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press the vehicle’s P button to confirm"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请短按一下车上的 P 键确认"
+          }
+        }
+      }
+    },
+    "轻点切换自动连接车辆，左滑可删除记录。切回九号出行连过蓝牙导致认证失败时，可直接点「一键重新配对（按 P 键）」。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to switch auto-connect vehicle, or swipe left to delete. If authentication fails after using the Ninebot app, tap “One-Tap Re-pair (Press P Button)”."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "轻点切换自动连接车辆，左滑可删除记录。切回九号出行连过蓝牙导致认证失败时，可直接点「一键重新配对（按 P 键）」。"
+          }
+        }
+      }
+    },
+    "轻点选择启动投屏时自动连接的车辆，左滑可删除记录。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to choose a vehicle for auto-connect when casting starts, or swipe left to delete."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "轻点选择启动投屏时自动连接的车辆，左滑可删除记录。"
+          }
+        }
+      }
+    },
+    "连接" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连接"
+          }
+        }
+      }
+    },
+    "连接或认证未完成" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connection or authentication failed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连接或认证未完成"
+          }
+        }
+      }
+    },
+    "配对前请确保车辆已通电，且未在系统蓝牙或「九号出行」中保持连接。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Make sure the vehicle is powered on and disconnected from system Bluetooth and the Ninebot app."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "配对前请确保车辆已通电，且未在系统蓝牙或「九号出行」中保持连接。"
+          }
+        }
+      }
+    },
+    "配对完成后在「已配对车辆」勾选车辆，启动投屏时会自动开启仪表导航。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select your vehicle under Paired Vehicles to automatically start dashboard navigation when casting."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "配对完成后在「已配对车辆」勾选车辆，启动投屏时会自动开启仪表导航。"
+          }
+        }
+      }
+    },
+    "配对步骤" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pairing Steps"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "配对步骤"
+          }
+        }
+      }
+    },
+    "重新配对 {1}，无需删除重扫" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Re-pair {1} without deleting or rescanning"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新配对 {1}，无需删除重扫"
+          }
+        }
+      }
+    },
+    "重新配对当前所选车辆，无需删除记录；等车机就绪后再按 P 键。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pair the selected vehicle again without deleting its record. Wait for the ready message before pressing P."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新配对当前所选车辆，无需删除记录；等车机就绪后再按 P 键。"
           }
         }
       }
