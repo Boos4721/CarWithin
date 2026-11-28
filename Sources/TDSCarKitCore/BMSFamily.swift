@@ -3,6 +3,22 @@ import Foundation
 /// Selected support levels follow maibms 6bbb5d6 (2026-11-20); identification is not protocol validation.
 public enum BMSFamily: String, CaseIterable, Codable {
     case ant, yanyang, jikong, lanbao, jbd, yadi, mingtang, xiaoha, luxing, dl
+    public enum Category: String, CaseIterable {
+        case protectionBoard, meter
+        public var title: String { self == .protectionBoard ? CWL("保护板") : CWL("电量计") }
+        public var families: [BMSFamily] {
+            switch self {
+            case .protectionBoard: [.ant, .jikong, .yanyang, .jbd, .yadi, .mingtang, .xiaoha]
+            case .meter: [.lanbao, .luxing, .dl]
+            }
+        }
+    }
+    public var category: Category {
+        switch self {
+        case .lanbao, .luxing, .dl: .meter
+        default: .protectionBoard
+        }
+    }
     public var title: String {
         switch self {
         case .ant: return CWL("蚂蚁保护板")
@@ -10,7 +26,7 @@ public enum BMSFamily: String, CaseIterable, Codable {
         case .jikong: return CWL("极空保护板")
         case .lanbao: return CWL("蓝宝电量计")
         case .luxing: return CWL("陆行电量计")
-        case .dl: return CWL("电岭计量器")
+        case .dl: return CWL("电岭电量计")
         case .jbd: return CWL("嘉佰达保护板")
         case .yadi: return "亚迪保护板"
         case .mingtang: return "明唐保护板"
@@ -53,7 +69,7 @@ public enum BMSFamily: String, CaseIterable, Codable {
         case .jikong: return CWL("JK02 24S / 32S；JK04 仅单体、总压和均衡，不提供电流或 SOC。")
         case .lanbao: return CWL("FA50 双表及中继信息；没有逐串网格、MOS 或 SOH。匹配码可在本机配置。")
         case .luxing: return CWL("EM2APP / EM02 只读：自测总压、电流、功率、SOC、最多 30 串、有效温度和中继信息。剩余容量按 SOC × 额定容量计算；不提供保护控制或 SOH。待真机验证。")
-        case .dl: return CWL("电岭计量器（DL-BMS）只读：本地加密握手、总压、电流、功率、电量、容量、最多 32 串、温度及压差；循环信息随设备布局提供。具体电岭型号待真机验证，不提供参数或保护控制。")
+        case .dl: return CWL("电岭电量计（DL-BMS）只读：本地加密握手、总压、电流、功率、电量、容量、最多 32 串、温度及压差；循环信息随设备布局提供。具体电岭型号待真机验证，不提供参数或保护控制。")
         case .jbd: return CWL("经典 DD 只读；需要登录的模块可填写自己的密码与真实 MAC，不修改设备密码。")
         case .yadi: return "Nordic UART F403 分块读取；仅确认总压、SOC、循环与单体。待真机验证。"
         case .mingtang: return "FA00 stateread / E1；字段按帧提供，总压倍率与型号范围仍待真机验证。"

@@ -51,10 +51,27 @@ final class BMSDLTests: XCTestCase {
         XCTAssertNil(BMSFamily.identify(name: "UART", services: ["FFE0", "FFE2"]))
         XCTAssertNil(BMSFamily.identify(name: "", manufacturerID: 0x6c64))
         XCTAssertNil(BMSFamily.identify(name: "", manufacturerID: 0x6c64, manufacturerData: Data(hex("646c61626364"))))
-        XCTAssertEqual(BMSFamily.dl.title, "电岭计量器")
+        XCTAssertEqual(BMSFamily.dl.title, "电岭电量计")
         XCTAssertEqual(BMSFamily.dl.shortName, "电岭")
         XCTAssertEqual(BMSFamily.dl.channels, [.init("FFE0", "FFE1", "FFE2")])
         XCTAssertEqual(BMSFamily.luxing.channels, [.init("FFE0", "FFE2", "FFE1")])
+    }
+    func testCategoriesPartitionFamiliesWithStableOrderAndPreserveSavedIDs() throws {
+        XCTAssertEqual(BMSFamily.Category.allCases, [.protectionBoard, .meter])
+        XCTAssertEqual(BMSFamily.Category.protectionBoard.families, [.ant, .jikong, .yanyang, .jbd, .yadi, .mingtang, .xiaoha])
+        XCTAssertEqual(BMSFamily.Category.meter.families, [.lanbao, .luxing, .dl])
+        let grouped = BMSFamily.Category.allCases.flatMap { $0.families }
+        XCTAssertEqual(grouped.count, Set(grouped).count)
+        XCTAssertEqual(Set(grouped), Set(BMSFamily.allCases))
+        for category in BMSFamily.Category.allCases {
+            for family in category.families {
+                XCTAssertEqual(family.category, category)
+                XCTAssertEqual(try JSONDecoder().decode(BMSFamily.self, from: JSONEncoder().encode(family)), family)
+            }
+        }
+        XCTAssertEqual(BMSFamily.dl.rawValue, "dl")
+        XCTAssertEqual(BMSFamily.Category.protectionBoard.title, "保护板")
+        XCTAssertEqual(BMSFamily.Category.meter.title, "电量计")
     }
     func testSecp256k1PublishedTwoGeneratorPointAndInvalidPublicKeys() throws {
         let pair = try BMSDLSession.keyPair(privateKey: [UInt8](repeating: 0, count: 31)+[2])

@@ -4588,7 +4588,7 @@ extension ReceiverViewController {
             ]
             if self.bmsClient.selectedID != nil {
                 actions.append(.action("重新连接当前设备", icon: ("arrow.clockwise", .systemBlue)) { [unowned self] in self.bmsClient.retry() })
-                actions.append(.page("板型与登录信息", icon: ("cpu", .systemBlue), detail: { [unowned self] in self.bmsClient.selectedFamily.title }) { [unowned self] in self.bmsFamilyPage() })
+                actions.append(.page("设备类型与登录信息", icon: ("cpu", .systemBlue), detail: { [unowned self] in self.bmsClient.selectedFamily.title }) { [unowned self] in self.bmsFamilyPage() })
                 actions.append(.action("暂停连接", icon: ("pause.circle", .systemGray)) { [unowned self] in self.bmsClient.cancelConnection() })
                 if !self.bmsClient.isConfirmingSelection {
                     actions.append(.action("忘记当前设备", destructive: true) { [unowned self] in
@@ -4596,14 +4596,14 @@ extension ReceiverViewController {
                     })
                 }
             } else {
-                actions.append(.page("支持的板型", icon: ("cpu", .systemBlue)) { [unowned self] in self.bmsFamilyPage() })
+                actions.append(.page("支持的设备类型", icon: ("cpu", .systemBlue)) { [unowned self] in self.bmsFamilyPage() })
             }
-            sections.append(SettingsSection(footer: "首次添加：选择设备 → 确认板型 → 核对读数 → 保存。已保存设备沿用确认过的板型。", actions))
+            sections.append(SettingsSection(footer: "首次添加：选择设备 → 确认保护板或电量计 → 核对读数 → 保存。已保存设备沿用确认过的类型。", actions))
             let devices = self.bmsClient.devices
             let saved = devices.filter { self.bmsClient.rememberedFamily(for: $0.id) != nil }
             let nearby = devices.filter { self.bmsClient.rememberedFamily(for: $0.id) == nil }
             if !saved.isEmpty { sections.append(SettingsSection("已保存设备", saved.map { self.bmsDeviceRow($0) })) }
-            sections.append(SettingsSection("附近设备", footer: "名称与服务仅提供板型提示，收到有效实时数据后才确认数据连接。小哈仅接收广播电量。连接失败时可先结束其他 BMS App 的连接。",
+            sections.append(SettingsSection("附近设备", footer: "名称与服务仅提供设备类型提示，收到有效实时数据后才确认数据连接。小哈仅接收广播电量。连接失败时可先结束其他 BMS App 的连接。",
                 nearby.isEmpty ? [.info(self.bmsClient.isScanning ? "正在扫描…" : "暂无其他设备", "")] : nearby.map { self.bmsDeviceRow($0) }))
             return sections
         }
@@ -4622,9 +4622,9 @@ extension ReceiverViewController {
         row.subtitle = { [weak self] in
             let current = self?.bmsClient.devices.first { $0.id == device.id } ?? device
             let saved = self?.bmsClient.rememberedFamily(for: device.id)
-            let brand = (saved ?? current.family)?.title ?? "未知板型，请手选"
+            let brand = (saved ?? current.family)?.title ?? "未知类型，请手选"
             let soc = current.advertisedSOC.map { " · 广播电量 \($0)%" } ?? ""
-            return (saved == nil ? "板型提示：" : "已确认：") + brand + soc + " · \(current.rssi) dBm"
+            return (saved == nil ? "类型提示：" : "已确认：") + brand + soc + " · \(current.rssi) dBm"
         }
         row.checked = { [weak self] in self?.bmsClient.selectedID == device.id }
         return row
@@ -4635,7 +4635,7 @@ extension ReceiverViewController {
             var sections = [SettingsSection("3 · 核对首批读数", footer: "确认总压、电量等与实际电池一致。只有收到有效实时数据才能保存；核对中的数据不写入骑行记录。", [
                 .view(self.bmsSetupStatusCard), .view(self.bmsSetupSummary)
             ])]
-            var settings: [SettingsRow] = [.page("调整板型", icon: ("cpu", .systemBlue), detail: { [unowned self] in self.bmsClient.selectedFamily.title }) { [unowned self] in self.bmsFamilyPage() }]
+            var settings: [SettingsRow] = [.page("调整设备类型", icon: ("cpu", .systemBlue), detail: { [unowned self] in self.bmsClient.selectedFamily.title }) { [unowned self] in self.bmsFamilyPage() }]
             if [.jbd, .lanbao].contains(self.bmsClient.selectedFamily) {
                 settings.append(.action("模块登录信息", icon: ("key", .systemBlue)) { [unowned self] in self.configureBMSAccess() })
             }
@@ -4662,19 +4662,25 @@ extension ReceiverViewController {
     }
 
     private func bmsFamilyPage() -> SettingsPageController {
-        page("板型与支持范围") { [unowned self] in
-            var sections = [SettingsSection("当前设备", footer: self.bmsClient.selectedFamily.supportDescription, [
-                .info("设备", self.bmsClient.selectedName),
-                .info("协议型号", self.bmsClient.freshReading?.extraDetails["协议"] ?? self.bmsClient.selectedFamily.protocolDescription),
-                .note(self.bmsStatus)
-            ])]
-            if self.bmsClient.selectedID != nil {
+        page("设备类型与支持范围") { [unowned self] in
+            let hasSelection = self.bmsClient.selectedID != nil
+            var sections: [SettingsSection] = []
+            if hasSelection {
+                sections.append(SettingsSection("当前设备", footer: self.bmsClient.selectedFamily.supportDescription, [
+                    .info("设备", self.bmsClient.selectedName),
+                    .info("分类", self.bmsClient.selectedFamily.category.title),
+                    .info("协议型号", self.bmsClient.freshReading?.extraDetails["协议"] ?? self.bmsClient.selectedFamily.protocolDescription),
+                    .note(self.bmsStatus)
+                ]))
                 if [.jbd, .lanbao].contains(self.bmsClient.selectedFamily) {
                     sections.append(SettingsSection(footer: "只使用你已有的模块密码或匹配码，保存在本机 Keychain，不进入日志或导出。", [
                         .action("设置模块登录信息", icon: ("key", .systemBlue)) { [unowned self] in self.configureBMSAccess() }
                     ]))
                 }
-                let rows = BMSFamily.allCases.map { family -> SettingsRow in
+            }
+            for category in BMSFamily.Category.allCases {
+                let rows = category.families.map { family -> SettingsRow in
+                    if !hasSelection { return .info(family.title, family.supportDescription) }
                     var row = SettingsRow.action(family.title) { [unowned self] in
                         self.bmsClient.setFamily(family); self.saveActiveVehicleProfile(); self.reloadVisibleSettings()
                     }
@@ -4682,40 +4688,38 @@ extension ReceiverViewController {
                     row.subtitle = { family.supportDescription }
                     return row
                 }
-                sections.append(SettingsSection("指定当前设备板型", footer: "更改后按所选协议重新连接。各品牌仅接入实时读取，不提供改参数、校准或 MOS 开关。新增板型仍需真机核验。", rows))
-            } else {
-                sections.append(SettingsSection("支持范围", BMSFamily.allCases.map {
-                    .info($0.title, $0.supportDescription)
-                }))
+                sections.append(SettingsSection(category.title,
+                    footer: hasSelection ? "更改后按所选协议重新连接，仅接入数据读取。请按实际设备选择。" : nil, rows))
             }
             return sections
         }
     }
 
     private func chooseBMSFamily(for id: UUID) {
-        let suggested = bmsClient.devices.first { $0.id == id }?.family
-        let prompt = UIAlertController(title: "2 · 确认保护板型号", message: "名称和服务只能提供提示，请按实际保护板选择。连接后核对读数，再保存到当前车辆。", preferredStyle: .actionSheet)
-        let families = BMSFamily.allCases.sorted { left, right in
-            if left == right { return false }
-            if left == suggested { return true }
-            if right == suggested { return false }
-            return BMSFamily.allCases.firstIndex(of: left)! < BMSFamily.allCases.firstIndex(of: right)!
-        }
-        for family in families {
-            let title = family.title + (family == suggested ? "（设备提示）" : "")
-            prompt.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
-                guard let self else { return }
-                guard self.bmsClient.select(id, family: family, requiresConfirmation: true) else {
-                    self.alert("设备列表已更新", "请重新扫描并选择设备。"); return
+        let controller = page("2 · 确认设备类型") { [unowned self] in
+            let device = self.bmsClient.devices.first { $0.id == id }
+            let suggested = device?.family
+            var sections = [SettingsSection("所选设备", footer: "按实际设备选择保护板或电量计。名称与服务仅提供提示；连接后核对读数，再保存到当前车辆。", [
+                .info("设备", BMSDisplayNameStore.name(for: id, fallback: device?.name ?? "设备列表已更新")),
+                .info("设备提示", suggested?.title ?? "未知，请手动选择")
+            ])]
+            // Keep stable category order; a suggestion labels its row without moving it to another group.
+            for category in BMSFamily.Category.allCases {
+                let rows = category.families.map { family -> SettingsRow in
+                    var row = SettingsRow.action(family.title + (family == suggested ? "（设备提示）" : "")) { [unowned self] in
+                        guard self.bmsClient.select(id, family: family, requiresConfirmation: true) else {
+                            self.alert("设备列表已更新", "请重新扫描并选择设备。"); return
+                        }
+                        self.settingsNavigation?.pushViewController(self.bmsSetupPage(), animated: true)
+                    }
+                    row.subtitle = { family.supportDescription }
+                    return row
                 }
-                self.settingsNavigation?.pushViewController(self.bmsSetupPage(), animated: true)
-            })
+                sections.append(SettingsSection(category.title, rows))
+            }
+            return sections
         }
-        prompt.addAction(UIAlertAction(title: "取消", style: .cancel))
-        let presenter: UIViewController = settingsNavigation ?? self
-        prompt.popoverPresentationController?.sourceView = presenter.view
-        prompt.popoverPresentationController?.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 1, height: 1)
-        presenter.present(prompt, animated: true)
+        settingsNavigation?.pushViewController(controller, animated: true)
     }
 
     private func configureBMSAccess() {
