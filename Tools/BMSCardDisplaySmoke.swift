@@ -21,6 +21,12 @@ struct BMSCardDisplaySmoke {
             var card = classic; card.apply(scene)
             let image = try require(BMSCardRenderer.render(reading, configuration: card))
             precondition(image.width == 640 && image.height >= 176)
+            // Reserve bottom padding for glyph descenders; catch text clipped by short scene cards.
+            var edge = [UInt8](repeating: 0, count: 640 * 8 * 4)
+            CIContext(options: [.useSoftwareRenderer: true]).render(CIImage(cgImage: image), toBitmap: &edge,
+                rowBytes: 640 * 4, bounds: CGRect(x: 0, y: 0, width: 640, height: 8), format: .RGBA8,
+                colorSpace: CGColorSpaceCreateDeviceRGB())
+            precondition(stride(from: 0, to: edge.count, by: 4).allSatisfy { edge[$0] < 20 && edge[$0+1] < 20 && edge[$0+2] < 20 }, "scene text reaches the bottom edge")
             try save(image, scene.rawValue, in: directory)
             for (width, height) in [(480,272),(848,480),(1024,600),(800,480),(1600,770),(2048,968)] {
                 let bounds = CGRect(x: 0, y: 0, width: width, height: height)

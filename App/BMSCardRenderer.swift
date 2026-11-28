@@ -12,7 +12,7 @@ enum BMSCardRenderer {
         let height: Int
         if reading == nil { height = 64 }
         else if configuration.style == .classic { height = fields.count <= 3 ? 72 : 122 }
-        else { height = max(176, 54 + rows * 66) }
+        else { height = max(190, 64 + rows * 66) }
         guard let context = CGContext(data: nil, width: 640, height: height, bitsPerComponent: 8, bytesPerRow: 2560,
                                       space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
         context.setFillColor(CGColor(gray: 0, alpha: configuration.background.opacity))
