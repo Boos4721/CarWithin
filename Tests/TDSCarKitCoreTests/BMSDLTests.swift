@@ -51,6 +51,8 @@ final class BMSDLTests: XCTestCase {
         XCTAssertNil(BMSFamily.identify(name: "UART", services: ["FFE0", "FFE2"]))
         XCTAssertNil(BMSFamily.identify(name: "", manufacturerID: 0x6c64))
         XCTAssertNil(BMSFamily.identify(name: "", manufacturerID: 0x6c64, manufacturerData: Data(hex("646c61626364"))))
+        XCTAssertEqual(BMSFamily.dl.title, "电岭计量器")
+        XCTAssertEqual(BMSFamily.dl.shortName, "电岭")
         XCTAssertEqual(BMSFamily.dl.channels, [.init("FFE0", "FFE1", "FFE2")])
         XCTAssertEqual(BMSFamily.luxing.channels, [.init("FFE0", "FFE2", "FFE1")])
     }
