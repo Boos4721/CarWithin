@@ -5,7 +5,7 @@ let package = Package(
     platforms: [.iOS(.v16), .macOS(.v13)],
     products: [.library(name: "TDSCarKitCore", targets: ["TDSCarKitCore"])],
     targets: [
-        .target(name: "CTDSCarKitCrypto"),
+        .target(name: "CTDSCarKitCrypto", linkerSettings: [.linkedFramework("Security", .when(platforms: [.iOS, .macOS]))]),
         .target(name: "TDSCarKitCore", dependencies: ["CTDSCarKitCrypto"]),
         .testTarget(name: "TDSCarKitCoreTests", dependencies: ["TDSCarKitCore"])
     ]

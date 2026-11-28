@@ -25,6 +25,7 @@ public final class BMSReadOnlyProtocol {
     public let family: BMSFamily
     public internal(set) var error: String?
     var ant = ANTBMSProtocol()
+    private var dl: BMSDLSession?
     var buffer: [UInt8] = []
     var pending: Int?
     var sentAt = 0.0
@@ -61,6 +62,7 @@ public final class BMSReadOnlyProtocol {
 
     public init(family: BMSFamily, password: String? = nil, mac: String? = nil) {
         self.family = family
+        if family == .dl { dl = BMSDLSession() }
         if family == .lanbao, let password {
             if password.count == 6, password.utf8.allSatisfy({ (48...57).contains($0) }) {
                 lanbaoMatch = password.utf8.map { $0 - 48 }
@@ -126,6 +128,9 @@ public final class BMSReadOnlyProtocol {
         } else if command >= 0x15 || authTried { halted = true; error = "JBD 登录失败，请核对已有密码与真实 MAC；未修改设备密码" }
     }
     public func nextRequest(now: TimeInterval) -> Data? {
+        if let dl {
+            let result = dl.nextRequest(now: now); error = dl.error; halted = dl.halted; return result
+        }
         guard family.supportsGATT, !halted else { return nil }
         timedOut(now)
         guard pending == nil, !halted, now >= nextAt, now >= drainUntil else { return nil }
@@ -179,10 +184,16 @@ public final class BMSReadOnlyProtocol {
         buffer.removeAll(keepingCapacity: true)
         return Data(bytes)
     }
+    /// Session-aware validation is mandatory for DL encrypted requests.
+    public func permitsRequest(_ data: Data) -> Bool {
+        if let dl { return dl.permits(data) }
+        return Self.permits(data, family: family)
+    }
     /// Verify every outbound frame again at the BLE boundary.
     public static func permits(_ data: Data, family: BMSFamily) -> Bool {
         let b = [UInt8](data)
         switch family {
+        case .dl: return BMSDLSession.permitsHandshake(data)
         case .ant: return data == ANTBMSProtocol.realtimeRequest
         case .jbd:
             if b.count == 7, b[0] == 0xdd, b[1] == 0xa5, (3...5).contains(b[2]) {
@@ -215,6 +226,9 @@ public final class BMSReadOnlyProtocol {
         }
     }
     public func append(_ data: Data, now: TimeInterval) -> [ANTBMSReading] {
+        if let dl {
+            let result = dl.append(data, now: now); error = dl.error; halted = dl.halted; return result
+        }
         if family == .ant {
             let result = ant.append(data)
             if !result.isEmpty { pending = nil; error = nil }

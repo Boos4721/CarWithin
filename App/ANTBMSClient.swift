@@ -285,7 +285,7 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
         let services=((advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] ?? [])+(advertisementData[CBAdvertisementDataOverflowServiceUUIDsKey] as? [CBUUID] ?? [])).map(\.uuidString)
         let manufacturer=advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data
         let company=manufacturer.flatMap { data -> UInt16? in guard data.count>=2 else{return nil};let b=[UInt8](data);return UInt16(b[0])|UInt16(b[1])<<8 }
-        let family=BMSFamily.identify(name:name,services:services,manufacturerID:company)
+        let family=BMSFamily.identify(name:name,services:services,manufacturerID:company,manufacturerData:manufacturer)
         let relevant=family != nil || services.contains { service in
             ["FFE0","FF00","FEE9","FA00","6E400001-B5A3-F393-E0A9-E50E24DCCA9E"].contains(service.uppercased())
         } || item.identifier==selectedID
@@ -406,7 +406,7 @@ final class ANTBMSClient: NSObject, CBCentralManagerDelegate, CBPeripheralDelega
               sendQueue.isEmpty,!writePending else{return}
         let now=ProcessInfo.processInfo.systemUptime
         guard let frame=parser.nextRequest(now:now) else{return}
-        guard BMSReadOnlyProtocol.permits(frame,family:selectedFamily) else{failConnection("已阻止非读取命令");return}
+        guard parser.permitsRequest(frame) else{failConnection("已阻止非读取命令");return}
         let type:CBCharacteristicWriteType=writer!.properties.contains(.write) ? .withResponse:.withoutResponse
         let maximum=item.maximumWriteValueLength(for:type)
         guard maximum>0 else{failConnection("BMS 写入长度不可用");return}

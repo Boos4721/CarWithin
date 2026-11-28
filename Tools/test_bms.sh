@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run the pure Swift BMS protocol and experience tests without UIKit, CoreBluetooth or CryptoKit.
+# Run the pure Swift BMS protocol and experience tests without UIKit or CoreBluetooth; DL uses the native C crypto bridge.
 set -euo pipefail
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 if ! command -v swift >/dev/null 2>&1; then
@@ -12,9 +12,11 @@ mkdir -p "$bms_test_dir/Sources/TDSCarKitCore" "$bms_test_dir/Tests/TDSCarKitCor
 cp "$project_root/Sources/TDSCarKitCore/Localization.swift" "$bms_test_dir/Sources/TDSCarKitCore/"
 cp "$project_root/Sources/TDSCarKitCore/ANTBMSRideRecords.swift" "$bms_test_dir/Sources/TDSCarKitCore/"
 cp "$project_root/Tests/TDSCarKitCoreTests/ANTBMSRideRecordTests.swift" "$bms_test_dir/Tests/TDSCarKitCoreTests/"
-for name in BMSFamily BMSFieldCapabilities BMSExperience BMSOverviewPresentation BMSReadOnlyProtocol BMSJBDJK BMSYanYang BMSOtherBoards BMSLuXing; do
+cp -R "$project_root/Sources/CTDSCarKitCrypto" "$bms_test_dir/Sources/"
+for name in BMSFamily BMSFieldCapabilities BMSExperience BMSOverviewPresentation BMSReadOnlyProtocol BMSJBDJK BMSYanYang BMSOtherBoards BMSLuXing BMSDL; do
     cp "$project_root/Sources/TDSCarKitCore/$name.swift" "$bms_test_dir/Sources/TDSCarKitCore/"
 done
+cp "$project_root/Tests/TDSCarKitCoreTests/BMSDLTests.swift" "$bms_test_dir/Tests/TDSCarKitCoreTests/"
 cp "$project_root/Tests/TDSCarKitCoreTests/BMSLuXingTests.swift" "$bms_test_dir/Tests/TDSCarKitCoreTests/"
 cp "$project_root/Tests/TDSCarKitCoreTests/BMSOverviewPresentationTests.swift" "$bms_test_dir/Tests/TDSCarKitCoreTests/"
 cp "$project_root/Tests/TDSCarKitCoreTests/BMSRecommendationTests.swift" "$bms_test_dir/Tests/TDSCarKitCoreTests/"
@@ -31,7 +33,8 @@ cat > "$bms_test_dir/Package.swift" <<'PACKAGE'
 // swift-tools-version: 5.9
 import PackageDescription
 let package = Package(name: "ANTBMSProtocolValidation", targets: [
-    .target(name: "TDSCarKitCore"),
+    .target(name: "CTDSCarKitCrypto", linkerSettings: [.linkedFramework("Security", .when(platforms: [.macOS]))]),
+    .target(name: "TDSCarKitCore", dependencies: ["CTDSCarKitCrypto"]),
     .testTarget(name: "TDSCarKitCoreTests", dependencies: ["TDSCarKitCore"])
 ])
 PACKAGE

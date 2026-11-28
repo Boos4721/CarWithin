@@ -143,3 +143,16 @@ See LICENSES/maibms-MIT.txt, bundled App/maibms-MIT.txt and docs/multibrand-bms.
 ANT BMS framing and field layout adapt lswlc33/maibms, copyright (c) 2026 lswlc33,
 under the MIT License: https://github.com/lswlc33/maibms
 The complete notice is in App/ANTBMS-LICENSE.txt and is bundled with the app.
+
+DL protocol framing and field layouts adapt NinebotEnhance contributors' DL BMS
+implementation, commit 2eb54bbd47f8edd89c9b7d7423487d520b01b04f, Apache-2.0.
+https://github.com/wx9614-cell/NinebotEnhance
+Modified Swift session validates request correlation, frame bounds and read-only
+commands. Applicable notice, full license and modification description are in
+App/DL-BMS-LICENSE.txt, bundled in the app. No Android runtime is included.
+
+micro-ecc v1.1 (24c60e243580c7868f4334a1ba3123481fe1aa48), Kenneth MacKay,
+BSD-2-Clause; unmodified vendor files under Sources/CTDSCarKitCrypto/Vendor/micro-ecc.
+Only secp256k1 is enabled through a separate wrapper with platform secure random.
+License preserved in that directory and bundled App/DL-BMS-LICENSE.txt.
+https://github.com/kmackay/micro-ecc
