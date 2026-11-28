@@ -4,7 +4,7 @@ import Foundation
 /// Shared card content and scale for the phone and instrument video.
 public struct ANTBMSCardConfiguration: Equatable, Sendable {
     public enum Field: String, CaseIterable, Sendable {
-        case charge, voltage, temperature, current, power, cellDelta
+        case charge, voltage, temperature, current, power, cellDelta, capacity, remaining
 
         public var title: String {
             switch self {
@@ -14,10 +14,16 @@ public struct ANTBMSCardConfiguration: Equatable, Sendable {
             case .current: "电流"
             case .power: "功率"
             case .cellDelta: "单体压差"
+            case .capacity: "总容量"
+            case .remaining: "剩余容量"
             }
         }
 
         public func text(_ reading: ANTBMSReading) -> String {
+            if self == .capacity || self == .remaining {
+                guard reading.available.contains(rawValue) else { return "--Ah" }
+                return String(format: "%.2fAh", self == .capacity ? reading.capacityAh : reading.remainingAh)
+            }
             if [.charge, .voltage, .current, .power].contains(self), !reading.available.contains(rawValue) {
                 return self == .charge ? "--%" : self == .voltage ? "--V" : self == .current ? "--A" : "--W"
             }
@@ -27,6 +33,7 @@ public struct ANTBMSCardConfiguration: Equatable, Sendable {
             case .temperature: return reading.maximumTemperature.map { String(format: "%.0f°C", $0) } ?? "--°C"
             case .current: return String(format: "%+.1fA", reading.current)
             case .power: return "\(reading.power)W"
+            case .capacity, .remaining: return "--Ah" // Handled above with explicit availability.
             case .cellDelta: return "压差 " + (reading.cellDelta.map { String(format: "%.0fmV", $0 * 1000) } ?? "--mV")
             }
         }
@@ -74,7 +81,7 @@ public struct ANTBMSCardConfiguration: Equatable, Sendable {
             switch self {
             case .riding: [.charge, .voltage, .power]
             case .monitoring: [.charge, .voltage, .temperature, .cellDelta]
-            case .charging: [.charge, .current, .power, .temperature]
+            case .charging: [.charge, .current, .power, .temperature, .capacity, .remaining]
             }
         }
     }
@@ -109,6 +116,7 @@ public struct ANTBMSCardConfiguration: Equatable, Sendable {
         fields = scene.fields; mode = .custom; style = .prominent
     }
     public var mode: Mode
+    public static let legacyFields: [Field] = [.charge, .voltage, .temperature, .current, .power, .cellDelta]
     public static let compactFields: [Field] = [.charge, .voltage, .cellDelta]
     public private(set) var fields: [Field]
     public var size: Size
@@ -127,9 +135,9 @@ public struct ANTBMSCardConfiguration: Equatable, Sendable {
         } else { customAnchor = nil }
         mode = modeRawValue.flatMap(Mode.init(rawValue:)) ?? .custom
         var seen = Set<Field>()
-        let normalized = (savedFields?.compactMap(Field.init(rawValue:)) ?? Field.allCases)
+        let normalized = (savedFields?.compactMap(Field.init(rawValue:)) ?? Self.legacyFields)
             .filter { seen.insert($0).inserted }
-        fields = normalized.isEmpty ? Field.allCases : normalized
+        fields = normalized.isEmpty ? Self.legacyFields : normalized
         size = sizeRawValue.flatMap(Size.init(rawValue:)) ?? .medium
         position = positionRawValue.flatMap(Position.init(rawValue:)) ?? .topRight
         background = backgroundRawValue.flatMap(Background.init(rawValue:)) ?? .standard

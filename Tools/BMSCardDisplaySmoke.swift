@@ -38,6 +38,12 @@ struct BMSCardDisplaySmoke {
             }
         }
         print("PASS: all three scene cards render through real Core Image on Ninebot and ZEEHO canvases")
+        var expanded = ANTBMSCardConfiguration(savedFields: ANTBMSCardConfiguration.Field.allCases.map(\.rawValue), styleRawValue: 1)
+        let expandedImage = try require(BMSCardRenderer.render(reading, configuration: expanded))
+        precondition(expandedImage.height >= 328)
+        try save(expandedImage, "all-eight-fields", in: directory)
+        expanded.move(.remaining, to: 0)
+        precondition(BMSCardRenderer.render(reading, configuration: expanded) != nil)
         classic.style = .prominent
         var sparse = reading; sparse.available = []; sparse.reportedCellDelta = nil
         sparse = ANTBMSReading(voltage: 0, current: 0, power: 0, stateOfCharge: 0, stateOfHealth: nil, stateCode: 0,
@@ -45,6 +51,10 @@ struct BMSCardDisplaySmoke {
         sparse.available = []
         precondition(ANTBMSCardConfiguration.Field.charge.displayMetric(sparse).value == "--")
         precondition(ANTBMSCardConfiguration.Field.power.displayMetric(sparse).value == "--")
+        precondition(ANTBMSCardConfiguration.Field.capacity.displayMetric(reading).value == "170.00")
+        precondition(ANTBMSCardConfiguration.Field.remaining.displayMetric(reading).value == "131.92")
+        precondition(ANTBMSCardConfiguration.Field.capacity.displayMetric(sparse).value == "--")
+        precondition(ANTBMSCardConfiguration.Field.remaining.displayMetric(sparse).value == "--")
         precondition(ANTBMSCardConfiguration.Field.charge.displayMetric(reading).value == "78")
         try save(try require(BMSCardRenderer.render(sparse, configuration: classic)), "missing-fields", in: directory)
         let compact = try require(BMSCardRenderer.render(nil, configuration: classic))

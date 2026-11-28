@@ -85,6 +85,8 @@ extension ANTBMSCardConfiguration.Field {
         case .power:
             guard available.contains("power") else { return ("--", "W") }
             return abs(Double(reading.power)) >= 1000 ? (String(format: "%.2f", Double(reading.power) / 1000), "kW") : (String(reading.power), "W")
+        case .capacity: return (available.contains("capacity") ? String(format: "%.2f", reading.capacityAh) : "--", "Ah")
+        case .remaining: return (available.contains("remaining") ? String(format: "%.2f", reading.remainingAh) : "--", "Ah")
         case .temperature: return (reading.maximumTemperature.map { String(format: "%.0f", $0) } ?? "--", "°C")
         case .cellDelta: return (reading.cellDelta.map { String(format: "%.0f", $0 * 1000) } ?? "--", "mV")
         }

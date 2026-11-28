@@ -414,7 +414,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let bmsCardPreviewStatus = StatusLabel()
     private let bmsStatus = StatusLabel()
     private let bmsDetails = StatusLabel()
-    private let bmsLiveSummary = BMSLiveSummaryView(fields: [.charge, .voltage, .current, .power])
+    private let bmsLiveSummary = BMSLiveSummaryView(fields: [.charge, .voltage, .current, .power, .capacity, .remaining])
     private let bmsHealthSummary = BMSLiveSummaryView(fields: [.temperature, .cellDelta])
     private let bmsCellExtrema = StatusLabel()
     private let bmsStatusCard = BMSStatusCardView()
@@ -4835,7 +4835,7 @@ extension ReceiverViewController {
                 .action("精简：电量、总压、压差", icon: ("minus.circle", .systemBlue)) { [unowned self] in
                     self.applyBMSCardPreset(ANTBMSCardConfiguration.compactFields)
                 },
-                .action("常用：显示全部六项", icon: ("square.grid.2x2", .systemBlue)) { [unowned self] in
+                .action("完整：显示全部八项", icon: ("square.grid.2x2", .systemBlue)) { [unowned self] in
                     self.applyBMSCardPreset(ANTBMSCardConfiguration.Field.allCases)
                 }
             ]))

@@ -26,8 +26,8 @@ final class ANTBMSCardConfigurationTests: XCTestCase {
         let card = ANTBMSCardConfiguration(savedFields: ["cellDelta", "unknown", "voltage", "cellDelta"], sizeRawValue: 99)
         XCTAssertEqual(card.fields, [.cellDelta, .voltage])
         XCTAssertEqual(card.size, .medium)
-        XCTAssertEqual(ANTBMSCardConfiguration(savedFields: []).fields, ANTBMSCardConfiguration.Field.allCases)
-        XCTAssertEqual(ANTBMSCardConfiguration(savedFields: ["unknown"]).fields, ANTBMSCardConfiguration.Field.allCases)
+        XCTAssertEqual(ANTBMSCardConfiguration(savedFields: []).fields, ANTBMSCardConfiguration.legacyFields)
+        XCTAssertEqual(ANTBMSCardConfiguration(savedFields: ["unknown"]).fields, ANTBMSCardConfiguration.legacyFields)
     }
 
     func testLastMetricCannotBeHiddenAndSelectionCanBeSavedAndRestored() {
@@ -150,6 +150,21 @@ final class ANTBMSCardConfigurationTests: XCTestCase {
             positionRawValue: card.position.rawValue, backgroundRawValue: card.background.rawValue, modeRawValue: card.mode.rawValue,
             styleRawValue: card.style.rawValue, lossDisplayRawValue: card.lossDisplay.rawValue, anchorX: card.anchor.x, anchorY: card.anchor.y)
         XCTAssertEqual(restored, card)
+    }
+
+    func testCapacityFieldsPreserveRealZeroAndExplicitMissingAvailability() {
+        var value = reading()
+        XCTAssertEqual(ANTBMSCardConfiguration.Field.capacity.text(value), "170.00Ah")
+        XCTAssertEqual(ANTBMSCardConfiguration.Field.remaining.text(value), "131.92Ah")
+        var zero = ANTBMSReading(voltage: 0, current: 0, power: 0, stateOfCharge: 0, stateOfHealth: nil, stateCode: 1,
+            capacityAh: 0, remainingAh: 0, cells: [], temperatures: [], mosTemperature: nil, protectionBits: 0, warningBits: 0)
+        XCTAssertEqual(ANTBMSCardConfiguration.Field.remaining.text(zero), "0.00Ah")
+        zero.available = []; value.available.remove("capacity"); value.available.remove("remaining")
+        XCTAssertEqual(ANTBMSCardConfiguration.Field.remaining.text(zero), "--Ah")
+        XCTAssertEqual(ANTBMSCardConfiguration.Field.capacity.text(value), "--Ah")
+        XCTAssertEqual(ANTBMSCardConfiguration.Field.remaining.text(value), "--Ah")
+        XCTAssertTrue(ANTBMSCardConfiguration.Scene.charging.fields.contains(.capacity))
+        XCTAssertTrue(ANTBMSCardConfiguration.Scene.charging.fields.contains(.remaining))
     }
 
 }

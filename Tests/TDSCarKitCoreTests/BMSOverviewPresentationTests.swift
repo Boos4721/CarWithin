@@ -67,4 +67,22 @@ final class BMSOverviewPresentationTests: XCTestCase {
         let summary = BMSRecordSummary(statistics: stats)
         XCTAssertEqual(summary.duration, "1 分 0 秒"); XCTAssertEqual(summary.coverage, "有效数据覆盖 0%")
     }
+    func testCapacityOverviewTracksSourcesAndKeepsMissingValuesUnknown() {
+        var capabilities = BMSFieldCapabilities(family: .luxing)
+        var data = reading(family: .luxing, fields: ["voltage", "capacity", "remaining"], sensors: false)
+        data.extraDetails["剩余容量来源"] = "计算值：SOC × 额定容量，非直接测量"
+        capabilities.observe(data)
+        XCTAssertEqual(BMSOverviewPresentation(capabilities: capabilities).primaryFields, [.voltage, .capacity, .remaining])
+        XCTAssertTrue(capabilities.explanation(of: .remaining, reading: data).contains("计算值"))
+        XCTAssertTrue(capabilities.explanation(of: .capacity, reading: data).contains("配置容量"))
+        let missing = reading(family: .luxing, fields: ["voltage"], sensors: false)
+        capabilities.observe(missing)
+        XCTAssertEqual(capabilities.availability(of: .remaining, reading: missing), .temporarilyMissing)
+        XCTAssertEqual(ANTBMSCardConfiguration.Field.remaining.text(missing), "--Ah")
+        XCTAssertEqual(BMSFieldCapabilities(family: .xiaoha).availability(of: .capacity, reading: nil), .notProvided)
+        var jk = BMSFieldCapabilities(family: .jikong)
+        var jk04 = missing; jk04.family = .jikong; jk04.extraDetails["协议"] = "JK04"; jk.observe(jk04)
+        XCTAssertEqual(jk.availability(of: .remaining, reading: nil), .notProvided)
+    }
+
 }

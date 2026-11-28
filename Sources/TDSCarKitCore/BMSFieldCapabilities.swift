@@ -24,7 +24,7 @@ public struct BMSFieldCapabilities: Equatable {
     }
     public static func fields(in reading: ANTBMSReading) -> Set<Field> {
         var fields = Set<Field>()
-        for field in [Field.charge, .voltage, .current, .power] where reading.available.contains(field.rawValue) {
+        for field in [Field.charge, .voltage, .current, .power, .capacity, .remaining] where reading.available.contains(field.rawValue) {
             fields.insert(field)
         }
         if reading.maximumTemperature != nil { fields.insert(.temperature) }
@@ -47,9 +47,9 @@ public struct BMSFieldCapabilities: Equatable {
     private static func excluded(family: BMSFamily, variant: String?) -> Set<Field> {
         switch family {
         case .xiaoha: return Set(Field.allCases).subtracting([.charge])
-        case .yadi: return [.current, .power, .temperature]
-        case .jikong where variant == "JK04": return [.charge, .current, .power, .temperature]
-        case .yanyang where variant == "旧 A": return [.charge, .current, .power]
+        case .yadi: return [.current, .power, .temperature, .capacity, .remaining]
+        case .jikong where variant == "JK04": return [.charge, .current, .power, .temperature, .capacity, .remaining]
+        case .yanyang where variant == "旧 A": return [.charge, .current, .power, .capacity, .remaining]
         default: return []
         }
     }
@@ -61,6 +61,8 @@ public struct BMSFieldCapabilities: Equatable {
     public func explanation(of field: Field, reading: ANTBMSReading?) -> String {
         switch availability(of: field, reading: reading) {
         case .available:
+            if field == .capacity { return "设备提供的额定或配置容量，不代表实测健康容量" }
+            if field == .remaining { return reading?.extraDetails["剩余容量来源"] ?? "设备报告的剩余容量" }
             if field == .cellDelta {
                 return reading?.reportedCellDelta != nil ? "设备报告压差" : "按有效逐串电压计算"
             }
@@ -71,7 +73,7 @@ public struct BMSFieldCapabilities: Equatable {
         }
     }
     public var recommendedFields: [Field] {
-        let order: [Field] = [.charge, .voltage, .current, .temperature, .cellDelta, .power]
+        let order: [Field] = [.charge, .voltage, .current, .temperature, .cellDelta, .power, .capacity, .remaining]
         if !observed.isEmpty { return Array(order.filter { observed.contains($0) }.prefix(4)) }
         if family == .xiaoha { return [.charge] }
         if family == .jikong { return [.voltage, .cellDelta] }

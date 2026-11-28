@@ -6,7 +6,7 @@ final class BMSLiveSummaryView: UIView {
     private var tiles: [ANTBMSCardConfiguration.Field: UIView] = [:]
     private var rows: [UIStackView] = []
 
-    init(fields: [ANTBMSCardConfiguration.Field] = [.charge, .voltage, .current, .power, .temperature, .cellDelta]) {
+    init(fields: [ANTBMSCardConfiguration.Field] = [.charge, .voltage, .current, .power, .capacity, .remaining, .temperature, .cellDelta]) {
         super.init(frame: .zero)
         let grid = UIStackView(); grid.axis = .vertical; grid.spacing = 8
         grid.translatesAutoresizingMaskIntoConstraints = false

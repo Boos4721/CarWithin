@@ -6,7 +6,7 @@ public struct BMSOverviewPresentation {
     public init(capabilities: BMSFieldCapabilities) {
         let fields = capabilities.observed.isEmpty
             ? Set(capabilities.recommendedFields) : capabilities.observed
-        primaryFields = [.charge, .voltage, .current, .power].filter { fields.contains($0) }
+        primaryFields = [.charge, .voltage, .current, .power, .capacity, .remaining].filter { fields.contains($0) }
         healthFields = [.temperature, .cellDelta].filter { fields.contains($0) }
     }
 }
