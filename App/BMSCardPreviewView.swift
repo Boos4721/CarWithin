@@ -2,33 +2,40 @@ import UIKit
 
 /// A schematic background, using the same bitmap and scale as the real video.
 /// Example readings stay in this settings view and never enter live telemetry.
-final class BMSCardPreviewView: UIView {
+final class BMSCardPreviewView: UIView, UIGestureRecognizerDelegate {
+    var onMove: ((ANTBMSCardConfiguration.Anchor) -> Void)?
+    private var dragging = false
+    private var dragOrigin = CGPoint.zero
+    private var dragStart: ANTBMSCardConfiguration.Anchor?
     var configuration = ANTBMSCardConfiguration() { didSet { setNeedsDisplay() } }
     var image: CGImage? { didSet { setNeedsDisplay() } }
     var videoAspectRatio: CGFloat = 848 / 480 {
         didSet {
             guard videoAspectRatio != oldValue else { return }
             aspectConstraint?.isActive = false
-            aspectConstraint = heightAnchor.constraint(equalTo: widthAnchor, multiplier: 1 / max(1, videoAspectRatio))
+            aspectConstraint = heightAnchor.constraint(equalTo: widthAnchor, multiplier: 1 / max(0.1, videoAspectRatio))
             aspectConstraint?.isActive = true
         }
     }
     private var aspectConstraint: NSLayoutConstraint?
     private var renderedText: [String]?
-    private var renderedBackground: ANTBMSCardConfiguration.Background?
+    private var renderedState: Int?
+    private var renderedHasState = false
+    private var renderedConfiguration: ANTBMSCardConfiguration?
 
     func update(reading: ANTBMSReading?, configuration: ANTBMSCardConfiguration, aspectRatio: CGFloat, family: BMSFamily? = nil) {
-        if self.configuration != configuration { self.configuration = configuration }
+        if !dragging, self.configuration != configuration { self.configuration = configuration }
         videoAspectRatio = aspectRatio
         var previewReading = reading ?? Self.example
         if reading == nil, let family { previewReading.family = family }
         let text = configuration.lines(for: previewReading)
-        if renderedText != text || renderedBackground != configuration.background {
-            renderedText = text; renderedBackground = configuration.background
+        if renderedText != text || renderedState != previewReading.stateCode || renderedHasState != previewReading.available.contains("state") || renderedConfiguration?.style != configuration.style || renderedConfiguration?.background != configuration.background {
+            renderedText = text; renderedConfiguration = configuration
+            renderedState = previewReading.stateCode; renderedHasState = previewReading.available.contains("state")
             image = BMSOverlayPresenter.preview(previewReading, configuration: configuration)
         }
         accessibilityValue = (reading == nil ? "示例数据，非实时读数。" : "实时数据。")
-            + configuration.position.title + "，" + text.joined(separator: "，")
+            + (self.configuration.customAnchor == nil ? configuration.position.title : "自定义位置") + "，" + text.joined(separator: "，")
     }
 
     static let example = ANTBMSReading(voltage: 82.78, current: -12.3, power: -1018, stateOfCharge: 78,
@@ -41,6 +48,44 @@ final class BMSCardPreviewView: UIView {
         layer.cornerRadius = 12; clipsToBounds = true
         aspectConstraint = heightAnchor.constraint(equalTo: widthAnchor, multiplier: 480 / 848)
         aspectConstraint?.isActive = true
+        accessibilityHint = "拖动卡片调整位置，也可以使用下方位置菜单和微调按钮。"
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(drag(_:)))
+        pan.delegate = self; addGestureRecognizer(pan)
+        accessibilityCustomActions = [
+            UIAccessibilityCustomAction(name: "向左移动") { [weak self] _ in self?.nudge(dx: -0.05, dy: 0) ?? false },
+            UIAccessibilityCustomAction(name: "向右移动") { [weak self] _ in self?.nudge(dx: 0.05, dy: 0) ?? false },
+            UIAccessibilityCustomAction(name: "向上移动") { [weak self] _ in self?.nudge(dx: 0, dy: -0.05) ?? false },
+            UIAccessibilityCustomAction(name: "向下移动") { [weak self] _ in self?.nudge(dx: 0, dy: 0.05) ?? false }
+        ]
+    }
+    private var cardFrame: CGRect {
+        guard let image else { return .zero }
+        return configuration.overlayFrame(in: bounds, imageSize: CGSize(width: image.width, height: image.height))
+    }
+    func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
+        let location = recognizer.location(in: self)
+        return location.x > 16 && cardFrame.insetBy(dx: -12, dy: -12).contains(location)
+    }
+    @objc private func drag(_ recognizer: UIPanGestureRecognizer) {
+        switch recognizer.state {
+        case .began: dragging = true; dragOrigin = cardFrame.origin; dragStart = configuration.customAnchor
+        case .changed, .ended:
+            let translation = recognizer.translation(in: self), frame = cardFrame
+            let margin = min(max(6, bounds.width * 0.007), min(bounds.width, bounds.height) / 4)
+            let x = Double((dragOrigin.x + translation.x - bounds.minX - margin) / max(1, bounds.width - 2 * margin - frame.width))
+            let y = Double((dragOrigin.y + translation.y - bounds.minY - margin) / max(1, bounds.height - 2 * margin - frame.height))
+            configuration.customAnchor = .init(x: x, y: y)
+            if recognizer.state == .ended, let anchor = configuration.customAnchor { dragging = false; onMove?(anchor) }
+        case .cancelled, .failed: dragging = false; configuration.customAnchor = dragStart
+        default: break
+        }
+    }
+    @discardableResult
+    func nudge(dx: Double, dy: Double) -> Bool {
+        let old = configuration.anchor
+        let anchor = ANTBMSCardConfiguration.Anchor(x: old.x + dx, y: old.y + dy)
+        guard anchor != old else { return false }
+        configuration.customAnchor = anchor; onMove?(anchor); return true
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
@@ -61,12 +106,9 @@ final class BMSCardPreviewView: UIView {
         route.addLine(to: CGPoint(x: bounds.width * 0.68, y: 0))
         UIColor.systemBlue.withAlphaComponent(0.7).setStroke(); route.lineWidth = 5; route.lineJoinStyle = .round; route.stroke()
         guard let image else { return }
-        let width = bounds.width * CGFloat(configuration.size.widthFraction)
-        let height = width * CGFloat(image.height) / CGFloat(image.width)
-        let margin: CGFloat = 6
-        UIImage(cgImage: image).draw(in: CGRect(
-            x: configuration.position.isAtRight ? bounds.width - margin - width : margin,
-            y: configuration.position.isAtTop ? margin : bounds.height - margin - height,
-            width: width, height: height))
+        UIImage(cgImage: image).draw(in: cardFrame)
+        UIColor.systemBlue.withAlphaComponent(0.8).setStroke()
+        let outline = UIBezierPath(roundedRect: cardFrame.insetBy(dx: -2, dy: -2), cornerRadius: 5)
+        outline.setLineDash([4, 3], count: 2, phase: 0); outline.lineWidth = 1; outline.stroke()
     }
 }

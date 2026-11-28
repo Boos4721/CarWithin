@@ -33,6 +33,11 @@ struct VehicleProfile: Codable, Identifiable {
     var bmsFamily: String? = nil
     /// Build 36: missing mode preserves existing custom layouts.
     var cardMode: Int? = nil
+    /// Build 52: nil preserves the classic renderer and corner placement.
+    var cardStyle: Int? = nil
+    var cardLoss: Int? = nil
+    var cardAnchorX: Double? = nil
+    var cardAnchorY: Double? = nil
 
     var migratedZeehoFive: VehicleProfile {
         var value = self

@@ -54,13 +54,22 @@ final class InstrumentVideoCanvas {
             y: (bounds.height - scaled.extent.height) / 2))
         let canvas = positioned.composited(over: CIImage(color: .black)).cropped(to: bounds)
         guard let bmsOverlay else { return canvas }
-        let overlayWidth = bounds.width * CGFloat(bmsConfiguration.size.widthFraction)
-        let factor = overlayWidth / bmsOverlay.extent.width
-        let scaledOverlay = bmsOverlay.transformed(by: CGAffineTransform(scaleX: factor, y: factor))
-        let margin = max(6, bounds.width * 0.007)
-        let overlay = scaledOverlay.transformed(by: CGAffineTransform(
-            translationX: bmsConfiguration.position.isAtRight ? bounds.maxX - margin - scaledOverlay.extent.width : margin,
-            y: bmsConfiguration.position.isAtTop ? bounds.maxY - margin - scaledOverlay.extent.height : margin))
-        return overlay.composited(over: canvas).cropped(to: bounds)
+        return BMSVideoCompositor.composite(bmsOverlay, configuration: bmsConfiguration, over: canvas, in: bounds)
+    }
+}
+
+/// Core Image uses bottom-left coordinates; the shared configuration returns a top-left frame.
+enum BMSVideoCompositor {
+    static func composite(_ overlay: CIImage?, configuration: ANTBMSCardConfiguration,
+                          over canvas: CIImage, in bounds: CGRect) -> CIImage {
+        guard let overlay else { return canvas }
+        let frame = configuration.overlayFrame(in: bounds, imageSize: overlay.extent.size)
+        guard frame.width > 0, frame.height > 0 else { return canvas }
+        let normalized = overlay.transformed(by: CGAffineTransform(translationX: -overlay.extent.minX, y: -overlay.extent.minY))
+        let scaled = normalized.transformed(by: CGAffineTransform(scaleX: frame.width / overlay.extent.width,
+                                                                  y: frame.height / overlay.extent.height))
+        let positioned = scaled.transformed(by: CGAffineTransform(translationX: frame.minX,
+            y: bounds.maxY - (frame.maxY - bounds.minY)))
+        return positioned.composited(over: canvas).cropped(to: bounds)
     }
 }

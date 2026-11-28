@@ -53,6 +53,7 @@ jobs:
           bash Tools/test_ninebot_canvas.sh 2>&1 | tee artifacts/ninebot-canvas-tests.log
           bash Tools/test_ninebot_sockets.sh 2>&1 | tee artifacts/ninebot-socket-tests.log
           bash Tools/test_bms.sh 2>&1 | tee artifacts/bms-tests.log
+          bash Tools/test_bms_display.sh artifacts/bms-display-previews 2>&1 | tee artifacts/bms-display-tests.log
           bash Tools/test.sh 2>&1 | tee artifacts/core-tests.log
           bash Tools/test_upstream_sync.sh 2>&1 | tee artifacts/upstream-sync-tests.log
           swiftc -parse-as-library Sources/TDSCarKitCore/BMSFamily.swift \

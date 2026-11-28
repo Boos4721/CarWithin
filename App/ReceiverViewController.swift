@@ -395,6 +395,9 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private let bmsCardSize = ChoiceMenu(items: ANTBMSCardConfiguration.Size.allCases.map(\.title))
     private let bmsCardBackground = ChoiceMenu(items: ANTBMSCardConfiguration.Background.allCases.map(\.title))
     private var bmsCardConfiguration = ANTBMSCardConfiguration()
+    private let bmsCardStyleControl = ChoiceMenu(items: ANTBMSCardConfiguration.Style.allCases.map(\.title))
+    private let bmsLossControl = ChoiceMenu(items: ANTBMSCardConfiguration.LossDisplay.allCases.map(\.title))
+    private let bmsPositionStatus = StatusLabel()
     private let bmsCardModeControl = ChoiceMenu(items: ANTBMSCardConfiguration.Mode.allCases.map(\.title))
     private var bmsCapabilitiesByDevice: [String: BMSFieldCapabilities] = [:]
     private var bmsCapabilitiesKey: String {
@@ -1194,7 +1197,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private func configureBMS() {
         bmsEnabledSwitch.isOn = UserDefaults.standard.bool(forKey: "antBMSEnabled")
         bmsEnabledSwitch.addTarget(self, action: #selector(bmsSettingsChanged), for: .valueChanged)
-        bmsPosition.addTarget(self, action: #selector(bmsCardAppearanceChanged), for: .valueChanged)
+        bmsPosition.addTarget(self, action: #selector(bmsCardPositionChanged), for: .valueChanged)
         bmsCardBackground.addTarget(self, action: #selector(bmsCardAppearanceChanged), for: .valueChanged)
         bmsCardConfiguration = ANTBMSCardConfiguration(
             savedFields: UserDefaults.standard.stringArray(forKey: "antBMSCardFields"),
@@ -1202,7 +1205,28 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             positionRawValue: UserDefaults.standard.object(forKey: "antBMSPosition") as? Int,
             backgroundRawValue: UserDefaults.standard.object(forKey: "antBMSCardBackground") as? Int,
             modeRawValue: UserDefaults.standard.object(forKey: "antBMSCardMode") as? Int ??
-                (UserDefaults.standard.stringArray(forKey: "antBMSCardFields") == nil ? ANTBMSCardConfiguration.Mode.automatic.rawValue : ANTBMSCardConfiguration.Mode.custom.rawValue))
+                (UserDefaults.standard.stringArray(forKey: "antBMSCardFields") == nil ? ANTBMSCardConfiguration.Mode.automatic.rawValue : ANTBMSCardConfiguration.Mode.custom.rawValue),
+            styleRawValue: UserDefaults.standard.object(forKey: "antBMSCardStyle") as? Int,
+            lossDisplayRawValue: UserDefaults.standard.object(forKey: "antBMSCardLoss") as? Int,
+            anchorX: UserDefaults.standard.object(forKey: "antBMSCardAnchorX") as? Double,
+            anchorY: UserDefaults.standard.object(forKey: "antBMSCardAnchorY") as? Double)
+        bmsCardStyleControl.selectedSegmentIndex = bmsCardConfiguration.style.rawValue
+        bmsLossControl.selectedSegmentIndex = bmsCardConfiguration.lossDisplay.rawValue
+        bmsCardStyleControl.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            self.bmsCardConfiguration.style = ANTBMSCardConfiguration.Style(rawValue: self.bmsCardStyleControl.selectedSegmentIndex) ?? .classic
+            self.saveBMSCardConfiguration()
+        }, for: .valueChanged)
+        bmsLossControl.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            self.bmsCardConfiguration.lossDisplay = ANTBMSCardConfiguration.LossDisplay(rawValue: self.bmsLossControl.selectedSegmentIndex) ?? .compact
+            self.saveBMSCardConfiguration()
+        }, for: .valueChanged)
+        bmsCardPreview.onMove = { [weak self] anchor in
+            guard let self else { return }
+            self.bmsCardConfiguration.customAnchor = anchor
+            self.saveBMSCardConfiguration()
+        }
         bmsCardModeControl.selectedSegmentIndex = bmsCardConfiguration.mode.rawValue
         bmsCardModeControl.addAction(UIAction { [weak self] _ in
             guard let self else { return }
@@ -1272,8 +1296,11 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         saveBMSCardConfiguration()
     }
 
+    @objc private func bmsCardPositionChanged() {
+        bmsCardConfiguration.snap(to: ANTBMSCardConfiguration.Position(rawValue: bmsPosition.selectedSegmentIndex) ?? .topRight)
+        saveBMSCardConfiguration()
+    }
     @objc private func bmsCardAppearanceChanged() {
-        bmsCardConfiguration.position = ANTBMSCardConfiguration.Position(rawValue: bmsPosition.selectedSegmentIndex) ?? .topRight
         bmsCardConfiguration.background = ANTBMSCardConfiguration.Background(rawValue: bmsCardBackground.selectedSegmentIndex) ?? .standard
         saveBMSCardConfiguration()
     }
@@ -1285,16 +1312,24 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
         UserDefaults.standard.set(bmsCardConfiguration.size.rawValue, forKey: "antBMSCardSize")
         UserDefaults.standard.set(bmsCardConfiguration.position.rawValue, forKey: "antBMSPosition")
         UserDefaults.standard.set(bmsCardConfiguration.background.rawValue, forKey: "antBMSCardBackground")
+        UserDefaults.standard.set(bmsCardConfiguration.style.rawValue, forKey: "antBMSCardStyle")
+        UserDefaults.standard.set(bmsCardConfiguration.lossDisplay.rawValue, forKey: "antBMSCardLoss")
+        UserDefaults.standard.set(bmsCardConfiguration.customAnchor?.x, forKey: "antBMSCardAnchorX")
+        UserDefaults.standard.set(bmsCardConfiguration.customAnchor?.y, forKey: "antBMSCardAnchorY")
+        bmsCardStyleControl.selectedSegmentIndex = bmsCardConfiguration.style.rawValue
+        bmsLossControl.selectedSegmentIndex = bmsCardConfiguration.lossDisplay.rawValue
         saveActiveVehicleProfile()
         refreshBMS()
         reloadVisibleSettings()
     }
 
     private func applyBMSCardPreset(_ fields: [ANTBMSCardConfiguration.Field]) {
-        bmsCardConfiguration = ANTBMSCardConfiguration(savedFields: fields.map(\.rawValue),
-            sizeRawValue: bmsCardConfiguration.size.rawValue,
-            positionRawValue: bmsCardConfiguration.position.rawValue,
-            backgroundRawValue: bmsCardConfiguration.background.rawValue)
+        var updated = bmsCardConfiguration
+        // Replace content only; appearance and custom placement stay intact.
+        for field in fields { _ = updated.set(field, visible: true) }
+        for field in ANTBMSCardConfiguration.Field.allCases where !fields.contains(field) { _ = updated.set(field, visible: false) }
+        for (index, field) in fields.enumerated() { updated.move(field, to: index) }
+        bmsCardConfiguration = updated
         for (field, control) in bmsFieldSwitches { control.isOn = bmsCardConfiguration.fields.contains(field) }
         saveBMSCardConfiguration()
     }
@@ -1308,6 +1343,9 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
             bmsCapabilitiesByDevice[bmsCapabilitiesKey] = capabilities
         }
         let cardConfiguration = effectiveBMSCardConfiguration
+        bmsPositionStatus.text = bmsCardConfiguration.customAnchor.map {
+            String(format: "自定义位置 · 水平 %.0f%% · 垂直 %.0f%%", $0.x * 100, $0.y * 100)
+        } ?? ("当前位置：" + bmsCardConfiguration.position.title)
         for (field, control) in bmsFieldSwitches {
             control.isEnabled = bmsCardConfiguration.mode == .custom
             control.isOn = cardConfiguration.fields.contains(field)
@@ -3928,7 +3966,9 @@ extension ReceiverViewController {
             zeehoVideoMode: isZeehoSEPlus ? zeehoSEPlusVideoModeControl.selectedSegmentIndex : nil,
             zeehoFiveVariant: outputMode == .zeehoFive ? selectedZeehoFiveVariant.rawValue : nil,
             ninebotVehicleID: outputMode.ninebotMode != nil ? ninebotVehicle.garage.selected?.id : nil,
-            bmsFamily: bmsClient.savedFamily?.rawValue, cardMode: bmsCardConfiguration.mode.rawValue)
+            bmsFamily: bmsClient.savedFamily?.rawValue, cardMode: bmsCardConfiguration.mode.rawValue,
+            cardStyle: bmsCardConfiguration.style.rawValue, cardLoss: bmsCardConfiguration.lossDisplay.rawValue,
+            cardAnchorX: bmsCardConfiguration.customAnchor?.x, cardAnchorY: bmsCardConfiguration.customAnchor?.y)
     }
 
     private func saveActiveVehicleProfile() {
@@ -4059,7 +4099,11 @@ extension ReceiverViewController {
         bmsClient.restoreSelection(id: profile.bmsID, name: profile.bmsName, family: profile.bmsFamily)
         bmsEnabledSwitch.isOn = profile.bmsEnabled
         bmsCardConfiguration = ANTBMSCardConfiguration(savedFields: profile.cardFields, sizeRawValue: profile.cardSize,
-            positionRawValue: profile.cardPosition, backgroundRawValue: profile.cardBackground, modeRawValue: profile.cardMode)
+            positionRawValue: profile.cardPosition, backgroundRawValue: profile.cardBackground, modeRawValue: profile.cardMode,
+            styleRawValue: profile.cardStyle, lossDisplayRawValue: profile.cardLoss,
+            anchorX: profile.cardAnchorX, anchorY: profile.cardAnchorY)
+        bmsCardStyleControl.selectedSegmentIndex = bmsCardConfiguration.style.rawValue
+        bmsLossControl.selectedSegmentIndex = bmsCardConfiguration.lossDisplay.rawValue
         bmsPosition.selectedSegmentIndex = bmsCardConfiguration.position.rawValue
         bmsCardBackground.selectedSegmentIndex = bmsCardConfiguration.background.rawValue
         bmsCardSize.selectedSegmentIndex = bmsCardConfiguration.size.rawValue
@@ -4758,19 +4802,35 @@ extension ReceiverViewController {
             var sections = [SettingsSection("内容模式", footer: "自动推荐最多四项有效字段，短时缺失时保留位置。自定义保留你的字段与顺序，随车辆配置保存。旧版布局继续使用自定义模式。", [
                 .control("显示内容", self.bmsCardModeControl),
                 .page("字段能力与来源", icon: ("list.bullet.rectangle", .systemBlue)) { [unowned self] in self.bmsCapabilitiesPage() }
-            ]), SettingsSection("布局", footer: "修改后立即同步到手机和仪表投屏，并自动保存。卡片最多两行。", [
-                .control("字号", self.bmsCardSize),
-                .control("显示位置", self.bmsPosition),
+            ]), SettingsSection("布局", footer: "修改后立即同步到手机和仪表投屏，并自动保存。大字卡片突出第一项；经典布局保留两行显示。", [
+                .control("卡片样式", self.bmsCardStyleControl),
+                .control("卡片大小", self.bmsCardSize),
+                .control("无实时数据时", self.bmsLossControl),
+                .control("吸附到角落", self.bmsPosition),
+                .note(self.bmsPositionStatus),
                 .control("背景", self.bmsCardBackground),
                 .page(self.bmsCardConfiguration.mode == .automatic ? "自定义字段顺序" : "字段顺序", icon: ("arrow.up.arrow.down", .systemBlue)) { [unowned self] in
                     self.bmsCardOrderPage()
                 }
             ])]
             sections.append(SettingsSection(footer: "支持手机预览、九号 4.3／5／7 寸和极核 5／6.2 寸。极核开启电池卡片后本次使用兼容转码；关闭卡片后，下次启动恢复所选视频模式。", []))
-            sections.append(SettingsSection("布局预览", footer: "背景为布局示意，比例随所选仪表变化。没有实时读数时使用示例数据，示例不会写入电池记录或投屏画面。", [
+            sections.append(SettingsSection("布局预览", footer: "拖动虚线框内的卡片调整位置，松手保存；也可用位置菜单与微调。背景仅为导航布局示意，比例随仪表变化。没有实时读数时使用示例，示例不进入记录或投屏。", [
                 .note(self.bmsCardPreviewStatus), .view(self.bmsCardPreview)
             ]))
-            sections.append(SettingsSection("快捷布局", [
+            sections.append(SettingsSection("场景预设", footer: "手动选择后保持固定，不随充放电自动切换。第一项为大字主值，可在字段顺序中调整。未提供的字段显示 --。", ANTBMSCardConfiguration.Scene.allCases.map { scene in
+                var row = SettingsRow.action(scene.title, icon: (scene == .riding ? "bicycle" : scene == .monitoring ? "waveform.path.ecg" : "bolt", .systemBlue)) { [unowned self] in
+                    self.bmsCardConfiguration.apply(scene); self.saveBMSCardConfiguration()
+                }
+                row.subtitle = { scene.fields.map(\.title).joined(separator: "、") }
+                return row
+            }))
+            sections.append(SettingsSection("位置微调", [
+                .action("向左移动", icon: ("arrow.left", .systemBlue)) { [unowned self] in self.bmsCardPreview.nudge(dx: -0.05, dy: 0) },
+                .action("向右移动", icon: ("arrow.right", .systemBlue)) { [unowned self] in self.bmsCardPreview.nudge(dx: 0.05, dy: 0) },
+                .action("向上移动", icon: ("arrow.up", .systemBlue)) { [unowned self] in self.bmsCardPreview.nudge(dx: 0, dy: -0.05) },
+                .action("向下移动", icon: ("arrow.down", .systemBlue)) { [unowned self] in self.bmsCardPreview.nudge(dx: 0, dy: 0.05) }
+            ]))
+            sections.append(SettingsSection("快捷字段", [
                 .action("精简：电量、总压、压差", icon: ("minus.circle", .systemBlue)) { [unowned self] in
                     self.applyBMSCardPreset(ANTBMSCardConfiguration.compactFields)
                 },

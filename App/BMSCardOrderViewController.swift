@@ -18,7 +18,7 @@ final class BMSCardOrderViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { fields.count }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { "已显示的字段" }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        "拖动右侧手柄调整顺序，从左到右排布，超过三项自动分为两行。修改后立即生效并保存。"
+        "拖动右侧手柄调整顺序。大字卡片突出第一项，其余按顺序排布；经典布局超过三项分为两行。修改后立即生效并保存。"
     }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = UITableViewCell(style: .default, reuseIdentifier: nil)
