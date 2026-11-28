@@ -26,8 +26,8 @@ final class BMSDLSession {
 
     init() {}
     deinit {
-        privateKey.withUnsafeMutableBytes { $0.initializeMemory(as: UInt8.self, repeating: 0) }
-        shared.withUnsafeMutableBytes { $0.initializeMemory(as: UInt8.self, repeating: 0) }
+        _ = privateKey.withUnsafeMutableBytes { $0.initializeMemory(as: UInt8.self, repeating: 0) }
+        _ = shared.withUnsafeMutableBytes { $0.initializeMemory(as: UInt8.self, repeating: 0) }
     }
     static func keyPair(privateKey supplied: [UInt8]? = nil) throws -> (privateKey: [UInt8], publicKey: [UInt8]) {
         var secret = supplied ?? [UInt8](repeating: 0, count: 32)
@@ -116,9 +116,9 @@ final class BMSDLSession {
                 if current.function == 0 {
                     do {
                         shared = try Self.secret(privateKey: privateKey, peer: content)
-                        privateKey.withUnsafeMutableBytes { $0.initializeMemory(as: UInt8.self, repeating: 0) }
+                        _ = privateKey.withUnsafeMutableBytes { $0.initializeMemory(as: UInt8.self, repeating: 0) }
                         pending = nil; issued = nil; error = nil; nextAt = now
-                    } catch { error = "DL 握手公钥无效，等待有效回复" }
+                    } catch { self.error = "DL 握手公钥无效，等待有效回复" }
                 } else if let value = Self.decode(content) {
                     readings.append(value); pending = nil; issued = nil; error = nil; nextAt = now + 1
                 } else { error = "DL 实时数据布局或范围不匹配" }
