@@ -13,6 +13,8 @@ final class ChoiceMenu: UIControl {
     private var disabledItems = Set<Int>()
     private let button = UIButton(type: .system)
     var selectedSegmentIndex: Int = 0 { didSet { refresh() } }
+    /// Position pickers can reapply the selected corner after a free drag.
+    var reappliesSelection = false
     var numberOfSegments: Int { items.count }
     var selectedTitle: String { items.indices.contains(selectedSegmentIndex) ? items[selectedSegmentIndex] : "" }
 
@@ -63,7 +65,7 @@ final class ChoiceMenu: UIControl {
         func action(_ index: Int) -> UIAction {
             UIAction(title: items[index], attributes: disabledItems.contains(index) ? .disabled : [],
                      state: index == selectedSegmentIndex ? .on : .off) { [weak self] _ in
-                guard let self, self.selectedSegmentIndex != index else { return }
+                guard let self, self.reappliesSelection || self.selectedSegmentIndex != index else { return }
                 self.selectedSegmentIndex = index
                 self.sendActions(for: .valueChanged)
             }

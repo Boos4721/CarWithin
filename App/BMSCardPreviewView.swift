@@ -64,7 +64,9 @@ final class BMSCardPreviewView: UIView, UIGestureRecognizerDelegate {
     }
     func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
         let location = recognizer.location(in: self)
-        return location.x > 16 && cardFrame.insetBy(dx: -12, dy: -12).contains(location)
+        let frame = cardFrame
+        let target = frame.insetBy(dx: -max(12, (44 - frame.width) / 2), dy: -max(12, (44 - frame.height) / 2))
+        return location.x > 16 && target.contains(location)
     }
     @objc private func drag(_ recognizer: UIPanGestureRecognizer) {
         switch recognizer.state {

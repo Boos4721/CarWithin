@@ -1197,6 +1197,7 @@ final class ReceiverViewController: UIViewController, CLLocationManagerDelegate 
     private func configureBMS() {
         bmsEnabledSwitch.isOn = UserDefaults.standard.bool(forKey: "antBMSEnabled")
         bmsEnabledSwitch.addTarget(self, action: #selector(bmsSettingsChanged), for: .valueChanged)
+        bmsPosition.reappliesSelection = true
         bmsPosition.addTarget(self, action: #selector(bmsCardPositionChanged), for: .valueChanged)
         bmsCardBackground.addTarget(self, action: #selector(bmsCardAppearanceChanged), for: .valueChanged)
         bmsCardConfiguration = ANTBMSCardConfiguration(
