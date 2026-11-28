@@ -247,8 +247,9 @@ final class MultibrandBMSTests: XCTestCase {
         XCTAssertEqual(statistics.firstCharge,45)
     }
     func testSupportedScopeAndExplicitFamilyOverrideStayStable() {
-        XCTAssertEqual(Set(BMSFamily.allCases.map(\.rawValue)), ["ant", "yanyang", "jikong", "lanbao", "jbd", "yadi", "mingtang", "xiaoha", "luxing"])
+        XCTAssertEqual(Set(BMSFamily.allCases.map(\.rawValue)), ["ant", "yanyang", "jikong", "lanbao", "jbd", "yadi", "mingtang", "xiaoha", "luxing", "dl"])
         XCTAssertEqual(BMSSelectionPolicy.family(saved: "jbd", inferred: .ant), .jbd)
+        XCTAssertEqual(BMSSelectionPolicy.family(saved: "dl", inferred: .luxing), .dl)
         XCTAssertNil(BMSSelectionPolicy.family(saved: "removed", inferred: .ant))
         XCTAssertEqual(BMSSelectionPolicy.family(saved: nil, inferred: .luxing), .luxing)
         XCTAssertNil(BMSFamily.identify(name: "unknown", services: ["FFE0"]))
