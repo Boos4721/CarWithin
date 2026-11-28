@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// Shared card content and scale for the phone and instrument video.

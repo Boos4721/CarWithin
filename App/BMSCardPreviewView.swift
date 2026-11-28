@@ -62,7 +62,7 @@ final class BMSCardPreviewView: UIView, UIGestureRecognizerDelegate {
         guard let image else { return .zero }
         return configuration.overlayFrame(in: bounds, imageSize: CGSize(width: image.width, height: image.height))
     }
-    func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
+    override func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
         let location = recognizer.location(in: self)
         let frame = cardFrame
         let target = frame.insetBy(dx: -max(12, (44 - frame.width) / 2), dy: -max(12, (44 - frame.height) / 2))
